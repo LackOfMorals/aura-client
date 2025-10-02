@@ -1,0 +1,19 @@
+mode: set
+lackofmorals/goauraapi/internal/httpClient/service.go:24.62,30.2 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:33.139,43.16 5 1
+lackofmorals/goauraapi/internal/httpClient/service.go:43.16,45.3 1 0
+lackofmorals/goauraapi/internal/httpClient/service.go:48.2,48.19 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:48.19,50.3 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:52.2,56.16 3 1
+lackofmorals/goauraapi/internal/httpClient/service.go:56.16,57.10 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:58.21,59.25 1 0
+lackofmorals/goauraapi/internal/httpClient/service.go:60.11,60.11 0 1
+lackofmorals/goauraapi/internal/httpClient/service.go:63.3,63.18 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:68.2,69.16 2 1
+lackofmorals/goauraapi/internal/httpClient/service.go:69.16,71.3 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:74.2,78.16 3 1
+lackofmorals/goauraapi/internal/httpClient/service.go:78.16,81.3 2 0
+lackofmorals/goauraapi/internal/httpClient/service.go:84.2,89.8 2 1
+lackofmorals/goauraapi/internal/httpClient/service.go:94.47,95.48 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:95.48,97.3 1 1
+lackofmorals/goauraapi/internal/httpClient/service.go:98.2,98.84 1 1
