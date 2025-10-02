@@ -49,13 +49,13 @@ func main() {
 
 	myAuraClient := auraAPIClient.NewAuraAPIActionsService(AuraAPIBaseURL, AuraAPIV1, "120", ClientID, ClientSecret)
 
-	auraToken, err := myAuraClient.GetAuthToken()
+	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {
 		log.Println("Error getting token: ", err)
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.DeleteInstance(ctx, auraToken, instanceID)
+	response, err := myAuraClient.Instances.Delete(ctx, auraToken, instanceID)
 	if err != nil {
 		log.Println("Error deleting instance: ", err)
 		os.Exit(1)

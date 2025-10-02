@@ -29,7 +29,7 @@ func main() {
 
 	myAuraClient := auraAPIClient.NewAuraAPIActionsService(AuraAPIBaseURL, AuraAPIV1, "120", ClientID, ClientSecret)
 
-	auraToken, err := myAuraClient.GetAuthToken()
+	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 
 	if err != nil {
 		log.Println("Error getting token: ", err)
@@ -37,7 +37,7 @@ func main() {
 	}
 
 	// Get the list of tenants in the Aura Organisation
-	response, err := myAuraClient.ListTenants(ctx, auraToken)
+	response, err := myAuraClient.Tenants.List(ctx, auraToken)
 
 	if err != nil {
 		log.Println("Error getting tenants: ", err)

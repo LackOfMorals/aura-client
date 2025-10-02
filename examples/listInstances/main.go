@@ -29,13 +29,13 @@ func main() {
 
 	myAuraClient := auraAPIClient.NewAuraAPIActionsService(AuraAPIBaseURL, AuraAPIV1, "120", ClientID, ClientSecret)
 
-	auraToken, err := myAuraClient.GetAuthToken()
+	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {
 		log.Println("Error getting token: ", err)
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.ListInstances(ctx, auraToken)
+	response, err := myAuraClient.Instances.List(ctx, auraToken)
 	if err != nil {
 		log.Println("Error reading instances: ", err)
 		os.Exit(1)

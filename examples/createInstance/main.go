@@ -43,13 +43,13 @@ func main() {
 
 	myAuraClient := auraAPIClient.NewAuraAPIActionsService(AuraAPIBaseURL, AuraAPIV1, "120", ClientID, ClientSecret)
 
-	auraToken, err := myAuraClient.GetAuthToken()
+	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {
 		log.Println("Error getting token: ", err)
 		os.Exit(1)
 	}
 
-	auraTenants, err := myAuraClient.ListTenants(ctx, auraToken)
+	auraTenants, err := myAuraClient.Tenants.List(ctx, auraToken)
 	if err != nil {
 		log.Println("Error getting tenant details: ", err)
 		os.Exit(1)
@@ -65,7 +65,7 @@ func main() {
 		CloudProvider: "gcp",
 	}
 
-	response, err := myAuraClient.CreateInstance(ctx, auraToken, &instanceCfg)
+	response, err := myAuraClient.Instances.Create(ctx, auraToken, &instanceCfg)
 	if err != nil {
 		log.Println("Error creating instance: ", err)
 		os.Exit(1)

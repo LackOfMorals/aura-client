@@ -5,20 +5,13 @@ import (
 	"net/http"
 )
 
-// Retrieves information for a Tenant that includes permitted instance configurations
-func (a *AuraAPIActionsService) GetTenant(ctx context.Context, token *AuthAPIToken, TenantID string) (*GetTenantResponse, error) {
-
-	endpoint := a.AuraAPIVersion + "/tenants/" + TenantID
-
-	return makeAuthenticatedRequest[GetTenantResponse](ctx, a, token, endpoint, http.MethodGet, nil)
-
+// Tenant methods
+func (t *TenantService) List(ctx context.Context, token *AuthAPIToken) (*ListTenantsResponse, error) {
+	endpoint := t.service.auraAPIVersion + "/tenants"
+	return makeAuthenticatedRequest[ListTenantsResponse](ctx, t.service, token, endpoint, http.MethodGet, "application/json", nil)
 }
 
-// Lists the tenants in the organisation
-func (a *AuraAPIActionsService) ListTenants(ctx context.Context, token *AuthAPIToken) (*ListTenantsResponse, error) {
-
-	endpoint := a.AuraAPIVersion + "/tenants"
-
-	return makeAuthenticatedRequest[ListTenantsResponse](ctx, a, token, endpoint, http.MethodGet, nil)
-
+func (t *TenantService) Get(ctx context.Context, token *AuthAPIToken, tenantID string) (*GetTenantResponse, error) {
+	endpoint := t.service.auraAPIVersion + "/tenants/" + tenantID
+	return makeAuthenticatedRequest[GetTenantResponse](ctx, t.service, token, endpoint, http.MethodGet, "application/json", nil)
 }
