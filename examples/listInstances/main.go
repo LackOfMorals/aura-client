@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -17,6 +18,8 @@ const (
 
 func main() {
 
+	ctx := context.Background()
+
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
 	if err != nil {
@@ -26,13 +29,13 @@ func main() {
 
 	myAuraClient := auraAPIClient.NewAuraAPIActionsService(AuraAPIBaseURL, AuraAPIV1, "120", ClientID, ClientSecret)
 
-	auraToken, err := myAuraClient.GetAuthToken()
+	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {
 		log.Println("Error getting token: ", err)
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.ListInstances(auraToken)
+	response, err := myAuraClient.Instances.List(ctx, auraToken)
 	if err != nil {
 		log.Println("Error reading instances: ", err)
 		os.Exit(1)

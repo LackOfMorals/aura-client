@@ -1,45 +1,30 @@
 package auraAPIClient
 
 import (
-	"encoding/json"
+	"context"
 	"net/http"
 	"net/url"
 
-	httpClient "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/httpClient"
 	utils "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/utils"
 )
 
 // Obtains a token to use with the Aura API using a Client ID and Client Secret
-func (a *AuraAPIActionsService) GetAuthToken() (*AuthAPIToken, error) {
+func (a *AuthService) GetAuthToken(ctx context.Context) (*AuthAPIToken, error) {
+
+	// We'll use this type to store our 'token'
+	// So we can make use of makeAuthenticatedRequest
+
+	var authToken AuthAPIToken
 
 	endpoint := "oauth/token"
 
-	myHTTPClient := httpClient.NewHTTPRequestService(a.AuraAPIBaseURL, "120")
-
-	auth := "Basic " + utils.Base64Encode(a.ClientID, a.ClientSecret)
-
-	header := http.Header{"Content-Type": {"application/x-www-form-urlencoded"},
-		"User-Agent": {"jgHTTPClient"}, "Authorization": {auth},
-	}
+	authToken.Token = utils.Base64Encode(a.service.clientID, a.service.clientSecret)
+	authToken.Type = "Basic"
 
 	body := url.Values{}
 
 	body.Set("grant_type", "client_credentials")
 
-	response, err := myHTTPClient.MakeRequest(endpoint, http.MethodPost, header, []byte(body.Encode()))
-
-	if err != nil {
-		return nil, err
-	}
-
-	var authToken AuthAPIToken
-
-	// Unmarshall response into a JSON payload
-	err = json.Unmarshal(*response.ResponsePayload, &authToken)
-	if err != nil {
-		return nil, err
-	}
-
-	return &authToken, err
+	return makeAuthenticatedRequest[AuthAPIToken](ctx, a.service, &authToken, endpoint, http.MethodPost, "application/x-www-form-urlencoded", []byte(body.Encode()))
 
 }

@@ -1,65 +1,99 @@
 // package auraAPIClient provides functionality to use the Neo4j Aura API to provision, managed and then destory Aura instances
 package auraAPIClient
 
-// These are the interfaces that represent the functions available in this package
+import (
+	"context"
+	"net/http"
 
-type GetAuthTokenExecutor interface {
-	GetAuthToken() (*AuthAPIToken, error)
-}
+	httpClient "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/httpClient"
+	utils "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/utils"
+)
 
-type ListTenantsExecutor interface {
-	ListTenants(*AuthAPIToken) (*ListTenantsResponse, error)
-}
-
-type GetTenantExecutor interface {
-	GetTenant(*AuthAPIToken, string) (*GetTenantResponse, error)
-}
-
-type ListInstancesExecutor interface {
-	ListInstances(*AuthAPIToken) (*ListInstancesResponse, error)
-}
-
-type CreateInstanceExecutor interface {
-	CreateInstance(*AuthAPIToken, *CreateInstanceConfigData) (*CreateInstanceResponse, error)
-}
-
-type DeleteInstanceExecutor interface {
-	DeleteInstance(*AuthAPIToken, string) (*GetInstanceResponse, error)
-}
-
-type GetInstanceExecutor interface {
-	GetInstance(*AuthAPIToken, string) (*GetInstanceResponse, error)
-}
-
-// Aura API service
-type AuraAPIService interface {
-	GetAuthTokenExecutor
-	ListTenantsExecutor
-	GetTenantExecutor
-	ListInstancesExecutor
-	CreateInstanceExecutor
-	DeleteInstanceExecutor
-	GetInstanceExecutor
-}
-
-// This is the concrete implementation for Aura API Service
+// Core service configuration
 type AuraAPIActionsService struct {
-	AuraAPIBaseURL string
-	AuraAPIVersion string
-	AuraAPITimeout string
-	ClientID       string
-	ClientSecret   string
+	auraAPIBaseURL string
+	auraAPIVersion string
+	auraAPITimeout string
+	clientID       string
+	clientSecret   string
+	timeout        string
+
+	// Grouped services
+	Auth      *AuthService
+	Tenants   *TenantService
+	Instances *InstanceService
 }
 
-// NewDriver is the entry point to the auraClient driver to create an instance of a Driver. It is the first function to
-// be called in order to establish a connection to a neo4j database. It requires the Aura API base URL, the version of the
-// Aura API to use, client id, and client secret.
-func NewAuraAPIActionsService(baseurl, ver, timeout, id, sec string) AuraAPIService {
-	return &AuraAPIActionsService{
-		AuraAPIBaseURL: baseurl,
-		AuraAPIVersion: ver,
-		AuraAPITimeout: timeout,
-		ClientID:       id,
-		ClientSecret:   sec,
+// AuthService handles authentication operations
+type AuthService struct {
+	service *AuraAPIActionsService
+}
+
+// TenantService handles tenant operations
+type TenantService struct {
+	service *AuraAPIActionsService
+}
+
+// InstanceService handles instance operations
+type InstanceService struct {
+	service *AuraAPIActionsService
+}
+
+// NewAuraAPIActionsService creates a new Aura API service with grouped sub-services
+func NewAuraAPIActionsService(baseurl, ver, timeout, id, sec string) *AuraAPIActionsService {
+	service := &AuraAPIActionsService{
+		auraAPIBaseURL: baseurl,
+		auraAPIVersion: ver,
+		auraAPITimeout: timeout,
+		clientID:       id,
+		clientSecret:   sec,
+		timeout:        timeout,
 	}
+
+	// Initialize sub-services with reference to parent
+	service.Auth = &AuthService{service: service}
+	service.Tenants = &TenantService{service: service}
+	service.Instances = &InstanceService{service: service}
+
+	return service
+}
+
+// makeAuthenticatedRequest handles the common pattern of making an authenticated API request
+// and unmarshalling the response into the desired type
+func makeAuthenticatedRequest[T any](
+	ctx context.Context,
+	a *AuraAPIActionsService,
+	token *AuthAPIToken,
+	endpoint string,
+	method string,
+	contentType string,
+	body []byte,
+) (*T, error) {
+	// Check if context is already cancelled
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	myHTTPClient := httpClient.NewHTTPRequestService(a.auraAPIBaseURL, a.timeout)
+
+	auth := token.Type + " " + token.Token
+
+	header := http.Header{
+		"Content-Type":  {contentType},
+		"User-Agent":    {userAgent},
+		"Authorization": {auth},
+	}
+
+	response, err := myHTTPClient.MakeRequest(endpoint, method, header, body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshall payload into JSON
+	jsonDoc, err := utils.Unmarshal[T](*response.ResponsePayload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &jsonDoc, nil
 }

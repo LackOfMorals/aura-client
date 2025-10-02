@@ -53,29 +53,27 @@ go tool cover -html=coverage.out
 
 ### auraClient
 
-**Test Coverage**
-1. Service Constructor
-TestNewAuraAPIActionsService - Validates proper initialization of all service fields
+**Test Coverage - instances**
+1. Success Cases
+TestListInstances_Success - Tests successful listing of instances
+TestGetInstance_Success - Tests retrieving a specific instance
+TestCreateInstance_Success - Tests creating a new instance
+TestDeleteInstance_Success - Tests deleting an instance
 
-2. Authentication Tests
-TestGetAuthToken_Success - Tests successful OAuth token retrieval
-TestGetAuthToken_Unauthorized - Tests handling of invalid credentials
+2. Edge Cases
 
-3. Tenant Management Tests
-TestListTenants_Success - Tests listing multiple tenants
-TestListTenants_EmptyList - Tests empty tenant list response
-TestGetTenant_Success - Tests retrieving tenant details with configurations
-TestGetTenant_NotFound - Tests 404 error handling
+TestListInstances_EmptyList - Tests handling of empty instance lists
 
-4. Instance Management Tests
-TestListInstances_Success - Tests listing multiple instances
-TestListInstances_EmptyList - Tests empty instance list
-TestListInstances_Unauthorized - Tests expired/invalid token handling
+3. Context Support
 
-5. Model Structure Tests
-TestAuthAPIToken_Structure - Validates token model
-TestTenantInstanceConfiguration_Structure - Validates configuration model
-TestListInstanceData_Structure - Validates instance data model
+TestListInstances_ContextCancellation - Tests that cancelled contexts are handled correctly
+TestListInstances_ContextTimeout - Tests timeout behavior
+
+4. Header Verification
+
+TestMakeAuthenticatedRequest_UserAgentConstant - Verifies the user agent constant is used
+TestMakeAuthenticatedRequest_AuthorizationHeader - Verifies correct authorization header format
+TestMakeAuthenticatedRequest_ContentTypeHeader - Verifies JSON content type is set
 
 ```bash
 # Run all tests
