@@ -6,3 +6,4 @@ examples/listTenants/env.go
 examples/createInstance/env.go
 examples/deleteInstance/env.go
 examples/getInstance/env.go
+.env

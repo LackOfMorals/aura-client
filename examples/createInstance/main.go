@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -8,7 +10,20 @@ import (
 	auraAPIClient "github.com/LackOfMorals/aura-api-client/auraAPIClient"
 )
 
+const (
+	AuraAPIBaseURL      = "https://api.neo4j.io/"
+	AuraAPIAuthEndpoint = "oauth/token"
+	AuraAPIV1           = "v1"
+)
+
 func main() {
+
+	// Read ClientID, ClientSecret from env vars of the same name
+	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
+	if err != nil {
+		log.Println("Unable to obtain values for authentication to Aura API: ", err)
+		os.Exit(1)
+	}
 
 	fmt.Printf("Enter the name of the instance to create:")
 	var instanceName string
@@ -47,12 +62,40 @@ func main() {
 		CloudProvider: "gcp",
 	}
 
-	newInstance, err := myAuraClient.CreateInstance(auraToken, &instanceCfg)
+	response, err := myAuraClient.CreateInstance(auraToken, &instanceCfg)
 	if err != nil {
 		log.Println("Error creating instance: ", err)
 		os.Exit(1)
 	}
 
-	log.Printf("Instance created: \n ID %s \n Name %s \n URI %s \n User: %s \n Pwd: %s \n", newInstance.Data.Id, newInstance.Data.Name, newInstance.Data.ConnectionUrl, newInstance.Data.Username, newInstance.Data.Password)
+	result, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		log.Println("Error formatting response: ", err)
+		os.Exit(1)
+	}
 
+	log.Printf("Details of instance being created: %s", result)
+
+}
+
+func readClientIDAndSecretFromEnv() (string, string, error) {
+	var ClientID, ClientSecret string
+	var found bool
+
+	// Is set by LookupEnv to true if the environmental variable is found
+	found = false
+
+	// See if environmantal variables are present and get their value if so
+	// set found to true if this is the case
+	ClientID, found = os.LookupEnv("ClientID")
+	if !found {
+		return "", "", errors.New("environmental variable ClientID not set")
+	}
+
+	ClientSecret, found = os.LookupEnv("ClientSecret")
+	if !found {
+		return "", "", errors.New("environmental variable ClientSecret not set")
+	}
+
+	return ClientID, ClientSecret, nil
 }

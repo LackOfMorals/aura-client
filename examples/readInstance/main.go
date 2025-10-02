@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -8,7 +10,20 @@ import (
 	auraAPIClient "github.com/LackOfMorals/aura-api-client/auraAPIClient"
 )
 
+const (
+	AuraAPIBaseURL      = "https://api.neo4j.io/"
+	AuraAPIAuthEndpoint = "oauth/token"
+	AuraAPIV1           = "v1"
+)
+
 func main() {
+
+	// Read ClientID, ClientSecret from env vars of the same name
+	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
+	if err != nil {
+		log.Println("Unable to obtain values for authentication to Aura API: ", err)
+		os.Exit(1)
+	}
 
 	fmt.Printf("input the ID of the instance to get details of:")
 	var instanceID string
@@ -37,12 +52,40 @@ func main() {
 		os.Exit(1)
 	}
 
-	readInstance, err := myAuraClient.GetInstance(auraToken, instanceID)
+	response, err := myAuraClient.GetInstance(auraToken, instanceID)
 	if err != nil {
 		log.Println("Error reading instance: ", err)
 		os.Exit(1)
 	}
 
-	log.Printf("Instance information: ID %s, Name %s", readInstance.Data.Id, readInstance.Data.Name)
+	result, err := json.MarshalIndent(response, "", "  ")
+	if err != nil {
+		log.Println("Error formatting response: ", err)
+		os.Exit(1)
+	}
 
+	log.Printf("Instance details: %s", result)
+
+}
+
+func readClientIDAndSecretFromEnv() (string, string, error) {
+	var ClientID, ClientSecret string
+	var found bool
+
+	// Is set by LookupEnv to true if the environmental variable is found
+	found = false
+
+	// See if environmantal variables are present and get their value if so
+	// set found to true if this is the case
+	ClientID, found = os.LookupEnv("ClientID")
+	if !found {
+		return "", "", errors.New("environmental variable ClientID not set")
+	}
+
+	ClientSecret, found = os.LookupEnv("ClientSecret")
+	if !found {
+		return "", "", errors.New("environmental variable ClientSecret not set")
+	}
+
+	return ClientID, ClientSecret, nil
 }

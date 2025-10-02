@@ -23,3 +23,11 @@ func Marshall(payload any) ([]byte, error) {
 
 	return result, err
 }
+
+func MarshallIndent(payload any) ([]byte, error) {
+
+	result, err := json.MarshalIndent(payload, "", "  ")
+
+	return result, err
+
+}
