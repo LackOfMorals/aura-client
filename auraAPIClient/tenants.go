@@ -1,61 +1,24 @@
 package auraAPIClient
 
 import (
+	"context"
 	"net/http"
-
-	httpClient "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/httpClient"
-	utils "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/utils"
 )
 
 // Retrieves information for a Tenant that includes permitted instance configurations
-func (a *AuraAPIActionsService) GetTenant(token *AuthAPIToken, TenantID string) (*GetTenantResponse, error) {
+func (a *AuraAPIActionsService) GetTenant(ctx context.Context, token *AuthAPIToken, TenantID string) (*GetTenantResponse, error) {
 
 	endpoint := a.AuraAPIVersion + "/tenants/" + TenantID
 
-	myHTTPClient := httpClient.NewHTTPRequestService(a.AuraAPIBaseURL, "120")
-
-	auth := token.Type + " " + token.Token
-
-	header := http.Header{"Content-Type": {"application/json"},
-		"User-Agent": {"jgHTTPClient"}, "Authorization": {auth},
-	}
-
-	response, err := myHTTPClient.MakeRequest(endpoint, http.MethodGet, header, nil)
-
-	if err != nil {
-		return nil, err
-
-	}
-
-	// Unmarshall payload into JSON
-	jsonDoc, err := utils.Unmarshal[GetTenantResponse](*response.ResponsePayload)
-
-	return &jsonDoc, err
+	return makeAuthenticatedRequest[GetTenantResponse](ctx, a, token, endpoint, http.MethodGet, nil)
 
 }
 
-// Obtains a token to use with the Aura API using a Client ID and Client Secret
-func (a *AuraAPIActionsService) ListTenants(token *AuthAPIToken) (*ListTenantsResponse, error) {
+// Lists the tenants in the organisation
+func (a *AuraAPIActionsService) ListTenants(ctx context.Context, token *AuthAPIToken) (*ListTenantsResponse, error) {
 
 	endpoint := a.AuraAPIVersion + "/tenants"
 
-	myHTTPClient := httpClient.NewHTTPRequestService(a.AuraAPIBaseURL, "120")
-
-	auth := token.Type + " " + token.Token
-
-	header := http.Header{"Content-Type": {"application/json"},
-		"User-Agent": {"jgHTTPClient"}, "Authorization": {auth},
-	}
-
-	response, err := myHTTPClient.MakeRequest(endpoint, http.MethodGet, header, nil)
-
-	if err != nil {
-		return nil, err
-	}
-
-	// Unmarshall payload into JSON
-	jsonDoc, err := utils.Unmarshal[ListTenantsResponse](*response.ResponsePayload)
-
-	return &jsonDoc, err
+	return makeAuthenticatedRequest[ListTenantsResponse](ctx, a, token, endpoint, http.MethodGet, nil)
 
 }

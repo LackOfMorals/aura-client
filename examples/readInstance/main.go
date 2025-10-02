@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,8 @@ const (
 )
 
 func main() {
+
+	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
@@ -52,7 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.GetInstance(auraToken, instanceID)
+	response, err := myAuraClient.GetInstance(ctx, auraToken, instanceID)
 	if err != nil {
 		log.Println("Error reading instance: ", err)
 		os.Exit(1)

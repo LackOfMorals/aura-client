@@ -1,6 +1,14 @@
 // package auraAPIClient provides functionality to use the Neo4j Aura API to provision, managed and then destory Aura instances
 package auraAPIClient
 
+import (
+	"context"
+	"net/http"
+
+	httpClient "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/httpClient"
+	utils "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/utils"
+)
+
 // These are the interfaces that represent the functions available in this package
 
 type GetAuthTokenExecutor interface {
@@ -8,27 +16,27 @@ type GetAuthTokenExecutor interface {
 }
 
 type ListTenantsExecutor interface {
-	ListTenants(*AuthAPIToken) (*ListTenantsResponse, error)
+	ListTenants(context.Context, *AuthAPIToken) (*ListTenantsResponse, error)
 }
 
 type GetTenantExecutor interface {
-	GetTenant(*AuthAPIToken, string) (*GetTenantResponse, error)
+	GetTenant(context.Context, *AuthAPIToken, string) (*GetTenantResponse, error)
 }
 
 type ListInstancesExecutor interface {
-	ListInstances(*AuthAPIToken) (*ListInstancesResponse, error)
+	ListInstances(context.Context, *AuthAPIToken) (*ListInstancesResponse, error)
 }
 
 type CreateInstanceExecutor interface {
-	CreateInstance(*AuthAPIToken, *CreateInstanceConfigData) (*CreateInstanceResponse, error)
+	CreateInstance(context.Context, *AuthAPIToken, *CreateInstanceConfigData) (*CreateInstanceResponse, error)
 }
 
 type DeleteInstanceExecutor interface {
-	DeleteInstance(*AuthAPIToken, string) (*GetInstanceResponse, error)
+	DeleteInstance(context.Context, *AuthAPIToken, string) (*GetInstanceResponse, error)
 }
 
 type GetInstanceExecutor interface {
-	GetInstance(*AuthAPIToken, string) (*GetInstanceResponse, error)
+	GetInstance(context.Context, *AuthAPIToken, string) (*GetInstanceResponse, error)
 }
 
 // Aura API service
@@ -62,4 +70,43 @@ func NewAuraAPIActionsService(baseurl, ver, timeout, id, sec string) AuraAPIServ
 		ClientID:       id,
 		ClientSecret:   sec,
 	}
+}
+
+// makeAuthenticatedRequest handles the common pattern of making an authenticated API request
+// and unmarshalling the response into the desired type
+func makeAuthenticatedRequest[T any](
+	ctx context.Context,
+	a *AuraAPIActionsService,
+	token *AuthAPIToken,
+	endpoint string,
+	method string,
+	body []byte,
+) (*T, error) {
+	// Check if context is already cancelled
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	myHTTPClient := httpClient.NewHTTPRequestService(a.AuraAPIBaseURL, "120")
+
+	auth := token.Type + " " + token.Token
+
+	header := http.Header{
+		"Content-Type":  {"application/json"},
+		"User-Agent":    {userAgent},
+		"Authorization": {auth},
+	}
+
+	response, err := myHTTPClient.MakeRequest(endpoint, method, header, body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshall payload into JSON
+	jsonDoc, err := utils.Unmarshal[T](*response.ResponsePayload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &jsonDoc, nil
 }

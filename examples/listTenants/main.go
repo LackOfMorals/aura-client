@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -16,6 +17,8 @@ const (
 )
 
 func main() {
+
+	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
@@ -34,7 +37,7 @@ func main() {
 	}
 
 	// Get the list of tenants in the Aura Organisation
-	response, err := myAuraClient.ListTenants(auraToken)
+	response, err := myAuraClient.ListTenants(ctx, auraToken)
 
 	if err != nil {
 		log.Println("Error getting tenants: ", err)
