@@ -47,7 +47,7 @@ func main() {
 
 	}
 
-	myAuraClient := auraAPIClient.NewAuraAPIActionsService(AuraAPIBaseURL, AuraAPIV1, "120", ClientID, ClientSecret)
+	myAuraClient := auraAPIClient.NewAuraAPIActionsService(ClientID, ClientSecret)
 
 	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {

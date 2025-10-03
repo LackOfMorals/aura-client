@@ -1,91 +1,92 @@
 # Aura API Client
 
-This a hobby project to create a package that can be used to access the Aura API in Go.  
+## Overview
+There's a few occasions where I have wanted to use the Aura API  with Go based applications.  Rather than re-write the integration each and everytime, it would be nice to have module that can be re-used.  Hence I have put together the Aura API Client. 
 
-Your mileage will vary 
+My Go knowledge is still being acquired - it's something of a hobby. I've looped around writing Go, trying it, improving, seeing difference directions to take and have had chats with Claude to fill holes in my knowledge.  It's been a great learning experience.   The point I am making - this has not been authored by a professional developer; there are rough edges. 
 
+## Installation
 
-## Usage
-
-
-
-
-
-## Tests
-
-### httpCLient
-
-**Test coverage**
-1. Constructor Tests
-TestNewHTTPRequestService - Verifies service creation and field initialization
-
-2. Basic Request Tests
-TestMakeRequest_Success - Tests successful GET request
-TestMakeRequest_WithHeaders - Validates custom headers are sent
-TestMakeRequest_WithBody - Tests POST request with body payload
-
-3. Error Handling Tests
-TestMakeRequest_4xxError - Tests 404 and client errors
-TestMakeRequest_5xxError - Tests 500 and server errors
-TestMakeRequest_InvalidURL - Tests handling of invalid domains
-
-4. HTTP Method Tests
-TestMakeRequest_AllHTTPMethods - Tests GET, POST, PUT, PATCH, DELETE
-
-5. Response Handling Tests
-TestMakeRequest_JSONResponse - Tests JSON deserialization
-TestCheckResponse_Success - Tests status codes 200-299
-TestCheckResponse_Errors - Tests various error status codes
-
-Running the Tests
-
+Get the module
 ```bash
-# Run all tests
-go test -v
-
-# Run with coverage
-go test -cover
-
-# Generate coverage report
-go test -coverprofile=coverage.out
-go tool cover -html=coverage.out
+go get github.com/LackOfMorals/aura-api-client
 ```
 
-### auraClient
+## Usage
+The modules follows a pattern of 
 
-**Test Coverage - instances**
-1. Success Cases
-TestListInstances_Success - Tests successful listing of instances
-TestGetInstance_Success - Tests retrieving a specific instance
-TestCreateInstance_Success - Tests creating a new instance
-TestDeleteInstance_Success - Tests deleting an instance
+- Instantiate a client with .NewAuraAPIActionsService
+- With the client, get a token to use with the aura api with .Auth
+- Use the token with methods to work with the Aura API
 
-2. Edge Cases
+The methods are organised by capabilities in Aura e.g everything for working with instances are found under client.Instances
 
-TestListInstances_EmptyList - Tests handling of empty instance lists
+Currently there are
 
-3. Context Support
+.Auth.Get
+.Instances.Create
+.Instances.Delete
+.Instances.List
+.Instances.Read
+.Tenants.List
+.Tenants.Read
 
-TestListInstances_ContextCancellation - Tests that cancelled contexts are handled correctly
-TestListInstances_ContextTimeout - Tests timeout behavior
+You will need the following to instantiate a client
+ - A Client ID and Client Secret to get a token.  These are obtained using the Neo4j Aura Console
 
-4. Header Verification
 
-TestMakeAuthenticatedRequest_UserAgentConstant - Verifies the user agent constant is used
-TestMakeAuthenticatedRequest_AuthorizationHeader - Verifies correct authorization header format
-TestMakeAuthenticatedRequest_ContentTypeHeader - Verifies JSON content type is set
+The Aura API Client is designed to work with v1, its beta iterations and with a timeout of 120 seconds.  These are defined as constants in auraClient.go.  For reference, the values for these are
 
-```bash
-# Run all tests
-go test -v
+const (
+	BaseURL    = "https://api.neo4j.io/"
+	ApiVersion = "v1"
+	ApiTimeout = "120"
+)
 
-# Run specific test
-go test -v -run TestGetAuthToken_Success
+There is no support at the moment to make use of any other version of the Aura API including the beta releases.  That may change as time goes on.   
+	
+### Hellow world
 
-# With coverage
-go test -cover
+This lists the tenants in an Aura Organisation. Output is exactly what Tenants.List returns. 
 
-# Coverage report
-go test -coverprofile=coverage.out
-go tool cover -html=coverage.out
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/LackOfMorals/aura-api-client/auraAPIClient"
+)
+
+func main() {
+
+	ctx := context.Background()
+
+	// Set the values of ClientID and ClientSecret to match your own
+
+	ClientID := ""
+	ClientSecret := ""
+	
+	// Instantiate an auraAPIClient, supplying ClientID and ClientSecret
+	client := auraAPIClient.NewAuraAPIActionsService(ClientID, ClientSecret)
+
+	// Obtain a token to use with the Aura API
+	auraToken, err := client.Auth.GetAuthToken(ctx)
+	if err != nil {
+		log.Println("Error getting token: ", err)
+		os.Exit(1)
+	}
+
+	// Get the list of tenants in the Aura Organisation
+	response, err := client.Tenants.List(ctx, auraToken)
+	if err != nil {
+		log.Println("Error getting tenants: ", err)
+		os.Exit(1)
+	}
+
+	log.Printf("Tenants details: %s", response)
+
+}
 ```

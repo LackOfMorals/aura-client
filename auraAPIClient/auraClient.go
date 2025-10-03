@@ -9,6 +9,12 @@ import (
 	utils "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/utils"
 )
 
+const (
+	BaseURL    = "https://api.neo4j.io/"
+	ApiVersion = "v1"
+	ApiTimeout = "120"
+)
+
 // Core service configuration
 type AuraAPIActionsService struct {
 	auraAPIBaseURL string
@@ -40,14 +46,15 @@ type InstanceService struct {
 }
 
 // NewAuraAPIActionsService creates a new Aura API service with grouped sub-services
-func NewAuraAPIActionsService(baseurl, ver, timeout, id, sec string) *AuraAPIActionsService {
+func NewAuraAPIActionsService(id, sec string) *AuraAPIActionsService {
+
 	service := &AuraAPIActionsService{
-		auraAPIBaseURL: baseurl,
-		auraAPIVersion: ver,
-		auraAPITimeout: timeout,
+		auraAPIBaseURL: BaseURL,
+		auraAPIVersion: ApiVersion,
+		auraAPITimeout: ApiTimeout,
 		clientID:       id,
 		clientSecret:   sec,
-		timeout:        timeout,
+		timeout:        ApiTimeout,
 	}
 
 	// Initialize sub-services with reference to parent
