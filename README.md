@@ -23,13 +23,13 @@ The methods are organised by capabilities in Aura e.g everything for working wit
 
 Currently there are
 
-. Auth.Get
-. Instances.Create
-. Instances.Delete
-. Instances.List
-. Instances.Read
-. Tenants.List
-. Tenants.Read
+- Auth.Get
+- Instances.Create
+- Instances.Delete
+- Instances.List
+- Instances.Read
+- Tenants.List
+- Tenants.Read
 
 You will need the following to instantiate a client
  - A Client ID and Client Secret to get a token.  These are obtained using the Neo4j Aura Console
