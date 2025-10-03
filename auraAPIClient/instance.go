@@ -47,3 +47,14 @@ func (i *InstanceService) Resume(ctx context.Context, token *AuthAPIToken, insta
 	endpoint := i.service.auraAPIVersion + "/instances/" + instanceID + "/resume"
 	return makeAuthenticatedRequest[GetInstanceResponse](ctx, i.service, token, endpoint, http.MethodPost, "application/json", nil)
 }
+
+func (i *InstanceService) Update(ctx context.Context, token *AuthAPIToken, instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error) {
+	endpoint := i.service.auraAPIVersion + "/instances/" + instanceID
+
+	body, err := utils.Marshall(instanceRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return makeAuthenticatedRequest[GetInstanceResponse](ctx, i.service, token, endpoint, http.MethodPatch, "application/json", body)
+}

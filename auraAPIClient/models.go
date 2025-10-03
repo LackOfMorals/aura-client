@@ -84,21 +84,31 @@ type CreateInstanceData struct {
 	Password      string `json:"password"`
 }
 
+type UpdateInstanceData struct {
+	Name   string `json:"name"`
+	Memory string `json:"memory"`
+}
+
 type GetInstanceResponse struct {
 	Data GetInstanceData `json:"data"`
 }
 
 type GetInstanceData struct {
-	Id            string  `json:"id"`
-	Name          string  `json:"name"`
-	Status        string  `json:"status"`
-	TenantId      string  `json:"tenant_id"`
-	CloudProvider string  `json:"cloud_provider"`
-	ConnectionUrl string  `json:"connection_url"`
-	Region        string  `json:"region"`
-	Type          string  `json:"type"`
-	Memory        string  `json:"memory"`
-	Storage       *string `json:"storage"`
+	Id              string  `json:"id"`
+	Name            string  `json:"name"`
+	Status          string  `json:"status"`
+	TenantId        string  `json:"tenant_id"`
+	CloudProvider   string  `json:"cloud_provider"`
+	ConnectionUrl   string  `json:"connection_url"`
+	Region          string  `json:"region"`
+	Type            string  `json:"type"`
+	Memory          string  `json:"memory"`
+	Storage         *string `json:"storage"`
+	CDCEnrichment   string  `json:"cdc_enrichment_mode"`
+	GDSPlugin       bool    `json:"graph_analytics_plugin"`
+	MetricsURL      string  `json:"metrics_integration_url"`
+	Secondaries     int     `json:"secondaries_count"`
+	VectorOptimized bool    `json:"vector_optimized"`
 }
 
 type GetSnapshotsResponse struct {
