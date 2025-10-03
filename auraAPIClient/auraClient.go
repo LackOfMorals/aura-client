@@ -3,7 +3,9 @@ package auraAPIClient
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
 	httpClient "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/httpClient"
 	utils "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/utils"
@@ -28,6 +30,7 @@ type AuraAPIActionsService struct {
 	Auth      *AuthService
 	Tenants   *TenantService
 	Instances *InstanceService
+	Snapshots *SnapshotService
 }
 
 // AuthService handles authentication operations
@@ -42,6 +45,11 @@ type TenantService struct {
 
 // InstanceService handles instance operations
 type InstanceService struct {
+	service *AuraAPIActionsService
+}
+
+// SnapshotService handles snapshot operations
+type SnapshotService struct {
 	service *AuraAPIActionsService
 }
 
@@ -61,6 +69,7 @@ func NewAuraAPIActionsService(id, sec string) *AuraAPIActionsService {
 	service.Auth = &AuthService{service: service}
 	service.Tenants = &TenantService{service: service}
 	service.Instances = &InstanceService{service: service}
+	service.Snapshots = &SnapshotService{service: service}
 
 	return service
 }
@@ -103,4 +112,15 @@ func makeAuthenticatedRequest[T any](
 	}
 
 	return &jsonDoc, nil
+}
+
+func checkDate(t string) error {
+
+	_, err := time.Parse(time.DateOnly, t)
+	if err != nil {
+		return fmt.Errorf("Date must in the format of YYYY-MM-DD")
+	}
+
+	return nil
+
 }
