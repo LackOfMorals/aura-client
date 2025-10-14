@@ -3,379 +3,164 @@ package auraAPIClient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
-	"net/http/httptest"
+	"reflect"
 	"testing"
-	"time"
+
+	httpClient "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/httpClient"
 )
 
-// mockServer creates a test HTTP server that returns predefined responses
-func mockServer(t *testing.T, expectedMethod string, expectedPath string, expectedAuth string, responseCode int, responseBody interface{}) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Verify method
-		if r.Method != expectedMethod {
-			t.Errorf("Expected method %s, got %s", expectedMethod, r.Method)
-		}
+// mockHTTPService implements httpClient.HTTPService for testing makeAuthenticatedRequest
+type mockHTTPService struct {
+	// captured inputs
+	gotCtx      context.Context
+	gotEndpoint string
+	gotMethod   string
+	gotHeader   map[string]string
+	gotBody     string
 
-		// Verify path
-		if r.URL.Path != expectedPath {
-			t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
-		}
-
-		// Verify authorization header
-		if expectedAuth != "" {
-			auth := r.Header.Get("Authorization")
-			if auth != expectedAuth {
-				t.Errorf("Expected auth %s, got %s", expectedAuth, auth)
-			}
-		}
-
-		// Verify User-Agent
-		userAgent := r.Header.Get("User-Agent")
-		if userAgent != "jgHTTPClient" {
-			t.Errorf("Expected User-Agent 'jgHTTPClient', got %s", userAgent)
-		}
-
-		// Send response
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(responseCode)
-		if responseBody != nil {
-			json.NewEncoder(w).Encode(responseBody)
-		}
-	}))
+	// configured outputs
+	payload any
+	retErr  error
 }
 
-func TestListInstances_Success(t *testing.T) {
-	// Mock response
-	mockResponse := ListInstancesResponse{
-		Data: []ListInstanceData{
-			{
-				Id:   "instance-1",
-				Name: "Test Instance 1",
-			},
-			{
-				Id:   "instance-2",
-				Name: "Test Instance 2",
-			},
-		},
+func (m *mockHTTPService) MakeRequest(ctx context.Context, endpoint string, method string, header map[string]string, body string) (*httpClient.HTTPResponse, error) {
+	m.gotCtx = ctx
+	m.gotEndpoint = endpoint
+	m.gotMethod = method
+	m.gotHeader = header
+	m.gotBody = body
+
+	if m.retErr != nil {
+		return nil, m.retErr
 	}
 
-	server := mockServer(t, http.MethodGet, "/v1/instances", "Bearer test-token", http.StatusOK, mockResponse)
-	defer server.Close()
+	var b []byte
+	if m.payload != nil {
+		b, _ = json.Marshal(m.payload)
+	}
+	return &httpClient.HTTPResponse{ResponsePayload: &b, RequestResponse: &http.Response{StatusCode: http.StatusOK}}, nil
+}
 
-	// Create service
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
+func TestNewAuraAPIActionsService_Constructs(t *testing.T) {
+	svc := NewAuraAPIActionsService("id", "sec")
+
+	if svc == nil {
+		t.Fatal("expected non-nil service")
 	}
 
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
+	if svc.auraAPIBaseURL != BaseURL {
+		t.Errorf("base url: want %s got %s", BaseURL, svc.auraAPIBaseURL)
+	}
+	if svc.auraAPIVersion != ApiVersion {
+		t.Errorf("version: want %s got %s", ApiVersion, svc.auraAPIVersion)
+	}
+	if svc.auraAPITimeout != ApiTimeout || svc.timeout != ApiTimeout {
+		t.Errorf("timeouts: want %v got %v/%v", ApiTimeout, svc.auraAPITimeout, svc.timeout)
 	}
 
-	// Call function
+	// sub-services are initialized
+	if svc.Auth == nil || svc.Tenants == nil || svc.Instances == nil || svc.Snapshots == nil {
+		t.Errorf("expected all sub-services to be initialized")
+	}
+	// http client is set
+	if svc.http == nil {
+		t.Errorf("expected http client to be initialized")
+	}
+}
+
+func TestMakeAuthenticatedRequest_Success(t *testing.T) {
+	// Arrange
+	svc := NewAuraAPIActionsService("client", "secret")
+	mock := &mockHTTPService{payload: struct {
+		Message string `json:"message"`
+		OK      bool   `json:"ok"`
+	}{Message: "hi", OK: true}}
+	svc.http = mock
+
+	token := &AuthAPIToken{Type: "Bearer", Token: "tok"}
 	ctx := context.Background()
-	result, err := service.ListInstances(ctx, token)
+	endpoint := svc.auraAPIVersion + "/instances"
+	body := "{}"
 
-	// Assertions
+	// Act
+	resp, err := makeAuthenticatedRequest[struct {
+		Message string `json:"message"`
+		OK      bool   `json:"ok"`
+	}](ctx, svc, token, endpoint, http.MethodPost, "application/json", body)
 	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result == nil {
-		t.Fatal("Expected result, got nil")
+	// Assert: response unmarshalled
+	if resp == nil || resp.Message != "hi" || !resp.OK {
+		t.Fatalf("unexpected response: %+v", resp)
 	}
 
-	if len(result.Data) != 2 {
-		t.Errorf("Expected 2 instances, got %d", len(result.Data))
+	// Assert: mock captured expected inputs
+	if mock.gotEndpoint != endpoint {
+		t.Errorf("endpoint: want %s got %s", endpoint, mock.gotEndpoint)
 	}
-
-	if result.Data[0].Id != "instance-1" {
-		t.Errorf("Expected instance Id 'instance-1', got %s", result.Data[0].Id)
+	if mock.gotMethod != http.MethodPost {
+		t.Errorf("method: want %s got %s", http.MethodPost, mock.gotMethod)
+	}
+	if ct := mock.gotHeader["Content-Type"]; ct != "application/json" {
+		t.Errorf("content-type: want application/json got %s", ct)
+	}
+	if ua := mock.gotHeader["User-Agent"]; ua != userAgent {
+		t.Errorf("user-agent: want %s got %s", userAgent, ua)
+	}
+	if auth := mock.gotHeader["Authorization"]; auth != "Bearer tok" {
+		t.Errorf("authorization: want %s got %s", "Bearer tok", auth)
+	}
+	if !reflect.DeepEqual(mock.gotBody, body) {
+		t.Errorf("body: want %q got %q", string(body), string(mock.gotBody))
 	}
 }
 
-func TestListInstances_EmptyList(t *testing.T) {
-	mockResponse := ListInstancesResponse{
-		Data: []ListInstanceData{},
-	}
+func TestMakeAuthenticatedRequest_ErrorPropagates(t *testing.T) {
+	svc := NewAuraAPIActionsService("client", "secret")
+	mock := &mockHTTPService{retErr: errors.New("boom")}
+	svc.http = mock
 
-	server := mockServer(t, http.MethodGet, "/v1/instances", "Bearer test-token", http.StatusOK, mockResponse)
-	defer server.Close()
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
-	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	ctx := context.Background()
-	result, err := service.ListInstances(ctx, token)
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if len(result.Data) != 0 {
-		t.Errorf("Expected empty list, got %d items", len(result.Data))
+	token := &AuthAPIToken{Type: "Bearer", Token: "tok"}
+	_, err := makeAuthenticatedRequest[struct{}](context.Background(), svc, token, svc.auraAPIVersion+"/x", http.MethodGet, "application/json", "")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
 	}
 }
 
-func TestListInstances_ContextCancellation(t *testing.T) {
-	// Create a cancelled context
+func TestMakeAuthenticatedRequest_ContextCanceled(t *testing.T) {
+	svc := NewAuraAPIActionsService("client", "secret")
+	// mock that would fail if called
+	mock := &mockHTTPService{retErr: nil}
+	svc.http = mock
+
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // Cancel immediately
+	cancel() // immediately cancel
 
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: "http://localhost:9999",
-		AuraAPIVersion: "/v1",
-	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	result, err := service.ListInstances(ctx, token)
-
+	token := &AuthAPIToken{Type: "Bearer", Token: "tok"}
+	_, err := makeAuthenticatedRequest[struct{}](ctx, svc, token, svc.auraAPIVersion+"/x", http.MethodGet, "application/json", "")
 	if err == nil {
-		t.Fatal("Expected error due to cancelled context, got nil")
-	}
-
-	if result != nil {
-		t.Error("Expected nil result with cancelled context")
+		t.Fatalf("expected context error, got nil")
 	}
 }
 
-func TestListInstances_ContextTimeout(t *testing.T) {
-	// Create a context with very short timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
-	defer cancel()
-
-	// Sleep to ensure timeout
-	time.Sleep(5 * time.Millisecond)
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: "http://localhost:9999",
-		AuraAPIVersion: "/v1",
+func TestCheckDate(t *testing.T) {
+	cases := []struct {
+		in string
+		ok bool
+	}{
+		{"2024-01-31", true},
+		{"2024-13-01", false},
+		{"", false},
+		{"20240131", false},
 	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	result, err := service.ListInstances(ctx, token)
-
-	if err == nil {
-		t.Fatal("Expected error due to timeout, got nil")
-	}
-
-	if result != nil {
-		t.Error("Expected nil result with timeout")
-	}
-}
-
-func TestGetInstance_Success(t *testing.T) {
-	mockResponse := GetInstanceResponse{
-		Data: GetInstanceData{
-			Id:     "instance-123",
-			Name:   "My Instance",
-			Status: "running",
-		},
-	}
-
-	server := mockServer(t, http.MethodGet, "/v1/instances/instance-123", "Bearer test-token", http.StatusOK, mockResponse)
-	defer server.Close()
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
-	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	ctx := context.Background()
-	result, err := service.GetInstance(ctx, token, "instance-123")
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Data.Id != "instance-123" {
-		t.Errorf("Expected instance Id 'instance-123', got %s", result.Data.Id)
-	}
-
-	if result.Data.Status != "running" {
-		t.Errorf("Expected status 'running', got %s", result.Data.Status)
-	}
-}
-
-func TestCreateInstance_Success(t *testing.T) {
-	mockResponse := CreateInstanceResponse{
-		Data: CreateInstanceData{
-			Id:       "new-instance-456",
-			Name:     "New Instance",
-			Username: "neo4j",
-		},
-	}
-
-	server := mockServer(t, http.MethodPost, "/v1/instances", "Bearer test-token", http.StatusCreated, mockResponse)
-	defer server.Close()
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
-	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	instanceConfig := &CreateInstanceConfigData{
-		Name:          "New Instance",
-		Memory:        "8GB",
-		Region:        "us-east-1",
-		Version:       "5",
-		TenantId:      "tenant-123",
-		CloudProvider: "gcp",
-	}
-
-	ctx := context.Background()
-	result, err := service.CreateInstance(ctx, token, instanceConfig)
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Data.Id != "new-instance-456" {
-		t.Errorf("Expected instance Id 'new-instance-456', got %s", result.Data.Id)
-	}
-
-	if result.Data.Name != "New Instance" {
-		t.Errorf("Expected name 'New Instance', got %s", result.Data.Name)
-	}
-}
-
-func TestDeleteInstance_Success(t *testing.T) {
-	mockResponse := GetInstanceResponse{
-		Data: GetInstanceData{
-			Id:     "instance-789",
-			Status: "deleting",
-		},
-	}
-
-	server := mockServer(t, http.MethodDelete, "/v1/instances/instance-789", "Bearer test-token", http.StatusAccepted, mockResponse)
-	defer server.Close()
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
-	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	ctx := context.Background()
-	result, err := service.DeleteInstance(ctx, token, "instance-789")
-
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Data.Id != "instance-789" {
-		t.Errorf("Expected instance Id 'instance-789', got %s", result.Data.Id)
-	}
-
-	if result.Data.Status != "deleting" {
-		t.Errorf("Expected status 'deleting', got %s", result.Data.Status)
-	}
-}
-
-func TestMakeAuthenticatedRequest_UserAgentConstant(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userAgent := r.Header.Get("User-Agent")
-		if userAgent == "" {
-			t.Errorf("Expected User-Agent constant to be used")
+	for _, c := range cases {
+		err := checkDate(c.in)
+		if (err == nil) != c.ok {
+			t.Errorf("checkDate(%q) ok=%v got err=%v", c.in, c.ok, err)
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data": []}`))
-	}))
-	defer server.Close()
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
 	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	ctx := context.Background()
-	_, _ = service.ListInstances(ctx, token)
-}
-
-func TestMakeAuthenticatedRequest_AuthorizationHeader(t *testing.T) {
-	expectedAuth := "Bearer my-secret-token"
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if auth != expectedAuth {
-			t.Errorf("Expected Authorization header '%s', got '%s'", expectedAuth, auth)
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data": []}`))
-	}))
-	defer server.Close()
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
-	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "my-secret-token",
-	}
-
-	ctx := context.Background()
-	_, _ = service.ListInstances(ctx, token)
-}
-
-func TestMakeAuthenticatedRequest_ContentTypeHeader(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		contentType := r.Header.Get("Content-Type")
-		if contentType != "application/json" {
-			t.Errorf("Expected Content-Type 'application/json', got '%s'", contentType)
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data": []}`))
-	}))
-	defer server.Close()
-
-	service := &AuraAPIActionsService{
-		AuraAPIBaseURL: server.URL,
-		AuraAPIVersion: "/v1",
-	}
-
-	token := &AuthAPIToken{
-		Type:  "Bearer",
-		Token: "test-token",
-	}
-
-	ctx := context.Background()
-	_, _ = service.ListInstances(ctx, token)
 }

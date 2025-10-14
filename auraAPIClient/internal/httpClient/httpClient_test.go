@@ -1,15 +1,17 @@
 package httpClient
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestNewHTTPRequestService(t *testing.T) {
 	baseURL := "https://api.example.com"
-	timeout := "30s"
+	timeout := 30 * time.Second
 
 	service := NewHTTPRequestService(baseURL, timeout)
 
@@ -27,7 +29,7 @@ func TestNewHTTPRequestService(t *testing.T) {
 	}
 
 	if concreteService.Timeout != timeout {
-		t.Errorf("Expected Timeout to be %s, got %s", timeout, concreteService.Timeout)
+		t.Errorf("Expected Timeout to be %v, got %v", timeout, concreteService.Timeout)
 	}
 }
 
@@ -50,9 +52,9 @@ func TestMakeRequest_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPRequestService(server.URL, "30s")
+	service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-	resp, err := service.MakeRequest("/test", http.MethodGet, nil, nil)
+	resp, err := service.MakeRequest(context.Background(), "/test", http.MethodGet, nil, "")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -91,14 +93,17 @@ func TestMakeRequest_WithHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPRequestService(server.URL, "30s")
+	service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-	headers := map[string][]string{
-		"Authorization": {"Bearer token123"},
-		"Content-Type":  {"application/json"},
-	}
+	var header map[string]string
 
-	resp, err := service.MakeRequest("/test", http.MethodGet, headers, nil)
+	// Initializing the Map
+	header = make(map[string]string)
+
+	header["Content-Type"] = "application/json"
+	header["Authorization"] = "Bearer token123"
+
+	resp, err := service.MakeRequest(context.Background(), "/test", http.MethodGet, header, "")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -128,9 +133,9 @@ func TestMakeRequest_WithBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPRequestService(server.URL, "30s")
+	service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-	resp, err := service.MakeRequest("/create", http.MethodPost, nil, []byte(expectedBody))
+	resp, err := service.MakeRequest(context.Background(), "/create", http.MethodPost, nil, expectedBody)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -147,9 +152,9 @@ func TestMakeRequest_4xxError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPRequestService(server.URL, "30s")
+	service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-	resp, err := service.MakeRequest("/notfound", http.MethodGet, nil, nil)
+	resp, err := service.MakeRequest(context.Background(), "/notfound", http.MethodGet, nil, "")
 	if err == nil {
 		t.Fatal("Expected error for 404 status, got nil")
 	}
@@ -166,9 +171,9 @@ func TestMakeRequest_5xxError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPRequestService(server.URL, "30s")
+	service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-	resp, err := service.MakeRequest("/error", http.MethodGet, nil, nil)
+	resp, err := service.MakeRequest(context.Background(), "/error", http.MethodGet, nil, "")
 	if err == nil {
 		t.Fatal("Expected error for 500 status, got nil")
 	}
@@ -179,9 +184,9 @@ func TestMakeRequest_5xxError(t *testing.T) {
 }
 
 func TestMakeRequest_InvalidURL(t *testing.T) {
-	service := NewHTTPRequestService("http://invalid-domain-that-does-not-exist-12345.com", "30s")
+	service := NewHTTPRequestService("http://invalid-domain-that-does-not-exist-12345.com", 30*time.Second)
 
-	resp, err := service.MakeRequest("/test", http.MethodGet, nil, nil)
+	resp, err := service.MakeRequest(context.Background(), "/test", http.MethodGet, nil, "")
 	if err == nil {
 		t.Fatal("Expected error for invalid domain, got nil")
 	}
@@ -211,9 +216,9 @@ func TestMakeRequest_AllHTTPMethods(t *testing.T) {
 			}))
 			defer server.Close()
 
-			service := NewHTTPRequestService(server.URL, "30s")
+			service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-			resp, err := service.MakeRequest("/test", method, nil, nil)
+			resp, err := service.MakeRequest(context.Background(), "/test", method, nil, "")
 			if err != nil {
 				t.Fatalf("Expected no error for %s, got %v", method, err)
 			}
@@ -245,9 +250,9 @@ func TestMakeRequest_JSONResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPRequestService(server.URL, "30s")
+	service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-	resp, err := service.MakeRequest("/test", http.MethodGet, nil, nil)
+	resp, err := service.MakeRequest(context.Background(), "/test", http.MethodGet, nil, "")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -281,7 +286,7 @@ func TestCheckResponse_Success(t *testing.T) {
 				Request:    &http.Request{},
 			}
 
-			err := checkResponse(resp)
+			err := checkResponse(resp, nil)
 			if err != nil {
 				t.Errorf("Expected no error for status %d, got %v", code, err)
 			}
@@ -302,7 +307,7 @@ func TestCheckResponse_Errors(t *testing.T) {
 				},
 			}
 
-			err := checkResponse(resp)
+			err := checkResponse(resp, nil)
 			if err == nil {
 				t.Errorf("Expected error for status %d, got nil", code)
 			}

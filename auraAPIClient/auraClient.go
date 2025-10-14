@@ -4,7 +4,6 @@ package auraAPIClient
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	httpClient "github.com/LackOfMorals/aura-api-client/auraAPIClient/internal/httpClient"
@@ -14,17 +13,19 @@ import (
 const (
 	BaseURL    = "https://api.neo4j.io/"
 	ApiVersion = "v1"
-	ApiTimeout = "120"
+	ApiTimeout = 120 * time.Second
 )
 
 // Core service configuration
 type AuraAPIActionsService struct {
 	auraAPIBaseURL string
 	auraAPIVersion string
-	auraAPITimeout string
+	auraAPITimeout time.Duration
 	clientID       string
 	clientSecret   string
-	timeout        string
+	timeout        time.Duration
+
+	http httpClient.HTTPService
 
 	// Grouped services
 	Auth      *AuthService
@@ -65,6 +66,9 @@ func NewAuraAPIActionsService(id, sec string) *AuraAPIActionsService {
 		timeout:        ApiTimeout,
 	}
 
+	// Reuse a single HTTP client/service instance with configured base URL and timeout
+	service.http = httpClient.NewHTTPRequestService(service.auraAPIBaseURL, service.timeout)
+
 	// Initialize sub-services with reference to parent
 	service.Auth = &AuthService{service: service}
 	service.Tenants = &TenantService{service: service}
@@ -83,24 +87,33 @@ func makeAuthenticatedRequest[T any](
 	endpoint string,
 	method string,
 	contentType string,
-	body []byte,
+	body string,
 ) (*T, error) {
 	// Check if context is already cancelled
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
-	myHTTPClient := httpClient.NewHTTPRequestService(a.auraAPIBaseURL, a.timeout)
-
 	auth := token.Type + " " + token.Token
 
-	header := http.Header{
-		"Content-Type":  {contentType},
-		"User-Agent":    {userAgent},
-		"Authorization": {auth},
-	}
+	var header map[string]string
 
-	response, err := myHTTPClient.MakeRequest(endpoint, method, header, body)
+	// Initializing the Map
+	header = make(map[string]string)
+
+	header["Content-Type"] = contentType
+	header["User-Agent"] = userAgent
+	header["Authorization"] = auth
+
+	/*
+		header := http.Header{
+			"Content-Type":  {contentType},
+			"User-Agent":    {userAgent},
+			"Authorization": {auth},
+		}
+	*/
+
+	response, err := a.http.MakeRequest(ctx, endpoint, method, header, body)
 	if err != nil {
 		return nil, err
 	}

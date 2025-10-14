@@ -5,13 +5,13 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+	"time"
 )
 
 // Defines the interface for making HTTP Requests
 type HTTPRequestExecutor interface {
-	MakeRequest(endpoint string, method string, header map[string][]string, body []byte) (*HTTPResponse, error)
+	MakeRequest(ctx context.Context, endpoint string, method string, header map[string]string, body string) (*HTTPResponse, error)
 }
 
 // HTTP service
@@ -28,10 +28,10 @@ type HTTPResponse struct {
 // This is the concrete implementation for HTTP Service
 type HTTPRequestsService struct {
 	BaseURL string
-	Timeout string
+	Timeout time.Duration
 }
 
-func NewHTTPRequestService(base, timeout string) HTTPService {
+func NewHTTPRequestService(base string, timeout time.Duration) HTTPService {
 	return &HTTPRequestsService{
 		BaseURL: base,
 		Timeout: timeout,
@@ -39,24 +39,36 @@ func NewHTTPRequestService(base, timeout string) HTTPService {
 
 }
 
+// Convert map[string]string to http.Header (map[string][]string)
+func toHTTPHeader(input map[string]string) http.Header {
+	h := http.Header{}
+	for k, v := range input {
+		h[k] = []string{v}
+	}
+	return h
+}
+
 // Performs a http request, checks status code for ok and returns the response as a http.Response.
-func (c *HTTPRequestsService) MakeRequest(endpoint string, method string, header map[string][]string, body []byte) (*HTTPResponse, error) {
+func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, method string, header map[string]string, body string) (*HTTPResponse, error) {
 
-	var hClient http.Client
-
-	ctx := context.Background()
+	// http client with timeout
+	hClient := http.Client{Timeout: c.Timeout}
 
 	endpointURL := c.BaseURL + endpoint
 
+	// http new request requires the body to be in bytes.
+	// convert string to bytes
+	bodyBytes := []byte(body)
+
 	// Create a request
-	req, err := http.NewRequest(method, endpointURL, bytes.NewReader(body))
+	req, err := http.NewRequest(method, endpointURL, bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, err
 	}
 
 	// If we have header, apply it
 	if header != nil {
-		req.Header = header
+		req.Header = toHTTPHeader(header)
 	}
 
 	req = req.WithContext(ctx)
@@ -73,25 +85,19 @@ func (c *HTTPRequestsService) MakeRequest(endpoint string, method string, header
 		return nil, err
 	}
 
-	// Check on http status code for
-	// indication of failed request
-	err = checkResponse(resp)
-	if err != nil {
-		return nil, err
-	}
-
-	// Holds the response body as an array of bytes
-	var payload []byte
-
-	// Read the response payload into a array of bytes
-	payload, err = io.ReadAll(resp.Body)
-	if err != nil {
-		log.Println("Unable to read response body into array of bytes: \n", err)
-		return nil, err
-	}
-
 	// ensure response body is closed when exit function
 	defer resp.Body.Close()
+
+	// Read the response payload into an array of bytes
+	payload, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check HTTP status code and return an error including body on failure
+	if err := checkResponse(resp, payload); err != nil {
+		return nil, err
+	}
 
 	return &HTTPResponse{
 		ResponsePayload: &payload,
@@ -101,9 +107,9 @@ func (c *HTTPRequestsService) MakeRequest(endpoint string, method string, header
 }
 
 // Check if the HTTP response to see if there was an error
-func checkResponse(resp *http.Response) error {
+func checkResponse(resp *http.Response, body []byte) error {
 	if c := resp.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
-	return fmt.Errorf("%s %s: %s", resp.Request.Method, resp.Request.URL, resp.Status)
+	return fmt.Errorf("%s %s: %s - body: %s", resp.Request.Method, resp.Request.URL, resp.Status, string(body))
 }

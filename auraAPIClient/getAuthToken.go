@@ -25,6 +25,6 @@ func (a *AuthService) GetAuthToken(ctx context.Context) (*AuthAPIToken, error) {
 
 	body.Set("grant_type", "client_credentials")
 
-	return makeAuthenticatedRequest[AuthAPIToken](ctx, a.service, &authToken, endpoint, http.MethodPost, "application/x-www-form-urlencoded", []byte(body.Encode()))
+	return makeAuthenticatedRequest[AuthAPIToken](ctx, a.service, &authToken, endpoint, http.MethodPost, "application/x-www-form-urlencoded", body.Encode())
 
 }
