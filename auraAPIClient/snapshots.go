@@ -35,8 +35,6 @@ func (s *SnapshotService) List(ctx context.Context, token *AuthAPIToken, instanc
 
 // create a snapshot for an instance identified by its Id
 func (s *SnapshotService) Create(ctx context.Context, token *AuthAPIToken, instanceID string) (*CreateSnapshotResponse, error) {
-
 	endpoint := s.service.auraAPIVersion + "/instances/" + instanceID + "/snapshots"
-
 	return makeAuthenticatedRequest[CreateSnapshotResponse](ctx, s.service, token, endpoint, http.MethodPost, "application/json", "")
 }

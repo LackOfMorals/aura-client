@@ -131,7 +131,7 @@ func checkDate(t string) error {
 
 	_, err := time.Parse(time.DateOnly, t)
 	if err != nil {
-		return fmt.Errorf("Date must in the format of YYYY-MM-DD")
+		return fmt.Errorf("date must in the format of YYYY-MM-DD")
 	}
 
 	return nil

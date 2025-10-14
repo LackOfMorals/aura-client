@@ -23,16 +23,7 @@ func (i *InstanceService) Get(ctx context.Context, token *AuthAPIToken, instance
 
 func (i *InstanceService) Create(ctx context.Context, token *AuthAPIToken, instanceRequest *CreateInstanceConfigData) (*CreateInstanceResponse, error) {
 	endpoint := i.service.auraAPIVersion + "/instances"
-
 	body := fmt.Sprintf("%s", instanceRequest)
-
-	/*
-		body, err := utils.Marshal(instanceRequest)
-		if err != nil {
-			return nil, err
-		}
-	*/
-
 	return makeAuthenticatedRequest[CreateInstanceResponse](ctx, i.service, token, endpoint, http.MethodPost, "application/json", body)
 }
 
@@ -53,14 +44,6 @@ func (i *InstanceService) Resume(ctx context.Context, token *AuthAPIToken, insta
 
 func (i *InstanceService) Update(ctx context.Context, token *AuthAPIToken, instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error) {
 	endpoint := i.service.auraAPIVersion + "/instances/" + instanceID
-
 	body := fmt.Sprintf("%s", instanceRequest)
-
-	/*
-		body, err := utils.Marshal(instanceRequest)
-		if err != nil {
-			return nil, err
-		}
-	*/
 	return makeAuthenticatedRequest[GetInstanceResponse](ctx, i.service, token, endpoint, http.MethodPatch, "application/json", body)
 }
