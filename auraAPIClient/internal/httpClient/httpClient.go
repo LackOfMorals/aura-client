@@ -49,7 +49,7 @@ func toHTTPHeader(input map[string]string) http.Header {
 }
 
 // Performs a http request, checks status code for ok and returns the response as a http.Response.
-func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, method string, header map[string]string, body string) (*HTTPResponse, error) {
+func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, method string, header map[string]string, body string) (response *HTTPResponse, err error) {
 
 	// http client with timeout
 	hClient := http.Client{Timeout: c.Timeout}
@@ -86,7 +86,11 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 	}
 
 	// ensure response body is closed when exit function
-	defer resp.Body.Close()
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	// Read the response payload into an array of bytes
 	payload, err := io.ReadAll(resp.Body)
@@ -95,14 +99,14 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 	}
 
 	// Check HTTP status code and return an error including body on failure
-	if err := checkResponse(resp, payload); err != nil {
+	if err = checkResponse(resp, payload); err != nil {
 		return nil, err
 	}
 
 	return &HTTPResponse{
 		ResponsePayload: &payload,
 		RequestResponse: resp,
-	}, err
+	}, nil
 
 }
 

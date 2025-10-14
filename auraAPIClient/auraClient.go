@@ -96,14 +96,11 @@ func makeAuthenticatedRequest[T any](
 
 	auth := token.Type + " " + token.Token
 
-	var header map[string]string
-
-	// Initializing the Map
-	header = make(map[string]string)
-
-	header["Content-Type"] = contentType
-	header["User-Agent"] = userAgent
-	header["Authorization"] = auth
+	header := map[string]string{
+		"Content-Type":  contentType,
+		"User-Agent":    userAgent,
+		"Authorization": auth,
+	}
 
 	/*
 		header := http.Header{

@@ -95,13 +95,10 @@ func TestMakeRequest_WithHeaders(t *testing.T) {
 
 	service := NewHTTPRequestService(server.URL, 30*time.Second)
 
-	var header map[string]string
-
-	// Initializing the Map
-	header = make(map[string]string)
-
-	header["Content-Type"] = "application/json"
-	header["Authorization"] = "Bearer token123"
+	header := map[string]string{
+		"Content-Type":  "application/json",
+		"Authorization": "Bearer token123",
+	}
 
 	resp, err := service.MakeRequest(context.Background(), "/test", http.MethodGet, header, "")
 	if err != nil {

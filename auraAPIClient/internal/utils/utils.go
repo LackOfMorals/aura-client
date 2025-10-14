@@ -28,9 +28,6 @@ func Marshal(payload any) ([]byte, error) {
 
 // Takes a payload and returns indented JSON
 func MarshalIndent(payload any) ([]byte, error) {
-
 	result, err := json.MarshalIndent(payload, "", "  ")
-
 	return result, err
-
 }

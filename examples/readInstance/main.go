@@ -18,7 +18,6 @@ const (
 )
 
 func main() {
-
 	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
@@ -68,15 +67,11 @@ func main() {
 	}
 
 	log.Printf("Instance details: %s", result)
-
 }
 
 func readClientIDAndSecretFromEnv() (string, string, error) {
 	var ClientID, ClientSecret string
 	var found bool
-
-	// Is set by LookupEnv to true if the environmental variable is found
-	found = false
 
 	// See if environmantal variables are present and get their value if so
 	// set found to true if this is the case

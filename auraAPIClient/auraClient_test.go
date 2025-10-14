@@ -115,7 +115,7 @@ func TestMakeAuthenticatedRequest_Success(t *testing.T) {
 		t.Errorf("authorization: want %s got %s", "Bearer tok", auth)
 	}
 	if !reflect.DeepEqual(mock.gotBody, body) {
-		t.Errorf("body: want %q got %q", string(body), string(mock.gotBody))
+		t.Errorf("body: want %q got %q", body, mock.gotBody)
 	}
 }
 
