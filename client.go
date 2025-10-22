@@ -73,6 +73,7 @@ func NewAuraAPIActionsServiceWithConfig(cfg Config) (*resources.AuraAPIActionsSe
 	service.Instances = &resources.InstanceService{Service: service}
 	service.Snapshots = &resources.SnapshotService{Service: service}
 	service.Cmek = &resources.CmekService{Service: service}
+	service.GraphAnalytics = &resources.GDSSessionService{Service: service}
 
 	return service, nil
 }

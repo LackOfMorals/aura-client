@@ -17,11 +17,12 @@ type AuraAPIActionsService struct {
 	Http httpClient.HTTPService
 
 	// Grouped services
-	Auth      *AuthService
-	Tenants   *TenantService
-	Instances *InstanceService
-	Snapshots *SnapshotService
-	Cmek      *CmekService
+	Auth           *AuthService
+	Tenants        *TenantService
+	Instances      *InstanceService
+	Snapshots      *SnapshotService
+	Cmek           *CmekService
+	GraphAnalytics *GDSSessionService
 }
 
 // The following structs that are used for requests / responses to and from the Aura API
@@ -169,4 +170,27 @@ type GetCmeksData struct {
 	Id       string `json:"id"`
 	Name     string `json:"name"`
 	TenantId string `json:"tenant_id"`
+}
+
+// GDS Sessions
+
+type GetGDSSessionResponse struct {
+	Data []GetGDSSessionData `json:"data"`
+}
+
+type GetGDSSessionData struct {
+	Id            string `json:"id"`
+	Name          string `json:"name"`
+	Memory        string `json:"memory"`
+	InstanceId    string `json:"instance_id"`
+	DatabaseId    string `json:"database_uuid"`
+	Status        string `json:"status"`
+	Create        string `json:"created_at"`
+	Host          string `json:"host"`
+	Expiry        string `json:"expiry_date"`
+	Ttl           string `json:"ttl"`
+	UserId        string `json:"user_id"`
+	TenantId      string `json:"tenant_id"`
+	CloudProvider string `json:"cloud_provider"`
+	Region        string `json:"region"`
 }
