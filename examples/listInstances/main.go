@@ -18,6 +18,8 @@ const (
 
 func main() {
 
+	var err error
+
 	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
@@ -27,7 +29,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
+	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
+	if err != nil {
+		log.Println("Error creating aura client: ", err)
+		os.Exit(1)
+	}
 
 	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {
