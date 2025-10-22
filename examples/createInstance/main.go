@@ -8,7 +8,8 @@ import (
 	"log"
 	"os"
 
-	auraAPIClient "github.com/LackOfMorals/aura-api-client/auraAPIClient"
+	"github.com/LackOfMorals/aura-client"
+	"github.com/LackOfMorals/aura-client/resources"
 )
 
 const (
@@ -40,7 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient := auraAPIClient.NewAuraAPIActionsService(ClientID, ClientSecret)
+	myAuraClient := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
 
 	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {
@@ -54,7 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	instanceCfg := auraAPIClient.CreateInstanceConfigData{
+	instanceCfg := resources.CreateInstanceConfigData{
 		Name:          instanceName,
 		Version:       "5",
 		Region:        "europe-west1",

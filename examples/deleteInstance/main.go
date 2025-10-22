@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 
-	auraAPIClient "github.com/LackOfMorals/aura-api-client/auraAPIClient"
+	"github.com/LackOfMorals/aura-client"
 )
 
 const (
@@ -47,7 +47,7 @@ func main() {
 
 	}
 
-	myAuraClient := auraAPIClient.NewAuraAPIActionsService(ClientID, ClientSecret)
+	myAuraClient := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
 
 	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
 	if err != nil {

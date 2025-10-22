@@ -7,6 +7,18 @@ import (
 	"github.com/LackOfMorals/aura-client/resources"
 )
 
+// Test
+
+type TestCreateInstanceConfigData struct {
+	Name          string `json:"name"`
+	TenantId      string `json:"tenant_id"`
+	CloudProvider string `json:"cloud_provider"`
+	Region        string `json:"region"`
+	Type          string `json:"type"`
+	Version       string `json:"version"`
+	Memory        string `json:"memory"`
+}
+
 const (
 	BaseURL    = "https://api.neo4j.io/"
 	ApiVersion = "v1"
