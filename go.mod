@@ -1,3 +1,3 @@
-module github.com/LackOfMorals/aura-api-client
+module github.com/LackOfMorals/aura-client
 
 go 1.25.0

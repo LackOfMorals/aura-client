@@ -1,4 +1,4 @@
-package auraAPIClient
+package aura
 
 // structs that are used for requests / responses to and from the Aura API
 // they are models for interacting with the Aura API
@@ -133,4 +133,16 @@ type CreateSnapshotResponse struct {
 
 type CreateSnapshotData struct {
 	SnapshotId string `json:"snapshot_id"`
+}
+
+// Customer Managed Encryption Keys
+
+type GetCmeksResponse struct {
+	Data []GetCmeksData `json:"data"`
+}
+
+type GetCmeksData struct {
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	TenantId string `json:"tenant_id"`
 }

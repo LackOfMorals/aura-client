@@ -90,3 +90,11 @@ func main() {
 
 }
 ```
+
+## Layout
+Root level — Put your main client type and high-level functions here. This is what users import and interact with directly.
+types.go — Define all your request/response structs and data models in one place (or split by domain if it gets large).
+internal/ — Anything users shouldn't directly depend on goes here. Go's visibility rules make packages in internal/ truly private. Use this for HTTP helpers, retry logic, or authentication internals.
+resources/ — Organize API endpoints as separate packages by resource type (users, projects, etc.). Each resource package has its methods and types. Users call client.Users().List() or similar.
+examples/ — Show users how to use your package with real examples.
+tests/ — Unit and integration tests (you can also use _test.go files alongside code).
