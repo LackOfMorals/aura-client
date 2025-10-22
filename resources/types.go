@@ -1,4 +1,4 @@
-package aura
+package resources
 
 // structs that are used for requests / responses to and from the Aura API
 // they are models for interacting with the Aura API

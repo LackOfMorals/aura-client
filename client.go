@@ -13,29 +13,10 @@ const (
 	ApiTimeout = 120 * time.Second
 )
 
-// Core service configuration
-type AuraAPIActionsService struct {
-	AuraAPIBaseURL string
-	AuraAPIVersion string
-	AuraAPITimeout time.Duration
-	ClientID       string
-	ClientSecret   string
-	Timeout        time.Duration
-
-	Http httpClient.HTTPService
-
-	// Grouped services
-	Auth      *resources.AuthService
-	Tenants   *resources.TenantService
-	Instances *resources.InstanceService
-	Snapshots *resources.SnapshotService
-	Cmek      *resources.CmekService
-}
-
 // NewAuraAPIActionsService creates a new Aura API service with grouped sub-services
-func NewAuraAPIActionsService(id, sec string) *AuraAPIActionsService {
+func NewAuraAPIActionsService(id, sec string) *resources.AuraAPIActionsService {
 
-	service := &AuraAPIActionsService{
+	service := &resources.AuraAPIActionsService{
 		AuraAPIBaseURL: BaseURL,
 		AuraAPIVersion: ApiVersion,
 		AuraAPITimeout: ApiTimeout,

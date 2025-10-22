@@ -5,22 +5,21 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/LackOfMorals/aura-client"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // SnapshotService handles snapshot operations
 type SnapshotService struct {
-	Service *aura.AuraAPIActionsService
+	Service *AuraAPIActionsService
 }
 
 // Snaphot methods
 
 // a list of available snapshots for an instance on a ( optional ) given date. If a date is not specified, snapshots from the current day will be returned.
 // Date is in ISO format YYYY-MM-DD
-func (s *SnapshotService) List(ctx context.Context, token *aura.AuthAPIToken, instanceID string, snapshotDate string) (*aura.GetSnapshotsResponse, error) {
+func (s *SnapshotService) List(ctx context.Context, token *AuthAPIToken, instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {
 
-	endpoint := s.service.AuraAPIVersion + "/instances/" + instanceID + "/snapshots"
+	endpoint := s.Service.AuraAPIVersion + "/instances/" + instanceID + "/snapshots"
 
 	switch datelen := len(snapshotDate); datelen {
 
@@ -38,11 +37,11 @@ func (s *SnapshotService) List(ctx context.Context, token *aura.AuthAPIToken, in
 		return nil, fmt.Errorf("date must be in the format of YYYY-MM-DD")
 	}
 
-	return makeAuthenticatedRequest[aura.GetSnapshotsResponse](ctx, s.service, token, endpoint, http.MethodGet, "application/json", "")
+	return makeAuthenticatedRequest[GetSnapshotsResponse](ctx, s.Service, token, endpoint, http.MethodGet, "application/json", "")
 }
 
 // create a snapshot for an instance identified by its Id
-func (s *SnapshotService) Create(ctx context.Context, token *aura.AuthAPIToken, instanceID string) (*aura.CreateSnapshotResponse, error) {
-	endpoint := s.service.AuraAPIVersion + "/instances/" + instanceID + "/snapshots"
-	return makeAuthenticatedRequest[aura.CreateSnapshotResponse](ctx, s.service, token, endpoint, http.MethodPost, "application/json", "")
+func (s *SnapshotService) Create(ctx context.Context, token *AuthAPIToken, instanceID string) (*CreateSnapshotResponse, error) {
+	endpoint := s.Service.AuraAPIVersion + "/instances/" + instanceID + "/snapshots"
+	return makeAuthenticatedRequest[CreateSnapshotResponse](ctx, s.Service, token, endpoint, http.MethodPost, "application/json", "")
 }
