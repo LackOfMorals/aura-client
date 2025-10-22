@@ -14,17 +14,17 @@ type InstanceService struct {
 
 // Instance methods
 func (i *InstanceService) List(ctx context.Context, token *AuthAPIToken) (*ListInstancesResponse, error) {
-	endpoint := i.Service.AuraAPIVersion + "/instances"
+	endpoint := i.Service.Version + "/instances"
 	return makeAuthenticatedRequest[ListInstancesResponse](ctx, i.Service, token, endpoint, http.MethodGet, "application/json", "")
 }
 
 func (i *InstanceService) Get(ctx context.Context, token *AuthAPIToken, instanceID string) (*GetInstanceResponse, error) {
-	endpoint := i.Service.AuraAPIVersion + "/instances/" + instanceID
+	endpoint := i.Service.Version + "/instances/" + instanceID
 	return makeAuthenticatedRequest[GetInstanceResponse](ctx, i.Service, token, endpoint, http.MethodGet, "application/json", "")
 }
 
 func (i *InstanceService) Create(ctx context.Context, token *AuthAPIToken, instanceRequest *CreateInstanceConfigData) (*CreateInstanceResponse, error) {
-	endpoint := i.Service.AuraAPIVersion + "/instances"
+	endpoint := i.Service.Version + "/instances"
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {
@@ -35,22 +35,22 @@ func (i *InstanceService) Create(ctx context.Context, token *AuthAPIToken, insta
 }
 
 func (i *InstanceService) Delete(ctx context.Context, token *AuthAPIToken, instanceID string) (*GetInstanceResponse, error) {
-	endpoint := i.Service.AuraAPIVersion + "/instances/" + instanceID
+	endpoint := i.Service.Version + "/instances/" + instanceID
 	return makeAuthenticatedRequest[GetInstanceResponse](ctx, i.Service, token, endpoint, http.MethodDelete, "application/json", "")
 }
 
 func (i *InstanceService) Pause(ctx context.Context, token *AuthAPIToken, instanceID string) (*GetInstanceResponse, error) {
-	endpoint := i.Service.AuraAPIVersion + "/instances/" + instanceID + "/pause"
+	endpoint := i.Service.Version + "/instances/" + instanceID + "/pause"
 	return makeAuthenticatedRequest[GetInstanceResponse](ctx, i.Service, token, endpoint, http.MethodPost, "application/json", "")
 }
 
 func (i *InstanceService) Resume(ctx context.Context, token *AuthAPIToken, instanceID string) (*GetInstanceResponse, error) {
-	endpoint := i.Service.AuraAPIVersion + "/instances/" + instanceID + "/resume"
+	endpoint := i.Service.Version + "/instances/" + instanceID + "/resume"
 	return makeAuthenticatedRequest[GetInstanceResponse](ctx, i.Service, token, endpoint, http.MethodPost, "application/json", "")
 }
 
 func (i *InstanceService) Update(ctx context.Context, token *AuthAPIToken, instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error) {
-	endpoint := i.Service.AuraAPIVersion + "/instances/" + instanceID
+	endpoint := i.Service.Version + "/instances/" + instanceID
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {

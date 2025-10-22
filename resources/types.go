@@ -1,6 +1,30 @@
 package resources
 
-// structs that are used for requests / responses to and from the Aura API
+import (
+	"time"
+
+	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
+)
+
+// Core service configuration
+type AuraAPIActionsService struct {
+	BaseURL      string
+	Version      string
+	ClientID     string
+	ClientSecret string
+	Timeout      time.Duration
+
+	Http httpClient.HTTPService
+
+	// Grouped services
+	Auth      *AuthService
+	Tenants   *TenantService
+	Instances *InstanceService
+	Snapshots *SnapshotService
+	Cmek      *CmekService
+}
+
+// The following structs that are used for requests / responses to and from the Aura API
 // they are models for interacting with the Aura API
 
 // Stores the auth token for use with the Aura API

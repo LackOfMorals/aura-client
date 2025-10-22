@@ -12,12 +12,12 @@ type TenantService struct {
 
 // Lists all of the tenants
 func (t *TenantService) List(ctx context.Context, token *AuthAPIToken) (*ListTenantsResponse, error) {
-	endpoint := t.Service.AuraAPIVersion + "/tenants"
+	endpoint := t.Service.Version + "/tenants"
 	return makeAuthenticatedRequest[ListTenantsResponse](ctx, t.Service, token, endpoint, http.MethodGet, "application/json", "")
 }
 
 // Get the details of a tenant
 func (t *TenantService) Get(ctx context.Context, token *AuthAPIToken, tenantID string) (*GetTenantResponse, error) {
-	endpoint := t.Service.AuraAPIVersion + "/tenants/" + tenantID
+	endpoint := t.Service.Version + "/tenants/" + tenantID
 	return makeAuthenticatedRequest[GetTenantResponse](ctx, t.Service, token, endpoint, http.MethodGet, "application/json", "")
 }

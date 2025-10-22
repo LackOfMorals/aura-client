@@ -14,7 +14,7 @@ type CmekService struct {
 
 // List any customer managed keys. Can filter for a tenant Id
 func (c *CmekService) List(ctx context.Context, token *AuthAPIToken, tenantId string) (*GetCmeksResponse, error) {
-	endpoint := c.Service.AuraAPIVersion + "/customer-managed-keys"
+	endpoint := c.Service.Version + "/customer-managed-keys"
 
 	// There is a tenant ID so we filter by it
 	if len(tenantId) > 0 {

@@ -2,31 +2,9 @@ package resources
 
 import (
 	"context"
-	"time"
 
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
-
-	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
-
-// Core service configuration
-type AuraAPIActionsService struct {
-	AuraAPIBaseURL string
-	AuraAPIVersion string
-	AuraAPITimeout time.Duration
-	ClientID       string
-	ClientSecret   string
-	Timeout        time.Duration
-
-	Http httpClient.HTTPService
-
-	// Grouped services
-	Auth      *AuthService
-	Tenants   *TenantService
-	Instances *InstanceService
-	Snapshots *SnapshotService
-	Cmek      *CmekService
-}
 
 // makeAuthenticatedRequest handles the common pattern of making an authenticated API request
 // and unmarshalling the response into the desired type

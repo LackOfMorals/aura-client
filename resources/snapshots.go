@@ -19,7 +19,7 @@ type SnapshotService struct {
 // Date is in ISO format YYYY-MM-DD
 func (s *SnapshotService) List(ctx context.Context, token *AuthAPIToken, instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {
 
-	endpoint := s.Service.AuraAPIVersion + "/instances/" + instanceID + "/snapshots"
+	endpoint := s.Service.Version + "/instances/" + instanceID + "/snapshots"
 
 	switch datelen := len(snapshotDate); datelen {
 
@@ -42,6 +42,6 @@ func (s *SnapshotService) List(ctx context.Context, token *AuthAPIToken, instanc
 
 // create a snapshot for an instance identified by its Id
 func (s *SnapshotService) Create(ctx context.Context, token *AuthAPIToken, instanceID string) (*CreateSnapshotResponse, error) {
-	endpoint := s.Service.AuraAPIVersion + "/instances/" + instanceID + "/snapshots"
+	endpoint := s.Service.Version + "/instances/" + instanceID + "/snapshots"
 	return makeAuthenticatedRequest[CreateSnapshotResponse](ctx, s.Service, token, endpoint, http.MethodPost, "application/json", "")
 }
