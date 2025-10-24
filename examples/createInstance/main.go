@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/LackOfMorals/aura-client"
-	"github.com/LackOfMorals/aura-client/resources"
 )
 
 const (
@@ -47,19 +46,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
-	if err != nil {
-		log.Println("Error getting token: ", err)
-		os.Exit(1)
-	}
-
-	auraTenants, err := myAuraClient.Tenants.List(ctx, auraToken)
+	auraTenants, err := myAuraClient.Tenants.List(ctx)
 	if err != nil {
 		log.Println("Error getting tenant details: ", err)
 		os.Exit(1)
 	}
 
-	instanceCfg := resources.CreateInstanceConfigData{
+	instanceCfg := aura.CreateInstanceConfigData{
 		Name:          instanceName,
 		Version:       "5",
 		Region:        "europe-west1",
@@ -69,7 +62,7 @@ func main() {
 		CloudProvider: "gcp",
 	}
 
-	response, err := myAuraClient.Instances.Create(ctx, auraToken, &instanceCfg)
+	response, err := myAuraClient.Instances.Create(ctx, &instanceCfg)
 	if err != nil {
 		log.Println("Error creating instance: ", err)
 		os.Exit(1)

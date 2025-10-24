@@ -33,13 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
-	if err != nil {
-		log.Println("Error getting token: ", err)
-		os.Exit(1)
-	}
-
-	response, err := myAuraClient.Cmek.List(ctx, auraToken, "")
+	response, err := myAuraClient.Cmek.List(ctx, "")
 	if err != nil {
 		log.Println("Error reading cmek: ", err)
 		os.Exit(1)

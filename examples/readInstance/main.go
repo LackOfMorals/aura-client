@@ -52,13 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
-	if err != nil {
-		log.Println("Error getting token: ", err)
-		os.Exit(1)
-	}
-
-	response, err := myAuraClient.Instances.Get(ctx, auraToken, instanceID)
+	response, err := myAuraClient.Instances.Get(ctx, instanceID)
 	if err != nil {
 		log.Println("Error reading instance: ", err)
 		os.Exit(1)

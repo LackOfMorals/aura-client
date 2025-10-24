@@ -53,13 +53,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
-	if err != nil {
-		log.Println("Error getting token: ", err)
-		os.Exit(1)
-	}
-
-	response, err := myAuraClient.Instances.Delete(ctx, auraToken, instanceID)
+	response, err := myAuraClient.Instances.Delete(ctx, instanceID)
 	if err != nil {
 		log.Println("Error deleting instance: ", err)
 		os.Exit(1)

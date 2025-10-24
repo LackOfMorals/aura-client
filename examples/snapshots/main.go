@@ -52,13 +52,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
-	if err != nil {
-		log.Println("Error getting token: ", err)
-		os.Exit(1)
-	}
-
-	response, err := myAuraClient.Snapshots.List(ctx, auraToken, instanceID, "2021-08-15")
+	response, err := myAuraClient.Snapshots.List(ctx, instanceID, "2021-08-15")
 	if err != nil {
 		log.Println("Error reading snapshots: ", err)
 		os.Exit(1)
@@ -72,7 +66,7 @@ func main() {
 
 	log.Printf("Details of snapshots: %s", result)
 
-	response1, err1 := myAuraClient.Snapshots.Create(ctx, auraToken, instanceID)
+	response1, err1 := myAuraClient.Snapshots.Create(ctx, instanceID)
 	if err1 != nil {
 		log.Println("Error creating snapshots: ", err1)
 		os.Exit(1)

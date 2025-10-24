@@ -6,8 +6,31 @@ import (
 	"time"
 
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
-	"github.com/LackOfMorals/aura-client/resources"
 )
+
+// Core service configuration
+type AuraAPIActionsService struct {
+	Config    *Config                 // Configuration information
+	transport *httpClient.HTTPService // Deals with connectivity over http. Nothing here for users
+	authMgr   *authManager            // This will manage auth so it is hidden away from users
+
+	// Grouped services
+	Tenants        *TenantService
+	Instances      *InstanceService
+	Snapshots      *SnapshotService
+	Cmek           *CmekService
+	GraphAnalytics *GDSSessionService
+}
+
+// Token management
+type authManager struct {
+	Id         string `json:"omitempty"`    // the client id
+	Secret     string `json:"omitempty"`    // the client secret
+	Type       string `json:"token_type"`   // e.g Bearer
+	Token      string `json:"access_token"` // the token from aura api auth endpoint
+	ObtainedAt int64  `json:"omitempty"`    // The time when the token was obtained in number of seconds since midnight Jan 1st 1970
+	ExpiresAt  int64  `json:"expires_in"`   // token duration in seconds
+}
 
 // Config holds configuration for the Aura API service.
 type Config struct {
@@ -32,13 +55,13 @@ func DefaultConfig(clientID, clientSecret string) Config {
 // NewAuraAPIActionsService creates a new Aura API service with grouped sub-services.
 // It validates credentials and initializes all sub-services with proper configuration.
 // Returns an error if credentials are invalid.
-func NewAuraAPIActionsService(clientID, clientSecret string) (*resources.AuraAPIActionsService, error) {
+func NewAuraAPIActionsService(clientID, clientSecret string) (*AuraAPIActionsService, error) {
 	return NewAuraAPIActionsServiceWithConfig(DefaultConfig(clientID, clientSecret))
 }
 
 // NewAuraAPIActionsServiceWithConfig creates a new Aura API service with custom configuration.
 // Returns an error if the configuration is invalid.
-func NewAuraAPIActionsServiceWithConfig(cfg Config) (*resources.AuraAPIActionsService, error) {
+func NewAuraAPIActionsServiceWithConfig(cfg Config) (*AuraAPIActionsService, error) {
 	// Validate required fields
 	if cfg.ClientID == "" {
 		return nil, errors.New("client ID must not be empty")
@@ -56,24 +79,27 @@ func NewAuraAPIActionsServiceWithConfig(cfg Config) (*resources.AuraAPIActionsSe
 		return nil, errors.New("API timeout must be greater than zero")
 	}
 
-	service := &resources.AuraAPIActionsService{
-		BaseURL:      cfg.BaseURL,
-		Version:      cfg.Version,
-		Timeout:      cfg.APITimeout,
-		ClientID:     cfg.ClientID,
-		ClientSecret: cfg.ClientSecret,
+	trans := httpClient.NewHTTPRequestService(cfg.BaseURL, cfg.APITimeout)
+
+	service := &AuraAPIActionsService{
+		Config:    &cfg,
+		transport: &trans,
+		authMgr: &authManager{
+			Id:         cfg.ClientID,
+			Secret:     cfg.ClientSecret,
+			Token:      "",
+			Type:       "",
+			ExpiresAt:  0,
+			ObtainedAt: 0,
+		},
 	}
 
-	// Initialize HTTP client with configured base URL and timeout
-	service.Http = httpClient.NewHTTPRequestService(cfg.BaseURL, cfg.APITimeout)
-
 	// Initialize sub-services with reference to parent
-	service.Auth = &resources.AuthService{Service: service}
-	service.Tenants = &resources.TenantService{Service: service}
-	service.Instances = &resources.InstanceService{Service: service}
-	service.Snapshots = &resources.SnapshotService{Service: service}
-	service.Cmek = &resources.CmekService{Service: service}
-	service.GraphAnalytics = &resources.GDSSessionService{Service: service}
+	service.Tenants = &TenantService{Service: service}
+	service.Instances = &InstanceService{Service: service}
+	service.Snapshots = &SnapshotService{Service: service}
+	service.Cmek = &CmekService{Service: service}
+	service.GraphAnalytics = &GDSSessionService{Service: service}
 
 	return service, nil
 }

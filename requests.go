@@ -1,8 +1,9 @@
-package resources
+package aura
 
 import (
 	"context"
 
+	"github.com/LackOfMorals/aura-client/internal/httpClient"
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
 
@@ -10,8 +11,8 @@ import (
 // and unmarshalling the response into the desired type
 func makeAuthenticatedRequest[T any](
 	ctx context.Context,
-	a *AuraAPIActionsService,
-	token *AuthAPIToken,
+	h httpClient.HTTPService,
+	auth string,
 	endpoint string,
 	method string,
 	contentType string,
@@ -22,8 +23,6 @@ func makeAuthenticatedRequest[T any](
 		return nil, err
 	}
 
-	auth := token.Type + " " + token.Token
-
 	userAgent := "aura-go-client"
 
 	header := map[string]string{
@@ -32,15 +31,7 @@ func makeAuthenticatedRequest[T any](
 		"Authorization": auth,
 	}
 
-	/*
-		header := http.Header{
-			"Content-Type":  {contentType},
-			"User-Agent":    {userAgent},
-			"Authorization": {auth},
-		}
-	*/
-
-	response, err := a.Http.MakeRequest(ctx, endpoint, method, header, body)
+	response, err := h.MakeRequest(ctx, endpoint, method, header, body)
 	if err != nil {
 		return nil, err
 	}
