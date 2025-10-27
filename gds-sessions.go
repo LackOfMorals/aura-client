@@ -2,6 +2,7 @@ package aura
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 )
 
@@ -31,14 +32,18 @@ type GetGDSSessionData struct {
 // GDSSessionService handles GDS Session operations
 type GDSSessionService struct {
 	Service *AuraAPIActionsService
+	logger  *slog.Logger
 }
 
 // GDS Session methods
 
 func (g *GDSSessionService) List(ctx context.Context) (*GetGDSSessionResponse, error) {
+	g.logger.DebugContext(ctx, "Listing GDS Sessions")
+
 	// Get or update token if needed
 	err := g.Service.authMgr.getToken(ctx, *g.Service.transport)
 	if err != nil { // Token process failed
+		g.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -46,5 +51,18 @@ func (g *GDSSessionService) List(ctx context.Context) (*GetGDSSessionResponse, e
 	auth := g.Service.authMgr.Type + " " + g.Service.authMgr.Token
 	endpoint := g.Service.Config.Version + "/graph-analytics/sessions"
 
-	return makeAuthenticatedRequest[GetGDSSessionResponse](ctx, *g.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	g.logger.DebugContext(ctx, "making authenticated request",
+		slog.String("method", http.MethodGet),
+		slog.String("endpoint", endpoint),
+	)
+
+	resp, err := makeAuthenticatedRequest[GetGDSSessionResponse](ctx, *g.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	if err != nil {
+		g.logger.ErrorContext(ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	g.logger.DebugContext(ctx, "gds sessions listed successfully", slog.Int("count", len(resp.Data)))
+	return resp, nil
+
 }

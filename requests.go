@@ -2,6 +2,7 @@ package aura
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
@@ -18,8 +19,11 @@ func makeAuthenticatedRequest[T any](
 	contentType string,
 	body string,
 ) (*T, error) {
+	logger := slog.Default()
+
 	// Check if context is already cancelled
 	if err := ctx.Err(); err != nil {
+		logger.ErrorContext(ctx, "context already cancelled before request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -31,16 +35,43 @@ func makeAuthenticatedRequest[T any](
 		"Authorization": auth,
 	}
 
+	logger.DebugContext(ctx, "making HTTP request",
+		slog.String("method", method),
+		slog.String("endpoint", endpoint),
+		slog.String("contentType", contentType),
+	)
+
 	response, err := h.MakeRequest(ctx, endpoint, method, header, body)
 	if err != nil {
+		logger.ErrorContext(ctx, "HTTP request failed",
+			slog.String("method", method),
+			slog.String("endpoint", endpoint),
+			slog.String("error", err.Error()),
+		)
 		return nil, err
 	}
+
+	logger.DebugContext(ctx, "HTTP request successful",
+		slog.String("method", method),
+		slog.String("endpoint", endpoint),
+		slog.Int("statusCode", response.RequestResponse.StatusCode),
+	)
 
 	// Unmarshall payload into JSON
 	jsonDoc, err := utils.Unmarshal[T](*response.ResponsePayload)
 	if err != nil {
+		logger.ErrorContext(ctx, "failed to unmarshal response",
+			slog.String("method", method),
+			slog.String("endpoint", endpoint),
+			slog.String("error", err.Error()),
+		)
 		return nil, err
 	}
+
+	logger.DebugContext(ctx, "response unmarshalled successfully",
+		slog.String("method", method),
+		slog.String("endpoint", endpoint),
+	)
 
 	return &jsonDoc, nil
 }
