@@ -39,7 +39,7 @@ The Aura API Client is designed to work with v1, its beta iterations and with a 
 
 const (
 	BaseURL    = "https://api.neo4j.io/"
-	ApiVersion = "v1"
+	Version = "v1"
 	ApiTimeout = "120"
 )
 

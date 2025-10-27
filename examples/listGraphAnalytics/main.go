@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 
@@ -19,6 +18,8 @@ const (
 
 func main() {
 
+	var err error
+
 	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
@@ -28,34 +29,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("input the ID of the instance to delete:")
-	var instanceID string
-	n, err := fmt.Scanln(&instanceID)
-	if err != nil {
-		log.Println("Error entering instance ID to delete: ", err)
-		os.Exit(1)
-	}
-
-	if n > 2 {
-		log.Println("Only a single value can be entered for the Instance ID. You entered ", n)
-		os.Exit(1)
-	}
-
-	if len(instanceID) != 8 {
-		log.Println("Instance ID is made up of 8 characters. You entered ", len(instanceID))
-		os.Exit(1)
-
-	}
-
 	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
 	if err != nil {
 		log.Println("Error creating aura client: ", err)
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.Instances.Delete(ctx, instanceID)
+	response, err := myAuraClient.GraphAnalytics.List(ctx)
 	if err != nil {
-		log.Println("Error deleting instance: ", err)
+		log.Println("Error reading instances: ", err)
 		os.Exit(1)
 	}
 
@@ -65,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Printf("Details of instance being deleted: %s", result)
+	log.Printf("Instance details: %s", result)
 
 }
 

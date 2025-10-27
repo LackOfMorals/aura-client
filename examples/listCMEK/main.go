@@ -27,15 +27,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
-
-	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
+	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
 	if err != nil {
-		log.Println("Error getting token: ", err)
+		log.Println("Error creating aura client: ", err)
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.Cmek.List(ctx, auraToken, "")
+	response, err := myAuraClient.Cmek.List(ctx, "")
 	if err != nil {
 		log.Println("Error reading cmek: ", err)
 		os.Exit(1)

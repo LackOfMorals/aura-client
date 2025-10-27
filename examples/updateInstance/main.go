@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/LackOfMorals/aura-client"
-	"github.com/LackOfMorals/aura-client/resources"
 )
 
 const (
@@ -60,20 +59,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
-
-	auraToken, err := myAuraClient.Auth.GetAuthToken(ctx)
+	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
 	if err != nil {
-		log.Println("Error getting token: ", err)
+		log.Println("Error creating aura client: ", err)
 		os.Exit(1)
 	}
 
-	instanceNewCfg := resources.UpdateInstanceData{
+	instanceNewCfg := aura.UpdateInstanceData{
 		Name:   "JGNewName",
 		Memory: "8GB",
 	}
 
-	response, err := myAuraClient.Instances.Update(ctx, auraToken, instanceID, &instanceNewCfg)
+	response, err := myAuraClient.Instances.Update(ctx, instanceID, &instanceNewCfg)
 	if err != nil {
 		log.Println("Error creating instance: ", err)
 		os.Exit(1)
