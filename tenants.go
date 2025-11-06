@@ -102,7 +102,7 @@ func (t *TenantService) Get(ctx context.Context, tenantID string) (*GetTenantRes
 		return nil, err
 	}
 
-	t.logger.DebugContext(ctx, "tenant obtained successfully", slog.Int("count", len(resp.Data)))
+	t.logger.DebugContext(ctx, "tenant obtained successfully", slog.String("name : ", resp.Data.Name))
 	return resp, nil
 
 }

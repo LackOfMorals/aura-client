@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 
 	"github.com/LackOfMorals/aura-client"
@@ -18,30 +18,41 @@ const (
 )
 
 func main() {
+	// Enable debug-level logging to stderr
+	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
+	handler := slog.NewTextHandler(os.Stderr, opts)
+	slog.SetDefault(slog.New(handler))
 
 	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
 	if err != nil {
-		log.Println("Unable to obtain values for authentication to Aura API: ", err)
+		slog.Error("failed to obtain environmental variables", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	fmt.Printf("input the ID of the instance to update:")
+	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
+	if err != nil {
+		slog.Error("error obtaining NewAuraAPIActionsService", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	fmt.Printf("input the ID of the instance to get details of:")
 	var instanceID string
 	n, err := fmt.Scanln(&instanceID)
 	if err != nil {
-		log.Println("Error entering instance ID to read: ", err)
+		slog.Error("error entering instance ID", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	if n > 2 {
-		log.Println("Only a single value can be entered for the Instance ID. You entered ", n)
+		slog.Error("only a single value can be entered for the Instance ID. You entered ", slog.Int("count: ", n))
 		os.Exit(1)
 	}
-	if len(instanceID) > 8 {
-		log.Println("Instance ID can only be 8 characters. You entered ", len(instanceID))
+
+	if len(instanceID) != 8 {
+		slog.Error("Instance ID is made up of 8 characters. You entered  ", slog.Int("count: ", len(instanceID)))
 		os.Exit(1)
 
 	}
@@ -50,39 +61,32 @@ func main() {
 	var instanceName string
 	n, err = fmt.Scanln(&instanceName)
 	if err != nil {
-		log.Println("Error entering instance name: ", err)
+		slog.Error("error entering new instance name", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	if n > 2 {
-		log.Println("Only a single value can be entered for the instance name. You entered ", n)
-		os.Exit(1)
-	}
-
-	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
-	if err != nil {
-		log.Println("Error creating aura client: ", err)
+		slog.Error("only a single value can be entered for the new nanme. You entered ", slog.Int("count: ", n))
 		os.Exit(1)
 	}
 
 	instanceNewCfg := aura.UpdateInstanceData{
-		Name:   "JGNewName",
-		Memory: "8GB",
+		Name: instanceName,
 	}
 
 	response, err := myAuraClient.Instances.Update(ctx, instanceID, &instanceNewCfg)
 	if err != nil {
-		log.Println("Error creating instance: ", err)
+		slog.Error("error reading instance", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	result, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		log.Println("Error formatting response: ", err)
+		slog.Error("error converting response to JSON", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	log.Printf("Details of instance being created: %s", result)
+	fmt.Printf("Details of instance being created: %s", result)
 
 }
 

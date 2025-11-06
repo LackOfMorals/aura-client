@@ -75,6 +75,15 @@ type GetInstanceData struct {
 	VectorOptimized bool    `json:"vector_optimized"`
 }
 
+type OverwriteInstance struct {
+	SourceInstanceId string `json:"omitempty source_instance_id"`
+	SourceSnapshotId string `json:"omitempty source_snapshot_id"`
+}
+
+type OverwriteInstanceResponse struct {
+	Data string `json:"data"`
+}
+
 // InstanceService handles instance operations
 type InstanceService struct {
 	Service *AuraAPIActionsService
@@ -297,5 +306,47 @@ func (i *InstanceService) Update(ctx context.Context, instanceID string, instanc
 	}
 
 	i.logger.InfoContext(ctx, "instance updated successfully", slog.String("instanceID", instanceID), slog.String("name", resp.Data.Name))
+	return resp, nil
+}
+
+func (i *InstanceService) Overwrite(ctx context.Context, instanceID string, sourceInstanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
+	i.logger.DebugContext(ctx, "resuming instance", slog.String("instanceID", instanceID))
+
+	// Get or update token if needed
+	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	if err != nil { // Token process failed
+		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	// create the request body
+	// A key will be omitted when empty
+	requestBody := OverwriteInstance{
+		SourceInstanceId: sourceInstanceID,
+		SourceSnapshotId: sourceSnapshotID,
+	}
+
+	body, err := utils.Marshall(requestBody)
+	if err != nil {
+		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	content := "application/json"
+	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
+	endpoint := i.Service.Config.Version + "/instances/" + instanceID + "/overwrite"
+
+	i.logger.DebugContext(ctx, "making authenticated request",
+		slog.String("method", http.MethodPost),
+		slog.String("endpoint", endpoint),
+	)
+
+	resp, err := makeAuthenticatedRequest[OverwriteInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodPost, content, string(body))
+	if err != nil {
+		i.logger.ErrorContext(ctx, "failed to overwrite instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(ctx, "overwriting instance", slog.String("instanceID", instanceID))
 	return resp, nil
 }

@@ -18,12 +18,10 @@ const (
 )
 
 func main() {
-	// Enable info-level logging to stderr
+	// Enable debug-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	slog.SetDefault(slog.New(handler))
-
-	var err error
 
 	ctx := context.Background()
 
@@ -52,7 +50,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Instance details: %s", result)
+	fmt.Printf("Instances: %s", result)
 
 }
 

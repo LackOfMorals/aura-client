@@ -18,7 +18,7 @@ const (
 )
 
 func main() {
-	// Enable info-level logging to stderr
+	// Enable debug-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	slog.SetDefault(slog.New(handler))
