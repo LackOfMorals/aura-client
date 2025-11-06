@@ -3,6 +3,7 @@ package aura
 
 import (
 	"errors"
+	"log/slog"
 	"time"
 
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
@@ -13,6 +14,7 @@ type AuraAPIActionsService struct {
 	Config    *Config                 // Configuration information
 	transport *httpClient.HTTPService // Deals with connectivity over http. Nothing here for users
 	authMgr   *authManager            // This will manage auth so it is hidden away from users
+	logger    *slog.Logger            // Structured logger for debugging and troubleshooting
 
 	// Grouped services
 	Tenants        *TenantService
@@ -62,22 +64,35 @@ func NewAuraAPIActionsService(clientID, clientSecret string) (*AuraAPIActionsSer
 // NewAuraAPIActionsServiceWithConfig creates a new Aura API service with custom configuration.
 // Returns an error if the configuration is invalid.
 func NewAuraAPIActionsServiceWithConfig(cfg Config) (*AuraAPIActionsService, error) {
+	logger := slog.Default()
+
 	// Validate required fields
 	if cfg.ClientID == "" {
+		logger.Error("validation failed", slog.String("reason", "client ID must not be empty"))
 		return nil, errors.New("client ID must not be empty")
 	}
 	if cfg.ClientSecret == "" {
+		logger.Error("validation failed", slog.String("reason", "client secret must not be empty"))
 		return nil, errors.New("client secret must not be empty")
 	}
 	if cfg.BaseURL == "" {
+		logger.Error("validation failed", slog.String("reason", "base URL must not be empty"))
 		return nil, errors.New("base URL must not be empty")
 	}
 	if cfg.Version == "" {
+		logger.Error("validation failed", slog.String("reason", "API version must not be empty"))
 		return nil, errors.New("API version must not be empty")
 	}
 	if cfg.APITimeout <= 0 {
+		logger.Error("validation failed", slog.String("reason", "API timeout must be greater than zero"), slog.Duration("timeout", cfg.APITimeout))
 		return nil, errors.New("API timeout must be greater than zero")
 	}
+
+	logger.Debug("configuration validated",
+		slog.String("baseURL", cfg.BaseURL),
+		slog.String("version", cfg.Version),
+		slog.Duration("apiTimeout", cfg.APITimeout),
+	)
 
 	trans := httpClient.NewHTTPRequestService(cfg.BaseURL, cfg.APITimeout)
 
@@ -92,14 +107,34 @@ func NewAuraAPIActionsServiceWithConfig(cfg Config) (*AuraAPIActionsService, err
 			ExpiresAt:  0,
 			ObtainedAt: 0,
 		},
+		logger: logger.With(slog.String("component", "AuraAPIActionsService")),
 	}
 
-	// Initialize sub-services with reference to parent
-	service.Tenants = &TenantService{Service: service}
-	service.Instances = &InstanceService{Service: service}
-	service.Snapshots = &SnapshotService{Service: service}
-	service.Cmek = &CmekService{Service: service}
-	service.GraphAnalytics = &GDSSessionService{Service: service}
+	// Initialize sub-services with reference to parent and dedicated loggers
+	service.Tenants = &TenantService{
+		Service: service,
+		logger:  service.logger.With(slog.String("service", "TenantService")),
+	}
+	service.Instances = &InstanceService{
+		Service: service,
+		logger:  service.logger.With(slog.String("service", "InstanceService")),
+	}
+	service.Snapshots = &SnapshotService{
+		Service: service,
+		logger:  service.logger.With(slog.String("service", "SnapshotService")),
+	}
+	service.Cmek = &CmekService{
+		Service: service,
+		logger:  service.logger.With(slog.String("service", "CmekService")),
+	}
+	service.GraphAnalytics = &GDSSessionService{
+		Service: service,
+		logger:  service.logger.With(slog.String("service", "GDSSessionService")),
+	}
+
+	service.logger.Info("Aura API service initialized successfully",
+		slog.Int("subServices", 5),
+	)
 
 	return service, nil
 }

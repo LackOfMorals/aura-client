@@ -3,6 +3,7 @@ package aura
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/LackOfMorals/aura-client/internal/utils"
@@ -36,6 +37,7 @@ type CreateSnapshotData struct {
 // SnapshotService handles snapshot operations
 type SnapshotService struct {
 	Service *AuraAPIActionsService
+	logger  *slog.Logger
 }
 
 // Snaphot methods
@@ -43,9 +45,12 @@ type SnapshotService struct {
 // a list of available snapshots for an instance on a ( optional ) given date. If a date is not specified, snapshots from the current day will be returned.
 // Date is in ISO format YYYY-MM-DD
 func (s *SnapshotService) List(ctx context.Context, instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {
+	s.logger.DebugContext(ctx, "listing snapshots")
+
 	// Get or update token if needed
 	err := s.Service.authMgr.getToken(ctx, *s.Service.transport)
 	if err != nil { // Token process failed
+		s.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -69,14 +74,30 @@ func (s *SnapshotService) List(ctx context.Context, instanceID string, snapshotD
 		return nil, fmt.Errorf("date must be in the format of YYYY-MM-DD")
 	}
 
-	return makeAuthenticatedRequest[GetSnapshotsResponse](ctx, *s.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	s.logger.DebugContext(ctx, "making authenticated request",
+		slog.String("method", http.MethodGet),
+		slog.String("endpoint", endpoint),
+	)
+
+	resp, err := makeAuthenticatedRequest[GetSnapshotsResponse](ctx, *s.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to list snapshots", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	s.logger.DebugContext(ctx, "snapshots listed  successfully", slog.Int("count", len(resp.Data)))
+	return resp, nil
+
 }
 
 // create a snapshot for an instance identified by its Id
 func (s *SnapshotService) Create(ctx context.Context, instanceID string) (*CreateSnapshotResponse, error) {
+	s.logger.DebugContext(ctx, "creating snapshot")
+
 	// Get or update token if needed
 	err := s.Service.authMgr.getToken(ctx, *s.Service.transport)
 	if err != nil { // Token process failed
+		s.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -84,5 +105,18 @@ func (s *SnapshotService) Create(ctx context.Context, instanceID string) (*Creat
 	auth := s.Service.authMgr.Type + " " + s.Service.authMgr.Token
 	endpoint := s.Service.Config.Version + "/instances/" + instanceID + "/snapshots"
 
-	return makeAuthenticatedRequest[CreateSnapshotResponse](ctx, *s.Service.transport, auth, endpoint, http.MethodPost, content, "")
+	s.logger.DebugContext(ctx, "making authenticated request",
+		slog.String("method", http.MethodGet),
+		slog.String("endpoint", endpoint),
+	)
+
+	resp, err := makeAuthenticatedRequest[CreateSnapshotResponse](ctx, *s.Service.transport, auth, endpoint, http.MethodPost, content, "")
+	if err != nil {
+		s.logger.ErrorContext(ctx, "failed to create snapshot", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	s.logger.DebugContext(ctx, "snapshot creating", slog.String("snapshost Id", resp.Data.SnapshotId))
+	return resp, nil
+
 }

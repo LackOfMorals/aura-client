@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/LackOfMorals/aura-client"
@@ -17,37 +18,39 @@ const (
 )
 
 func main() {
-
-	var err error
+	// Enable debug-level logging to stderr
+	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
+	handler := slog.NewTextHandler(os.Stderr, opts)
+	slog.SetDefault(slog.New(handler))
 
 	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
 	if err != nil {
-		log.Println("Unable to obtain values for authentication to Aura API: ", err)
+		slog.Error("failed to obtain environmental variables", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
 	if err != nil {
-		log.Println("Error creating aura client: ", err)
+		slog.Error("error obtaining NewAuraAPIActionsService", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	response, err := myAuraClient.Instances.List(ctx)
 	if err != nil {
-		log.Println("Error reading instances: ", err)
+		slog.Error("error getting instance list", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
 	result, err := json.MarshalIndent(response, "", "  ")
 	if err != nil {
-		log.Println("Error formatting response: ", err)
+		slog.Error("error converting response to JSON", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	log.Printf("Instance details: %s", result)
+	fmt.Printf("Instances: %s", result)
 
 }
 

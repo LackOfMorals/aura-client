@@ -2,6 +2,7 @@ package aura
 
 import (
 	"context"
+	"log/slog"
 	http "net/http"
 	"net/url"
 	"time"
@@ -20,13 +21,16 @@ type APIAuth struct {
 
 // If needed, updates AuthManager token to make a request to the aura api otherwise it does nothing as the current token is still valid
 func (am *authManager) getToken(ctx context.Context, httpClt httpClient.HTTPService) error {
+	logger := slog.Default()
 	var err error
 
 	// See if we have a token.  If this was the first time this function was called, token will be empty.
 	if len(am.Token) > 0 {
 		// We do have a token, is it still valid?
+		logger.DebugContext(ctx, "already have a token", slog.String("debug", ""))
 		if time.Now().Unix() <= am.ExpiresAt-60 {
 			// We are not within 60 seconds of expiring .  Our token is still valid
+			logger.DebugContext(ctx, "token is still valid", slog.String("debug", ""))
 			return nil
 		}
 	}
@@ -43,6 +47,7 @@ func (am *authManager) getToken(ctx context.Context, httpClt httpClient.HTTPServ
 	newAuraAPIToken, err := makeAuthenticatedRequest[APIAuth](ctx, httpClt, auth, endpoint, http.MethodPost, "application/x-www-form-urlencoded", body.Encode())
 	if err != nil {
 		// Didn't get a token
+		logger.ErrorContext(ctx, "unable to obtain an auth token", slog.String("error", err.Error()))
 		return err
 	}
 
