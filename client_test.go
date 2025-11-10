@@ -95,8 +95,8 @@ func TestNewClient_AuthManagerInitialized(t *testing.T) {
 	if service.authMgr.Secret != clientSecret {
 		t.Errorf("expected authMgr.Secret to be '%s', got '%s'", clientSecret, service.authMgr.Secret)
 	}
-	if service.authMgr.Token != "" {
-		t.Error("expected authMgr.Token to be empty initially")
+	if service.authMgr.token != "" {
+		t.Error("expected authMgr.token to be empty initially")
 	}
 	if service.authMgr.ExpiresAt != 0 {
 		t.Error("expected authMgr.ExpiresAt to be 0 initially")

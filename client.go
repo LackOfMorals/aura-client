@@ -4,6 +4,7 @@ package aura
 import (
 	"errors"
 	"log/slog"
+	"os"
 	"time"
 
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
@@ -44,6 +45,9 @@ type options struct {
 
 // defaultOptions returns options with sensible defaults
 func defaultOptions() *options {
+	// Enable debug-level logging to stderr
+	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
+	handler := slog.NewTextHandler(os.Stderr, opts)
 
 	return &options{
 		config: config{
@@ -51,7 +55,7 @@ func defaultOptions() *options {
 			version:    "v1",
 			apiTimeout: 120 * time.Second,
 		},
-		logger: slog.Default(),
+		logger: slog.New(handler),
 	}
 }
 
@@ -150,35 +154,35 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		config:    &o.config,
 		transport: &trans,
 		authMgr: &authManager{
-			Id:         o.config.clientID,
-			Secret:     o.config.clientSecret,
-			Token:      "",
-			Type:       "",
-			ExpiresAt:  0,
-			ObtainedAt: 0,
+			id:         o.config.clientID,
+			secret:     o.config.clientSecret,
+			token:      "",
+			tokenType:  "",
+			expiresAt:  0,
+			obtainedAt: 0,
 		},
-		logger: o.logger.With(slog.String("component", "AuraAPIActionsService")),
+		logger: o.logger.With(slog.String("component", "AuraAPIClient")),
 	}
 
 	// Initialize sub-services
 	service.Tenants = &TenantService{
-		Service: service,
+		service: service,
 		logger:  service.logger.With(slog.String("service", "TenantService")),
 	}
 	service.Instances = &InstanceService{
-		Service: service,
+		service: service,
 		logger:  service.logger.With(slog.String("service", "InstanceService")),
 	}
 	service.Snapshots = &SnapshotService{
-		Service: service,
+		service: service,
 		logger:  service.logger.With(slog.String("service", "SnapshotService")),
 	}
 	service.Cmek = &CmekService{
-		Service: service,
+		service: service,
 		logger:  service.logger.With(slog.String("service", "CmekService")),
 	}
 	service.GraphAnalytics = &GDSSessionService{
-		Service: service,
+		service: service,
 		logger:  service.logger.With(slog.String("service", "GDSSessionService")),
 	}
 

@@ -20,7 +20,7 @@ type GetCmeksData struct {
 
 // CmekService handles customer managed encryption key operations
 type CmekService struct {
-	Service *AuraAPIClient
+	service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -31,22 +31,22 @@ func (c *CmekService) List(ctx context.Context, tenantId string) (*GetCmeksRespo
 	c.logger.DebugContext(ctx, "listing custom managed keys")
 
 	// Get or update token if needed
-	err := c.Service.authMgr.getToken(ctx, *c.Service.transport)
+	err := c.service.authMgr.getToken(ctx, *c.service.transport)
 	if err != nil { // Token process failed
 		c.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := c.Service.authMgr.Type + " " + c.Service.authMgr.Token
-	endpoint := c.Service.config.version + "/customer-managed-keys"
+	auth := c.service.authMgr.tokenType + " " + c.service.authMgr.token
+	endpoint := c.service.config.version + "/customer-managed-keys"
 
 	c.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetCmeksResponse](ctx, *c.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[GetCmeksResponse](ctx, *c.service.transport, auth, endpoint, http.MethodGet, content, "")
 	if err != nil {
 		c.logger.ErrorContext(ctx, "failed to obtain customer managed keys", slog.String("error", err.Error()))
 		return nil, err

@@ -86,7 +86,7 @@ type OverwriteInstanceResponse struct {
 
 // InstanceService handles instance operations
 type InstanceService struct {
-	Service *AuraAPIClient
+	service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -97,22 +97,22 @@ func (i *InstanceService) List(ctx context.Context) (*ListInstancesResponse, err
 	i.logger.DebugContext(ctx, "listing instances")
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances"
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[ListInstancesResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[ListInstancesResponse](ctx, *i.service.transport, auth, endpoint, http.MethodGet, content, "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to list instances", slog.String("error", err.Error()))
 		return nil, err
@@ -127,22 +127,22 @@ func (i *InstanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 	i.logger.DebugContext(ctx, "getting instance details", slog.String("instanceID", instanceID))
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances/" + instanceID
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances/" + instanceID
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.service.transport, auth, endpoint, http.MethodGet, content, "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to get instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -157,15 +157,15 @@ func (i *InstanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	i.logger.DebugContext(ctx, "creating instance", slog.String("name", instanceRequest.Name), slog.String("tenantID", instanceRequest.TenantId))
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances"
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances"
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {
@@ -178,7 +178,7 @@ func (i *InstanceService) Create(ctx context.Context, instanceRequest *CreateIns
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[CreateInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodPost, content, string(body))
+	resp, err := makeAuthenticatedRequest[CreateInstanceResponse](ctx, *i.service.transport, auth, endpoint, http.MethodPost, content, string(body))
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to create instance", slog.String("name", instanceRequest.Name), slog.String("error", err.Error()))
 		return nil, err
@@ -193,22 +193,22 @@ func (i *InstanceService) Delete(ctx context.Context, instanceID string) (*GetIn
 	i.logger.DebugContext(ctx, "deleting instance", slog.String("instanceID", instanceID))
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances/" + instanceID
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances/" + instanceID
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodDelete),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodDelete, content, "")
+	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.service.transport, auth, endpoint, http.MethodDelete, content, "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to delete instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -223,22 +223,22 @@ func (i *InstanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 	i.logger.DebugContext(ctx, "pausing instance", slog.String("instanceID", instanceID))
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances/" + instanceID + "/pause"
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances/" + instanceID + "/pause"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodPost),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodPost, content, "")
+	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.service.transport, auth, endpoint, http.MethodPost, content, "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to pause instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -253,22 +253,22 @@ func (i *InstanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 	i.logger.DebugContext(ctx, "resuming instance", slog.String("instanceID", instanceID))
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances/" + instanceID + "/resume"
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances/" + instanceID + "/resume"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodPost),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodPost, content, "")
+	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.service.transport, auth, endpoint, http.MethodPost, content, "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to resume instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -283,15 +283,15 @@ func (i *InstanceService) Update(ctx context.Context, instanceID string, instanc
 	i.logger.DebugContext(ctx, "updating instance", slog.String("instanceID", instanceID))
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances/" + instanceID
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances/" + instanceID
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {
@@ -304,7 +304,7 @@ func (i *InstanceService) Update(ctx context.Context, instanceID string, instanc
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodPatch, content, string(body))
+	resp, err := makeAuthenticatedRequest[GetInstanceResponse](ctx, *i.service.transport, auth, endpoint, http.MethodPatch, content, string(body))
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to update instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -319,7 +319,7 @@ func (i *InstanceService) Overwrite(ctx context.Context, instanceID string, sour
 	i.logger.DebugContext(ctx, "resuming instance", slog.String("instanceID", instanceID))
 
 	// Get or update token if needed
-	err := i.Service.authMgr.getToken(ctx, *i.Service.transport)
+	err := i.service.authMgr.getToken(ctx, *i.service.transport)
 	if err != nil { // Token process failed
 		i.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
@@ -339,15 +339,15 @@ func (i *InstanceService) Overwrite(ctx context.Context, instanceID string, sour
 	}
 
 	content := "application/json"
-	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.config.version + "/instances/" + instanceID + "/overwrite"
+	auth := i.service.authMgr.tokenType + " " + i.service.authMgr.token
+	endpoint := i.service.config.version + "/instances/" + instanceID + "/overwrite"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodPost),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[OverwriteInstanceResponse](ctx, *i.Service.transport, auth, endpoint, http.MethodPost, content, string(body))
+	resp, err := makeAuthenticatedRequest[OverwriteInstanceResponse](ctx, *i.service.transport, auth, endpoint, http.MethodPost, content, string(body))
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to overwrite instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err

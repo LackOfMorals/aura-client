@@ -11,12 +11,6 @@ import (
 	"github.com/LackOfMorals/aura-client"
 )
 
-const (
-	AuraAPIBaseURL      = "https://api.neo4j.io/"
-	AuraAPIAuthEndpoint = "oauth/token"
-	AuraAPIV1           = "v1"
-)
-
 func main() {
 	// Enable debug-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}

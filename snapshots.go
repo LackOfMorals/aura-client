@@ -36,7 +36,7 @@ type CreateSnapshotData struct {
 
 // SnapshotService handles snapshot operations
 type SnapshotService struct {
-	Service *AuraAPIClient
+	service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -48,15 +48,15 @@ func (s *SnapshotService) List(ctx context.Context, instanceID string, snapshotD
 	s.logger.DebugContext(ctx, "listing snapshots")
 
 	// Get or update token if needed
-	err := s.Service.authMgr.getToken(ctx, *s.Service.transport)
+	err := s.service.authMgr.getToken(ctx, *s.service.transport)
 	if err != nil { // Token process failed
 		s.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := s.Service.authMgr.Type + " " + s.Service.authMgr.Token
-	endpoint := s.Service.config.version + "/instances/" + instanceID + "/snapshots"
+	auth := s.service.authMgr.tokenType + " " + s.service.authMgr.token
+	endpoint := s.service.config.version + "/instances/" + instanceID + "/snapshots"
 
 	switch datelen := len(snapshotDate); datelen {
 
@@ -79,7 +79,7 @@ func (s *SnapshotService) List(ctx context.Context, instanceID string, snapshotD
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetSnapshotsResponse](ctx, *s.Service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[GetSnapshotsResponse](ctx, *s.service.transport, auth, endpoint, http.MethodGet, content, "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to list snapshots", slog.String("error", err.Error()))
 		return nil, err
@@ -95,22 +95,22 @@ func (s *SnapshotService) Create(ctx context.Context, instanceID string) (*Creat
 	s.logger.DebugContext(ctx, "creating snapshot")
 
 	// Get or update token if needed
-	err := s.Service.authMgr.getToken(ctx, *s.Service.transport)
+	err := s.service.authMgr.getToken(ctx, *s.service.transport)
 	if err != nil { // Token process failed
 		s.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	content := "application/json"
-	auth := s.Service.authMgr.Type + " " + s.Service.authMgr.Token
-	endpoint := s.Service.config.version + "/instances/" + instanceID + "/snapshots"
+	auth := s.service.authMgr.tokenType + " " + s.service.authMgr.token
+	endpoint := s.service.config.version + "/instances/" + instanceID + "/snapshots"
 
 	s.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[CreateSnapshotResponse](ctx, *s.Service.transport, auth, endpoint, http.MethodPost, content, "")
+	resp, err := makeAuthenticatedRequest[CreateSnapshotResponse](ctx, *s.service.transport, auth, endpoint, http.MethodPost, content, "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to create snapshot", slog.String("error", err.Error()))
 		return nil, err
