@@ -11,8 +11,18 @@ import (
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
 
+// Token management
+type authManager struct {
+	Id         string // the client id to obtain a token to use with the aura api
+	Secret     string // the client secret to obtain a token to use with the aura api
+	Type       string // the type of token from the aura api auth endpoint
+	Token      string // the token from aura api auth endpoint
+	ObtainedAt int64  // The time when the token was obtained in number of seconds since midnight Jan 1st 1970
+	ExpiresAt  int64  // token duration in seconds
+}
+
 // Used for authentication with endpoints
-// Stores the auth token for use with the Aura API
+// Stores the auth token back from the auth endpoint
 type APIAuth struct {
 	Type   string `json:"token_type"`
 	Token  string `json:"access_token"`
@@ -44,7 +54,7 @@ func (am *authManager) getToken(ctx context.Context, httpClt httpClient.HTTPServ
 
 	body.Set("grant_type", "client_credentials")
 
-	newAuraAPIToken, err := makeAuthenticatedRequest[APIAuth](ctx, httpClt, auth, endpoint, http.MethodPost, "application/x-www-form-urlencoded", body.Encode())
+	newToken, err := makeAuthenticatedRequest[APIAuth](ctx, httpClt, auth, endpoint, http.MethodPost, "application/x-www-form-urlencoded", body.Encode())
 	if err != nil {
 		// Didn't get a token
 		logger.ErrorContext(ctx, "unable to obtain an auth token", slog.String("error", err.Error()))
@@ -53,9 +63,9 @@ func (am *authManager) getToken(ctx context.Context, httpClt httpClient.HTTPServ
 
 	// Update the token details
 	am.ObtainedAt = time.Now().Unix()
-	am.Token = newAuraAPIToken.Token
-	am.Type = newAuraAPIToken.Type
-	am.ExpiresAt = time.Now().Unix() + newAuraAPIToken.Expiry
+	am.Token = newToken.Token
+	am.Type = newToken.Type
+	am.ExpiresAt = time.Now().Unix() + newToken.Expiry
 
 	return nil
 

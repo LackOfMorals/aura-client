@@ -36,7 +36,7 @@ type CreateSnapshotData struct {
 
 // SnapshotService handles snapshot operations
 type SnapshotService struct {
-	Service *AuraAPIActionsService
+	Service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -56,7 +56,7 @@ func (s *SnapshotService) List(ctx context.Context, instanceID string, snapshotD
 
 	content := "application/json"
 	auth := s.Service.authMgr.Type + " " + s.Service.authMgr.Token
-	endpoint := s.Service.Config.Version + "/instances/" + instanceID + "/snapshots"
+	endpoint := s.Service.config.version + "/instances/" + instanceID + "/snapshots"
 
 	switch datelen := len(snapshotDate); datelen {
 
@@ -103,7 +103,7 @@ func (s *SnapshotService) Create(ctx context.Context, instanceID string) (*Creat
 
 	content := "application/json"
 	auth := s.Service.authMgr.Type + " " + s.Service.authMgr.Token
-	endpoint := s.Service.Config.Version + "/instances/" + instanceID + "/snapshots"
+	endpoint := s.Service.config.version + "/instances/" + instanceID + "/snapshots"
 
 	s.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),

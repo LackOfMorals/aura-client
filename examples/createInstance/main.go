@@ -11,12 +11,6 @@ import (
 	"github.com/LackOfMorals/aura-client"
 )
 
-const (
-	AuraAPIBaseURL      = "https://api.neo4j.io/"
-	AuraAPIAuthEndpoint = "oauth/token"
-	AuraAPIV1           = "v1"
-)
-
 func main() {
 	// Enable debug-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
@@ -45,7 +39,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
+	myAuraClient, err := aura.NewClient(ClientID, ClientSecret)
 	if err != nil {
 		slog.Error("error creating aura client", slog.String("error", err.Error()))
 		os.Exit(1)

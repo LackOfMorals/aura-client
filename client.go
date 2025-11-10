@@ -10,11 +10,11 @@ import (
 )
 
 // Core service configuration
-type AuraAPIActionsService struct {
-	Config    *Config                 // Configuration information
-	transport *httpClient.HTTPService // Deals with connectivity over http. Nothing here for users
-	authMgr   *authManager            // This will manage auth so it is hidden away from users
-	logger    *slog.Logger            // Structured logger for debugging and troubleshooting
+type AuraAPIClient struct {
+	config    *config                 // Internal configuration (unexported)
+	transport *httpClient.HTTPService // Deals with connectivity over http
+	authMgr   *authManager            // Manages authentication
+	logger    *slog.Logger            // Structured logger
 
 	// Grouped services
 	Tenants        *TenantService
@@ -24,93 +24,143 @@ type AuraAPIActionsService struct {
 	GraphAnalytics *GDSSessionService
 }
 
-// Token management
-type authManager struct {
-	Id         string `json:"omitempty"`    // the client id
-	Secret     string `json:"omitempty"`    // the client secret
-	Type       string `json:"token_type"`   // e.g Bearer
-	Token      string `json:"access_token"` // the token from aura api auth endpoint
-	ObtainedAt int64  `json:"omitempty"`    // The time when the token was obtained in number of seconds since midnight Jan 1st 1970
-	ExpiresAt  int64  `json:"expires_in"`   // token duration in seconds
+// config holds internal configuration (unexported)
+type config struct {
+	baseURL      string
+	version      string
+	apiTimeout   time.Duration
+	clientID     string
+	clientSecret string
 }
 
-// Config holds configuration for the Aura API service.
-type Config struct {
-	BaseURL      string
-	Version      string
-	APITimeout   time.Duration
-	ClientID     string
-	ClientSecret string
+// Option is a functional option for configuring the AuraAPIClient
+type Option func(*options) error
+
+// options holds the configuration that will be applied to the client
+type options struct {
+	config config
+	logger *slog.Logger
 }
 
-// DefaultConfig returns a Config with sensible defaults for the Aura API.
-func DefaultConfig(clientID, clientSecret string) Config {
-	return Config{
-		BaseURL:      "https://api.neo4j.io/",
-		Version:      "v1",
-		APITimeout:   120 * time.Second,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
+// defaultOptions returns options with sensible defaults
+func defaultOptions() *options {
+
+	return &options{
+		config: config{
+			baseURL:    "https://api.neo4j.io/",
+			version:    "v1",
+			apiTimeout: 120 * time.Second,
+		},
+		logger: slog.Default(),
 	}
 }
 
-// NewAuraAPIActionsService creates a new Aura API service with grouped sub-services.
-// It validates credentials and initializes all sub-services with proper configuration.
-// Returns an error if credentials are invalid.
-func NewAuraAPIActionsService(clientID, clientSecret string) (*AuraAPIActionsService, error) {
-	return NewAuraAPIActionsServiceWithConfig(DefaultConfig(clientID, clientSecret))
+// WithClientID sets the client ID (required)
+func WithClientID(clientID string) Option {
+	return func(o *options) error {
+		o.config.clientID = clientID
+		return nil
+	}
 }
 
-// NewAuraAPIActionsServiceWithConfig creates a new Aura API service with custom configuration.
-// Returns an error if the configuration is invalid.
-func NewAuraAPIActionsServiceWithConfig(cfg Config) (*AuraAPIActionsService, error) {
-	logger := slog.Default()
+// WithClientSecret sets the client secret (required)
+func WithClientSecret(clientSecret string) Option {
+	return func(o *options) error {
+		o.config.clientSecret = clientSecret
+		return nil
+	}
+}
+
+// WithCredentials sets both client ID and secret
+func WithCredentials(clientID, clientSecret string) Option {
+	return func(o *options) error {
+		o.config.clientID = clientID
+		o.config.clientSecret = clientSecret
+		return nil
+	}
+}
+
+// WithTimeout sets a custom API timeout
+func WithTimeout(timeout time.Duration) Option {
+	return func(o *options) error {
+		if timeout <= 0 {
+			return errors.New("timeout must be greater than zero")
+		}
+		o.config.apiTimeout = timeout
+		return nil
+	}
+}
+
+// WithLogger sets a custom logger
+func WithLogger(logger *slog.Logger) Option {
+	return func(o *options) error {
+		if logger == nil {
+			return errors.New("logger cannot be nil")
+		}
+		o.logger = logger
+		return nil
+	}
+}
+
+// NewAuraAPIClient creates a new Aura API client with functional options
+func NewClient(opts ...Option) (*AuraAPIClient, error) {
+	// Start with defaults
+
+	o := defaultOptions()
+
+	// Apply all options
+	for _, opt := range opts {
+		if err := opt(o); err != nil {
+			o.logger.Error("option application failed", slog.String("error", err.Error()))
+			return nil, err
+		}
+	}
 
 	// Validate required fields
-	if cfg.ClientID == "" {
-		logger.Error("validation failed", slog.String("reason", "client ID must not be empty"))
+	if o.config.clientID == "" {
+		o.logger.Error("validation failed", slog.String("reason", "client ID must not be empty"))
 		return nil, errors.New("client ID must not be empty")
 	}
-	if cfg.ClientSecret == "" {
-		logger.Error("validation failed", slog.String("reason", "client secret must not be empty"))
+	if o.config.clientSecret == "" {
+		o.logger.Error("validation failed", slog.String("reason", "client secret must not be empty"))
 		return nil, errors.New("client secret must not be empty")
 	}
-	if cfg.BaseURL == "" {
-		logger.Error("validation failed", slog.String("reason", "base URL must not be empty"))
+	if o.config.baseURL == "" {
+		o.logger.Error("validation failed", slog.String("reason", "base URL must not be empty"))
 		return nil, errors.New("base URL must not be empty")
 	}
-	if cfg.Version == "" {
-		logger.Error("validation failed", slog.String("reason", "API version must not be empty"))
+	if o.config.version == "" {
+		o.logger.Error("validation failed", slog.String("reason", "API version must not be empty"))
 		return nil, errors.New("API version must not be empty")
 	}
-	if cfg.APITimeout <= 0 {
-		logger.Error("validation failed", slog.String("reason", "API timeout must be greater than zero"), slog.Duration("timeout", cfg.APITimeout))
+	if o.config.apiTimeout <= 0 {
+		o.logger.Error("validation failed", slog.String("reason", "API timeout must be greater than zero"), slog.Duration("timeout", o.config.apiTimeout))
 		return nil, errors.New("API timeout must be greater than zero")
 	}
 
-	logger.Debug("configuration validated",
-		slog.String("baseURL", cfg.BaseURL),
-		slog.String("version", cfg.Version),
-		slog.Duration("apiTimeout", cfg.APITimeout),
+	o.logger.Debug("configuration validated",
+		slog.String("baseURL", o.config.baseURL),
+		slog.String("version", o.config.version),
+		slog.Duration("apiTimeout", o.config.apiTimeout),
 	)
 
-	trans := httpClient.NewHTTPRequestService(cfg.BaseURL, cfg.APITimeout)
+	trans := httpClient.NewHTTPRequestService(o.config.baseURL, o.config.apiTimeout)
 
-	service := &AuraAPIActionsService{
-		Config:    &cfg,
+	service := &AuraAPIClient{
+		config:    &o.config,
 		transport: &trans,
 		authMgr: &authManager{
-			Id:         cfg.ClientID,
-			Secret:     cfg.ClientSecret,
+			Id:         o.config.clientID,
+			Secret:     o.config.clientSecret,
 			Token:      "",
 			Type:       "",
 			ExpiresAt:  0,
 			ObtainedAt: 0,
 		},
-		logger: logger.With(slog.String("component", "AuraAPIActionsService")),
+		logger: o.logger.With(slog.String("component", "AuraAPIActionsService")),
 	}
 
-	// Initialize sub-services with reference to parent and dedicated loggers
+	// Initialize sub-services
 	service.Tenants = &TenantService{
 		Service: service,
 		logger:  service.logger.With(slog.String("service", "TenantService")),

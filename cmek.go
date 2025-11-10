@@ -20,7 +20,7 @@ type GetCmeksData struct {
 
 // CmekService handles customer managed encryption key operations
 type CmekService struct {
-	Service *AuraAPIActionsService
+	Service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -39,7 +39,7 @@ func (c *CmekService) List(ctx context.Context, tenantId string) (*GetCmeksRespo
 
 	content := "application/json"
 	auth := c.Service.authMgr.Type + " " + c.Service.authMgr.Token
-	endpoint := c.Service.Config.Version + "/customer-managed-keys"
+	endpoint := c.Service.config.version + "/customer-managed-keys"
 
 	c.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),

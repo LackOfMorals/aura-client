@@ -41,7 +41,7 @@ type TenantInstanceConfiguration struct {
 
 // TenantService handles tenant operations
 type TenantService struct {
-	Service *AuraAPIActionsService
+	Service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -58,7 +58,7 @@ func (t *TenantService) List(ctx context.Context) (*ListTenantsResponse, error) 
 
 	content := "application/json"
 	auth := t.Service.authMgr.Type + " " + t.Service.authMgr.Token
-	endpoint := t.Service.Config.Version + "/tenants"
+	endpoint := t.Service.config.version + "/tenants"
 
 	t.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
@@ -89,7 +89,7 @@ func (t *TenantService) Get(ctx context.Context, tenantID string) (*GetTenantRes
 
 	content := "application/json"
 	auth := t.Service.authMgr.Type + " " + t.Service.authMgr.Token
-	endpoint := t.Service.Config.Version + "/tenants/" + tenantID
+	endpoint := t.Service.config.version + "/tenants/" + tenantID
 
 	t.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),

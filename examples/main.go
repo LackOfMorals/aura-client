@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -23,8 +20,6 @@ func main() {
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	slog.SetDefault(slog.New(handler))
 
-	ctx := context.Background()
-
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
 	if err != nil {
@@ -32,25 +27,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient, err := aura.NewClient(ClientID, ClientSecret)
-	if err != nil {
-		slog.Error("error creating aura client: ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
+	myAuraClientConfig, _ := aura.NewClient().WithCredentials(ClientID, ClientSecret).WithURL(AuraAPIBaseURL)
 
-	response, err := myAuraClient.Cmek.List(ctx, "")
-	if err != nil {
-		slog.Error("error reading cmek ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
+	//myAuraClientConfig := aura.NewClientConfig().WithDefaults(ClientID, ClientSecret)
 
-	result, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		slog.Error("error formating response: ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-
-	fmt.Printf("Instance details: %s", result)
+	slog.Error("", slog.String("client id", myAuraClientConfig.ClientID))
 
 }
 

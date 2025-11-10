@@ -86,7 +86,7 @@ type OverwriteInstanceResponse struct {
 
 // InstanceService handles instance operations
 type InstanceService struct {
-	Service *AuraAPIActionsService
+	Service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -105,7 +105,7 @@ func (i *InstanceService) List(ctx context.Context) (*ListInstancesResponse, err
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances"
+	endpoint := i.Service.config.version + "/instances"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
@@ -135,7 +135,7 @@ func (i *InstanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances/" + instanceID
+	endpoint := i.Service.config.version + "/instances/" + instanceID
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
@@ -152,6 +152,7 @@ func (i *InstanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 	return resp, nil
 }
 
+// Creates an instance
 func (i *InstanceService) Create(ctx context.Context, instanceRequest *CreateInstanceConfigData) (*CreateInstanceResponse, error) {
 	i.logger.DebugContext(ctx, "creating instance", slog.String("name", instanceRequest.Name), slog.String("tenantID", instanceRequest.TenantId))
 
@@ -164,7 +165,7 @@ func (i *InstanceService) Create(ctx context.Context, instanceRequest *CreateIns
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances"
+	endpoint := i.Service.config.version + "/instances"
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {
@@ -187,6 +188,7 @@ func (i *InstanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	return resp, nil
 }
 
+// Deletes an instance identified by it's ID
 func (i *InstanceService) Delete(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
 	i.logger.DebugContext(ctx, "deleting instance", slog.String("instanceID", instanceID))
 
@@ -199,7 +201,7 @@ func (i *InstanceService) Delete(ctx context.Context, instanceID string) (*GetIn
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances/" + instanceID
+	endpoint := i.Service.config.version + "/instances/" + instanceID
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodDelete),
@@ -216,6 +218,7 @@ func (i *InstanceService) Delete(ctx context.Context, instanceID string) (*GetIn
 	return resp, nil
 }
 
+// Pause an instance identified by it's ID
 func (i *InstanceService) Pause(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
 	i.logger.DebugContext(ctx, "pausing instance", slog.String("instanceID", instanceID))
 
@@ -228,7 +231,7 @@ func (i *InstanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances/" + instanceID + "/pause"
+	endpoint := i.Service.config.version + "/instances/" + instanceID + "/pause"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodPost),
@@ -245,6 +248,7 @@ func (i *InstanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 	return resp, nil
 }
 
+// Resumes an instance identified by it's ID
 func (i *InstanceService) Resume(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
 	i.logger.DebugContext(ctx, "resuming instance", slog.String("instanceID", instanceID))
 
@@ -257,7 +261,7 @@ func (i *InstanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances/" + instanceID + "/resume"
+	endpoint := i.Service.config.version + "/instances/" + instanceID + "/resume"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodPost),
@@ -274,6 +278,7 @@ func (i *InstanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 	return resp, nil
 }
 
+// Updates an instance identified by it's ID
 func (i *InstanceService) Update(ctx context.Context, instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error) {
 	i.logger.DebugContext(ctx, "updating instance", slog.String("instanceID", instanceID))
 
@@ -286,7 +291,7 @@ func (i *InstanceService) Update(ctx context.Context, instanceID string, instanc
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances/" + instanceID
+	endpoint := i.Service.config.version + "/instances/" + instanceID
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {
@@ -309,6 +314,7 @@ func (i *InstanceService) Update(ctx context.Context, instanceID string, instanc
 	return resp, nil
 }
 
+// Overwrites an existing instane identified by it's ID with the contents of another instance using an ondemand snapshot. Alternatively, if the snapshot ID of the other instance is given, that is used instead.
 func (i *InstanceService) Overwrite(ctx context.Context, instanceID string, sourceInstanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
 	i.logger.DebugContext(ctx, "resuming instance", slog.String("instanceID", instanceID))
 
@@ -334,7 +340,7 @@ func (i *InstanceService) Overwrite(ctx context.Context, instanceID string, sour
 
 	content := "application/json"
 	auth := i.Service.authMgr.Type + " " + i.Service.authMgr.Token
-	endpoint := i.Service.Config.Version + "/instances/" + instanceID + "/overwrite"
+	endpoint := i.Service.config.version + "/instances/" + instanceID + "/overwrite"
 
 	i.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodPost),

@@ -31,7 +31,7 @@ type GetGDSSessionData struct {
 
 // GDSSessionService handles GDS Session operations
 type GDSSessionService struct {
-	Service *AuraAPIActionsService
+	Service *AuraAPIClient
 	logger  *slog.Logger
 }
 
@@ -49,7 +49,7 @@ func (g *GDSSessionService) List(ctx context.Context) (*GetGDSSessionResponse, e
 
 	content := "application/json"
 	auth := g.Service.authMgr.Type + " " + g.Service.authMgr.Token
-	endpoint := g.Service.Config.Version + "/graph-analytics/sessions"
+	endpoint := g.Service.config.version + "/graph-analytics/sessions"
 
 	g.logger.DebugContext(ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),

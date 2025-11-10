@@ -57,8 +57,9 @@ func makeAuthenticatedRequest[T any](
 		slog.Int("statusCode", response.RequestResponse.StatusCode),
 	)
 
-	// Unmarshall payload into JSON
-	jsonDoc, err := utils.Unmarshal[T](*response.ResponsePayload)
+	// Unmarshall JSON payload into the receiving struct type
+	// that will be returned
+	returnedStruct, err := utils.Unmarshal[T](*response.ResponsePayload)
 	if err != nil {
 		logger.ErrorContext(ctx, "failed to unmarshal response",
 			slog.String("method", method),
@@ -73,5 +74,5 @@ func makeAuthenticatedRequest[T any](
 		slog.String("endpoint", endpoint),
 	)
 
-	return &jsonDoc, nil
+	return &returnedStruct, nil
 }
