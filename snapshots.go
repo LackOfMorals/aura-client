@@ -79,7 +79,7 @@ func (s *SnapshotService) List(ctx context.Context, instanceID string, snapshotD
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetSnapshotsResponse](ctx, *s.service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[GetSnapshotsResponse](ctx, *s.service.transport, auth, endpoint, http.MethodGet, content, "", s.logger)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to list snapshots", slog.String("error", err.Error()))
 		return nil, err
@@ -110,7 +110,7 @@ func (s *SnapshotService) Create(ctx context.Context, instanceID string) (*Creat
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[CreateSnapshotResponse](ctx, *s.service.transport, auth, endpoint, http.MethodPost, content, "")
+	resp, err := makeAuthenticatedRequest[CreateSnapshotResponse](ctx, *s.service.transport, auth, endpoint, http.MethodPost, content, "", s.logger)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to create snapshot", slog.String("error", err.Error()))
 		return nil, err

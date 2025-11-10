@@ -56,7 +56,7 @@ func (g *GDSSessionService) List(ctx context.Context) (*GetGDSSessionResponse, e
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetGDSSessionResponse](ctx, *g.service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[GetGDSSessionResponse](ctx, *g.service.transport, auth, endpoint, http.MethodGet, content, "", g.logger)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
 		return nil, err

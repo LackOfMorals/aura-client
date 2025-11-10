@@ -65,7 +65,7 @@ func (t *TenantService) List(ctx context.Context) (*ListTenantsResponse, error) 
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[ListTenantsResponse](ctx, *t.service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[ListTenantsResponse](ctx, *t.service.transport, auth, endpoint, http.MethodGet, content, "", t.logger)
 	if err != nil {
 		t.logger.ErrorContext(ctx, "failed to list tenants", slog.String("error", err.Error()))
 		return nil, err
@@ -96,7 +96,7 @@ func (t *TenantService) Get(ctx context.Context, tenantID string) (*GetTenantRes
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetTenantResponse](ctx, *t.service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[GetTenantResponse](ctx, *t.service.transport, auth, endpoint, http.MethodGet, content, "", t.logger)
 	if err != nil {
 		t.logger.ErrorContext(ctx, "failed to get tenant details", slog.String("error", err.Error()))
 		return nil, err

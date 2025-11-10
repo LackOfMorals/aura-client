@@ -15,7 +15,7 @@ func main() {
 	// Enable debug-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 	handler := slog.NewTextHandler(os.Stderr, opts)
-	slog.SetDefault(slog.New(handler))
+	logger := slog.New(handler)
 
 	ctx := context.Background()
 
@@ -26,7 +26,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient, err := aura.NewClient(aura.WithCredentials(ClientID, ClientSecret))
+	myAuraClient, err := aura.NewClient(aura.WithCredentials(ClientID, ClientSecret), aura.WithLogger(logger))
 
 	if err != nil {
 		slog.Error("error obtaining NewClient", slog.String("error", err.Error()))

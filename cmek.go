@@ -46,7 +46,7 @@ func (c *CmekService) List(ctx context.Context, tenantId string) (*GetCmeksRespo
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetCmeksResponse](ctx, *c.service.transport, auth, endpoint, http.MethodGet, content, "")
+	resp, err := makeAuthenticatedRequest[GetCmeksResponse](ctx, *c.service.transport, auth, endpoint, http.MethodGet, content, "", c.logger)
 	if err != nil {
 		c.logger.ErrorContext(ctx, "failed to obtain customer managed keys", slog.String("error", err.Error()))
 		return nil, err

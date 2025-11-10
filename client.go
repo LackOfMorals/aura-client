@@ -148,7 +148,7 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		slog.Duration("apiTimeout", o.config.apiTimeout),
 	)
 
-	trans := httpClient.NewHTTPRequestService(o.config.baseURL, o.config.apiTimeout)
+	trans := httpClient.NewHTTPRequestService(o.config.baseURL, o.config.apiTimeout, o.logger)
 
 	service := &AuraAPIClient{
 		config:    &o.config,
@@ -160,6 +160,7 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 			tokenType:  "",
 			expiresAt:  0,
 			obtainedAt: 0,
+			logger:     o.logger,
 		},
 		logger: o.logger.With(slog.String("component", "AuraAPIClient")),
 	}

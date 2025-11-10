@@ -18,8 +18,8 @@ func makeAuthenticatedRequest[T any](
 	method string,
 	contentType string,
 	body string,
+	logger *slog.Logger,
 ) (*T, error) {
-	logger := slog.Default()
 
 	// Check if context is already cancelled
 	if err := ctx.Err(); err != nil {
