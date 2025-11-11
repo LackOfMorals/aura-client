@@ -2,6 +2,7 @@
 package aura
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"os"
@@ -27,11 +28,12 @@ type AuraAPIClient struct {
 
 // config holds internal configuration (unexported)
 type config struct {
-	baseURL      string
-	version      string
-	apiTimeout   time.Duration
-	clientID     string
-	clientSecret string
+	baseURL      string          // the base url of the aura api
+	version      string          // the version of the aura api to use. Only v1 is supported at this time
+	apiTimeout   time.Duration   // How long to wait for a response from an aura api endpoint
+	clientID     string          // client id to obtain a token to use the aura api
+	clientSecret string          // client secret to obtain a token to use the aura api
+	ctx          context.Context // context for the client
 }
 
 // Option is a functional option for configuring the AuraAPIClient
@@ -46,7 +48,7 @@ type options struct {
 // defaultOptions returns options with sensible defaults
 func defaultOptions() *options {
 	// Enable debug-level logging to stderr
-	opts := &slog.HandlerOptions{Level: slog.LevelInfo}
+	opts := &slog.HandlerOptions{Level: slog.LevelWarn}
 	handler := slog.NewTextHandler(os.Stderr, opts)
 
 	return &options{
@@ -54,8 +56,17 @@ func defaultOptions() *options {
 			baseURL:    "https://api.neo4j.io/",
 			version:    "v1",
 			apiTimeout: 120 * time.Second,
+			ctx:        context.Background(),
 		},
 		logger: slog.New(handler),
+	}
+}
+
+// WithContext sets the context to use
+func WithContext(ctx context.Context) Option {
+	return func(o *options) error {
+		o.config.ctx = ctx
+		return nil
 	}
 }
 
