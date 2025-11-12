@@ -1,3 +1,8 @@
+/*
+Returns a list of instances in AuraDB in a table format
+
+*/
+
 package main
 
 import (

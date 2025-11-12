@@ -77,7 +77,7 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 	// Create the HTTP request
 	req, err := http.NewRequestWithContext(ctx, method, endpointURL, bodyReader)
 	if err != nil {
-		c.logger.ErrorContext(ctx, "failed to create request", slog.String("error", err.Error()))
+		c.logger.DebugContext(ctx, "failed to create request", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -89,14 +89,14 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 	// Execute the request
 	resp, err := c.client.Do(req)
 	if err != nil {
-		c.logger.ErrorContext(ctx, "request failed", slog.String("error", err.Error()))
+		c.logger.DebugContext(ctx, "request failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 
 	// Ensure response body is closed when exiting function
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil && err == nil {
-			c.logger.ErrorContext(ctx, "failed to close response body", slog.String("error", err.Error()))
+			c.logger.DebugContext(ctx, "failed to close response body", slog.String("error", err.Error()))
 			err = fmt.Errorf("failed to close response body: %w", cerr)
 		}
 	}()
@@ -104,14 +104,17 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 	// Read the response payload with size limit to prevent memory exhaustion
 	payload, err := io.ReadAll(io.LimitReader(resp.Body, int64(DefaultMaxResponseSize)))
 	if err != nil {
-		c.logger.ErrorContext(ctx, "failed to read response body", slog.String("error", err.Error()))
+		c.logger.DebugContext(ctx, "failed to read response body", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	// Validate HTTP response status code
 	if err = checkResponse(resp, payload); err != nil {
-		c.logger.ErrorContext(ctx, "response status code was not 2XX", slog.String("error", err.Error()))
-		return nil, err
+		c.logger.DebugContext(ctx, "response status code was not 2XX", slog.String("error", err.Error()))
+		return &HTTPResponse{
+			ResponsePayload: &payload,
+			RequestResponse: resp,
+		}, err
 	}
 
 	return &HTTPResponse{

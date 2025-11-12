@@ -59,7 +59,7 @@ func (am *authManager) getToken(ctx context.Context, httpClt httpClient.HTTPServ
 	newToken, err := makeAuthenticatedRequest[apiAuth](ctx, httpClt, auth, endpoint, http.MethodPost, "application/x-www-form-urlencoded", body.Encode(), am.logger)
 	if err != nil {
 		// Didn't get a token
-		am.logger.ErrorContext(ctx, "unable to obtain an auth token", slog.String("error", err.Error()))
+		am.logger.DebugContext(ctx, "unable to obtain an auth token", slog.String("error", err.Error()))
 		return err
 	}
 
