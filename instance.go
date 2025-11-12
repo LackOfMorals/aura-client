@@ -75,8 +75,8 @@ type GetInstanceData struct {
 }
 
 type OverwriteInstance struct {
-	SourceInstanceId string `json:"omitempty source_instance_id"`
-	SourceSnapshotId string `json:"omitempty source_snapshot_id"`
+	SourceInstanceId string `json:"source_instance_id,omitempty"`
+	SourceSnapshotId string `json:"source_snapshot_id,omitempty"`
 }
 
 type OverwriteInstanceResponse struct {

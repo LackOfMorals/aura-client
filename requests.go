@@ -88,6 +88,10 @@ func makeAuthenticatedRequest[T any](
 		return nil, err
 	}
 
+	// Add timeout for long-running operations
+	ctx, cancel := context.WithTimeout(ctx, 120)
+	defer cancel()
+
 	userAgent := "aura-go-client"
 
 	header := map[string]string{
