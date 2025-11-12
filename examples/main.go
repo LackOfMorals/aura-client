@@ -1,10 +1,7 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -23,8 +20,6 @@ func main() {
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	slog.SetDefault(slog.New(handler))
 
-	ctx := context.Background()
-
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
 	if err != nil {
@@ -32,44 +27,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("input the ID of the instance to delete:")
-	var instanceID string
-	n, err := fmt.Scanln(&instanceID)
-	if err != nil {
-		slog.Error("error entering instance id ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
+	myAuraClientConfig, _ := aura.NewClient().WithCredentials(ClientID, ClientSecret).WithURL(AuraAPIBaseURL)
 
-	if n > 2 {
-		slog.Error("only a single value can be entered for the Instance ID. You entered ", slog.Int("count: ", n))
-		os.Exit(1)
-	}
+	//myAuraClientConfig := aura.NewClientConfig().WithDefaults(ClientID, ClientSecret)
 
-	if len(instanceID) != 8 {
-		slog.Error("Instance ID is made up of 8 characters. You entered  ", slog.Int("count: ", len(instanceID)))
-		os.Exit(1)
-
-	}
-
-	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
-	if err != nil {
-		slog.Error("error creating aura client: ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-
-	response, err := myAuraClient.Instances.Delete(ctx, instanceID)
-	if err != nil {
-		slog.Error("error deleting instance: ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-
-	result, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		slog.Error("error formating response: ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-
-	fmt.Printf("Details of instance being deleted: %s", result)
+	slog.Error("", slog.String("client id", myAuraClientConfig.ClientID))
 
 }
 

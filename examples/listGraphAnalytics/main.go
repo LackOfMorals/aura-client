@@ -32,7 +32,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
+	myAuraClient, err := aura.NewClient(ClientID, ClientSecret)
 	if err != nil {
 		slog.Error("error creating aura client: ", slog.String("error", err.Error()))
 		os.Exit(1)

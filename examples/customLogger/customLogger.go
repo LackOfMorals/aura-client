@@ -1,29 +1,21 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
+	"text/tabwriter"
 
 	"github.com/LackOfMorals/aura-client"
 )
 
-const (
-	AuraAPIBaseURL      = "https://api.neo4j.io/"
-	AuraAPIAuthEndpoint = "oauth/token"
-	AuraAPIV1           = "v1"
-)
-
 func main() {
+
 	// Enable debug-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 	handler := slog.NewTextHandler(os.Stderr, opts)
-	slog.SetDefault(slog.New(handler))
-
-	ctx := context.Background()
+	customlogger := slog.New(handler)
 
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
@@ -32,25 +24,29 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient, err := aura.NewClient(ClientID, ClientSecret)
+	myAuraClient, err := aura.NewClient(aura.WithCredentials(ClientID, ClientSecret), aura.WithLogger(customlogger))
+
 	if err != nil {
-		slog.Error("error creating aura client: ", slog.String("error", err.Error()))
+		slog.Error("error obtaining NewClient", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.Cmek.List(ctx, "")
+	response, err := myAuraClient.Instances.List()
 	if err != nil {
-		slog.Error("error reading cmek ", slog.String("error", err.Error()))
+		slog.Error("error getting instance list", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
+	// Print out results
+	// In a table
 
-	result, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		slog.Error("error formating response: ", slog.String("error", err.Error()))
-		os.Exit(1)
+	tw := new(tabwriter.Writer)
+	tw.Init(os.Stdout, 16, 8, 4, '\t', 0)
+	// Header
+	fmt.Fprintln(tw, "Name\tId   \tTenant Id\tCloud Provider\tCreated\t")
+	for _, r := range response.Data {
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t \n", r.Name, r.Id, r.TenantId, r.CloudProvider, r.Created)
 	}
-
-	fmt.Printf("Instance details: %s", result)
+	tw.Flush()
 
 }
 

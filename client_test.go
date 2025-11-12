@@ -15,8 +15,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.BaseURL != "https://api.neo4j.io/" {
 		t.Errorf("expected BaseURL to be 'https://api.neo4j.io/', got '%s'", cfg.BaseURL)
 	}
-	if cfg.Version != "v1" {
-		t.Errorf("expected Version to be 'v1', got '%s'", cfg.Version)
+	if cfg.version != "v1" {
+		t.Errorf("expected Version to be 'v1', got '%s'", cfg.version)
 	}
 	if cfg.APITimeout != 120*time.Second {
 		t.Errorf("expected APITimeout to be 120s, got %v", cfg.APITimeout)
@@ -29,9 +29,9 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsService_Success verifies successful service creation
-func TestNewAuraAPIActionsService_Success(t *testing.T) {
-	service, err := NewAuraAPIActionsService("test-id", "test-secret")
+// TestNewClient_Success verifies successful service creation
+func TestNewClient_Success(t *testing.T) {
+	service, err := NewClient("test-id", "test-secret")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -39,7 +39,7 @@ func TestNewAuraAPIActionsService_Success(t *testing.T) {
 	if service == nil {
 		t.Fatal("expected service to be non-nil")
 	}
-	if service.Config == nil {
+	if service.config == nil {
 		t.Error("expected Config to be initialized")
 	}
 	if service.transport == nil {
@@ -53,9 +53,9 @@ func TestNewAuraAPIActionsService_Success(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsService_SubServicesInitialized verifies all sub-services are created
-func TestNewAuraAPIActionsService_SubServicesInitialized(t *testing.T) {
-	service, err := NewAuraAPIActionsService("test-id", "test-secret")
+// TestNewClient_SubServicesInitialized verifies all sub-services are created
+func TestNewClient_SubServicesInitialized(t *testing.T) {
+	service, err := NewClient("test-id", "test-secret")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -78,12 +78,12 @@ func TestNewAuraAPIActionsService_SubServicesInitialized(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsService_AuthManagerInitialized verifies auth manager setup
-func TestNewAuraAPIActionsService_AuthManagerInitialized(t *testing.T) {
+// TestNewClient_AuthManagerInitialized verifies auth manager setup
+func TestNewClient_AuthManagerInitialized(t *testing.T) {
 	clientID := "my-client-id"
 	clientSecret := "my-client-secret"
 
-	service, err := NewAuraAPIActionsService(clientID, clientSecret)
+	service, err := NewClient(clientID, clientSecret)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -95,16 +95,16 @@ func TestNewAuraAPIActionsService_AuthManagerInitialized(t *testing.T) {
 	if service.authMgr.Secret != clientSecret {
 		t.Errorf("expected authMgr.Secret to be '%s', got '%s'", clientSecret, service.authMgr.Secret)
 	}
-	if service.authMgr.Token != "" {
-		t.Error("expected authMgr.Token to be empty initially")
+	if service.authMgr.token != "" {
+		t.Error("expected authMgr.token to be empty initially")
 	}
 	if service.authMgr.ExpiresAt != 0 {
 		t.Error("expected authMgr.ExpiresAt to be 0 initially")
 	}
 }
 
-// TestNewAuraAPIActionsServiceWithConfig_EmptyClientID validates error for missing client ID
-func TestNewAuraAPIActionsServiceWithConfig_EmptyClientID(t *testing.T) {
+// TestNewClientWithConfig_EmptyClientID validates error for missing client ID
+func TestNewClientWithConfig_EmptyClientID(t *testing.T) {
 	cfg := Config{
 		BaseURL:      "https://api.neo4j.io/",
 		Version:      "v1",
@@ -113,7 +113,7 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyClientID(t *testing.T) {
 		ClientSecret: "test-secret",
 	}
 
-	service, err := NewAuraAPIActionsServiceWithConfig(cfg)
+	service, err := NewClientWithConfig(cfg)
 
 	if err == nil {
 		t.Error("expected error for empty client ID, got nil")
@@ -126,8 +126,8 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyClientID(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsServiceWithConfig_EmptyClientSecret validates error for missing client secret
-func TestNewAuraAPIActionsServiceWithConfig_EmptyClientSecret(t *testing.T) {
+// TestNewClientWithConfig_EmptyClientSecret validates error for missing client secret
+func TestNewClientWithConfig_EmptyClientSecret(t *testing.T) {
 	cfg := Config{
 		BaseURL:      "https://api.neo4j.io/",
 		Version:      "v1",
@@ -136,7 +136,7 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyClientSecret(t *testing.T) {
 		ClientSecret: "", // Empty
 	}
 
-	service, err := NewAuraAPIActionsServiceWithConfig(cfg)
+	service, err := NewClientWithConfig(cfg)
 
 	if err == nil {
 		t.Error("expected error for empty client secret, got nil")
@@ -149,8 +149,8 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyClientSecret(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsServiceWithConfig_EmptyBaseURL validates error for missing base URL
-func TestNewAuraAPIActionsServiceWithConfig_EmptyBaseURL(t *testing.T) {
+// TestNewClientWithConfig_EmptyBaseURL validates error for missing base URL
+func TestNewClientWithConfig_EmptyBaseURL(t *testing.T) {
 	cfg := Config{
 		BaseURL:      "", // Empty
 		Version:      "v1",
@@ -159,7 +159,7 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyBaseURL(t *testing.T) {
 		ClientSecret: "test-secret",
 	}
 
-	service, err := NewAuraAPIActionsServiceWithConfig(cfg)
+	service, err := NewClientWithConfig(cfg)
 
 	if err == nil {
 		t.Error("expected error for empty base URL, got nil")
@@ -172,8 +172,8 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyBaseURL(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsServiceWithConfig_EmptyVersion validates error for missing version
-func TestNewAuraAPIActionsServiceWithConfig_EmptyVersion(t *testing.T) {
+// TestNewClientWithConfig_EmptyVersion validates error for missing version
+func TestNewClientWithConfig_EmptyVersion(t *testing.T) {
 	cfg := Config{
 		BaseURL:      "https://api.neo4j.io/",
 		Version:      "", // Empty
@@ -182,7 +182,7 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyVersion(t *testing.T) {
 		ClientSecret: "test-secret",
 	}
 
-	service, err := NewAuraAPIActionsServiceWithConfig(cfg)
+	service, err := NewClientWithConfig(cfg)
 
 	if err == nil {
 		t.Error("expected error for empty version, got nil")
@@ -195,8 +195,8 @@ func TestNewAuraAPIActionsServiceWithConfig_EmptyVersion(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsServiceWithConfig_ZeroTimeout validates error for zero timeout
-func TestNewAuraAPIActionsServiceWithConfig_ZeroTimeout(t *testing.T) {
+// TestNewClientWithConfig_ZeroTimeout validates error for zero timeout
+func TestNewClientWithConfig_ZeroTimeout(t *testing.T) {
 	cfg := Config{
 		BaseURL:      "https://api.neo4j.io/",
 		Version:      "v1",
@@ -205,7 +205,7 @@ func TestNewAuraAPIActionsServiceWithConfig_ZeroTimeout(t *testing.T) {
 		ClientSecret: "test-secret",
 	}
 
-	service, err := NewAuraAPIActionsServiceWithConfig(cfg)
+	service, err := NewClientWithConfig(cfg)
 
 	if err == nil {
 		t.Error("expected error for zero timeout, got nil")
@@ -218,8 +218,8 @@ func TestNewAuraAPIActionsServiceWithConfig_ZeroTimeout(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsServiceWithConfig_NegativeTimeout validates error for negative timeout
-func TestNewAuraAPIActionsServiceWithConfig_NegativeTimeout(t *testing.T) {
+// TestNewClientWithConfig_NegativeTimeout validates error for negative timeout
+func TestNewClientWithConfig_NegativeTimeout(t *testing.T) {
 	cfg := Config{
 		BaseURL:      "https://api.neo4j.io/",
 		Version:      "v1",
@@ -228,7 +228,7 @@ func TestNewAuraAPIActionsServiceWithConfig_NegativeTimeout(t *testing.T) {
 		ClientSecret: "test-secret",
 	}
 
-	service, err := NewAuraAPIActionsServiceWithConfig(cfg)
+	service, err := NewClientWithConfig(cfg)
 
 	if err == nil {
 		t.Error("expected error for negative timeout, got nil")
@@ -241,8 +241,8 @@ func TestNewAuraAPIActionsServiceWithConfig_NegativeTimeout(t *testing.T) {
 	}
 }
 
-// TestNewAuraAPIActionsServiceWithConfig_CustomConfig verifies custom config values are used
-func TestNewAuraAPIActionsServiceWithConfig_CustomConfig(t *testing.T) {
+// TestNewClientWithConfig_CustomConfig verifies custom config values are used
+func TestNewClientWithConfig_CustomConfig(t *testing.T) {
 	customTimeout := 60 * time.Second
 	cfg := Config{
 		BaseURL:      "https://custom.neo4j.io/",
@@ -252,24 +252,24 @@ func TestNewAuraAPIActionsServiceWithConfig_CustomConfig(t *testing.T) {
 		ClientSecret: "custom-secret",
 	}
 
-	service, err := NewAuraAPIActionsServiceWithConfig(cfg)
+	service, err := NewClientWithConfig(cfg)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if service.Config.BaseURL != cfg.BaseURL {
-		t.Errorf("expected BaseURL '%s', got '%s'", cfg.BaseURL, service.Config.BaseURL)
+	if service.config.BaseURL != cfg.BaseURL {
+		t.Errorf("expected BaseURL '%s', got '%s'", cfg.BaseURL, service.config.BaseURL)
 	}
-	if service.Config.Version != cfg.Version {
-		t.Errorf("expected Version '%s', got '%s'", cfg.Version, service.Config.Version)
+	if service.config.version != cfg.version {
+		t.Errorf("expected Version '%s', got '%s'", cfg.version, service.config.version)
 	}
-	if service.Config.APITimeout != cfg.APITimeout {
-		t.Errorf("expected APITimeout %v, got %v", cfg.APITimeout, service.Config.APITimeout)
+	if service.config.APITimeout != cfg.APITimeout {
+		t.Errorf("expected APITimeout %v, got %v", cfg.APITimeout, service.config.APITimeout)
 	}
 }
 
-// TestNewAuraAPIActionsService_EmptyCredentials validates both constructors reject empty credentials
-func TestNewAuraAPIActionsService_EmptyCredentials(t *testing.T) {
+// TestNewClient_EmptyCredentials validates both constructors reject empty credentials
+func TestNewClient_EmptyCredentials(t *testing.T) {
 	tests := []struct {
 		name         string
 		clientID     string
@@ -298,7 +298,7 @@ func TestNewAuraAPIActionsService_EmptyCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service, err := NewAuraAPIActionsService(tt.clientID, tt.clientSecret)
+			service, err := NewClient(tt.clientID, tt.clientSecret)
 
 			if err == nil {
 				t.Error("expected error, got nil")

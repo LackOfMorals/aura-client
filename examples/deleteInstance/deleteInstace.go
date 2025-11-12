@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,19 +9,7 @@ import (
 	"github.com/LackOfMorals/aura-client"
 )
 
-const (
-	AuraAPIBaseURL      = "https://api.neo4j.io/"
-	AuraAPIAuthEndpoint = "oauth/token"
-	AuraAPIV1           = "v1"
-)
-
 func main() {
-	// Enable debug-level logging to stderr
-	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
-	handler := slog.NewTextHandler(os.Stderr, opts)
-	slog.SetDefault(slog.New(handler))
-
-	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
@@ -32,25 +18,39 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient, err := aura.NewClient(ClientID, ClientSecret)
+	fmt.Printf("input the ID of the instance to delete:")
+	var instanceID string
+	n, err := fmt.Scanln(&instanceID)
+	if err != nil {
+		slog.Error("error entering instance id ", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+
+	if n > 2 {
+		slog.Error("only a single value can be entered for the Instance ID. You entered ", slog.Int("count: ", n))
+		os.Exit(1)
+	}
+
+	if len(instanceID) != 8 {
+		slog.Error("Instance ID is made up of 8 characters. You entered  ", slog.Int("count: ", len(instanceID)))
+		os.Exit(1)
+
+	}
+
+	myAuraClient, err := aura.NewClient(aura.WithCredentials(ClientID, ClientSecret))
 	if err != nil {
 		slog.Error("error creating aura client: ", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	response, err := myAuraClient.Cmek.List(ctx, "")
+	response, err := myAuraClient.Instances.Delete(instanceID)
+
 	if err != nil {
-		slog.Error("error reading cmek ", slog.String("error", err.Error()))
+		slog.Error("error deleting instance: ", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	result, err := json.MarshalIndent(response, "", "  ")
-	if err != nil {
-		slog.Error("error formating response: ", slog.String("error", err.Error()))
-		os.Exit(1)
-	}
-
-	fmt.Printf("Instance details: %s", result)
+	fmt.Printf("Details of instance being deleted: %+v \n", response.Data)
 
 }
 

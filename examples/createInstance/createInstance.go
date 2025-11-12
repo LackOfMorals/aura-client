@@ -1,7 +1,17 @@
+/*
+ This shows how to create an instance in Aura.
+ After asking for the name to use for the instance, it looks up the tenants that are accessible
+ and then uses the id of the first entry in that list.
+ The new instance will be created in GCP in europe-west1 with 8Gb of memory.
+
+ The output shows the details of the new instance that is being created in JSON format.
+
+
+*/
+
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,19 +21,7 @@ import (
 	"github.com/LackOfMorals/aura-client"
 )
 
-const (
-	AuraAPIBaseURL      = "https://api.neo4j.io/"
-	AuraAPIAuthEndpoint = "oauth/token"
-	AuraAPIV1           = "v1"
-)
-
 func main() {
-	// Enable debug-level logging to stderr
-	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
-	handler := slog.NewTextHandler(os.Stderr, opts)
-	slog.SetDefault(slog.New(handler))
-
-	ctx := context.Background()
 
 	// Read ClientID, ClientSecret from env vars of the same name
 	ClientID, ClientSecret, err := readClientIDAndSecretFromEnv()
@@ -45,13 +43,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	myAuraClient, err := aura.NewAuraAPIActionsService(ClientID, ClientSecret)
+	myAuraClient, err := aura.NewClient(aura.WithCredentials(ClientID, ClientSecret))
 	if err != nil {
 		slog.Error("error creating aura client", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 
-	auraTenants, err := myAuraClient.Tenants.List(ctx)
+	auraTenants, err := myAuraClient.Tenants.List()
 	if err != nil {
 		slog.Error("error getting tenant details", slog.String("error", err.Error()))
 		os.Exit(1)
@@ -61,13 +59,13 @@ func main() {
 		Name:          instanceName,
 		Version:       "5",
 		Region:        "europe-west1",
-		Memory:        "8GB",
+		Memory:        "16GB",
 		Type:          "enterprise-db",
 		TenantId:      auraTenants.Data[0].Id,
 		CloudProvider: "gcp",
 	}
 
-	response, err := myAuraClient.Instances.Create(ctx, &instanceCfg)
+	response, err := myAuraClient.Instances.Create(&instanceCfg)
 	if err != nil {
 		slog.Error("error creating instance", slog.String("error", err.Error()))
 		os.Exit(1)
