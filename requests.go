@@ -2,6 +2,7 @@ package aura
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -151,30 +152,29 @@ func parseAPIError(responsePayload []byte, statusCode int) *APIError {
 		Message:    http.StatusText(statusCode),
 	}
 
-	/*
-		if len(responsePayload) == 0 {
-			return apiErr
+	if len(responsePayload) == 0 {
+		return apiErr
+	}
+
+	// Try to parse error response body - adjust structure based on actual API response
+	var errResponse struct {
+		Message string           `json:"message"`
+		Errors  []APIErrorDetail `json:"errors"`  // common format
+		Details []APIErrorDetail `json:"details"` // alternative format
+	}
+
+	if err := json.Unmarshal(responsePayload, &errResponse); err == nil {
+		if errResponse.Message != "" {
+			apiErr.Message = errResponse.Message
 		}
 
-		// Try to parse error response body - adjust structure based on actual API response
-		var errResponse struct {
-			Message string           `json:"message"`
-			Errors  []APIErrorDetail `json:"errors"`  // common format
-			Details []APIErrorDetail `json:"details"` // alternative format
+		// Use whichever field is populated
+		if len(errResponse.Errors) > 0 {
+			apiErr.Details = errResponse.Errors
+		} else if len(errResponse.Details) > 0 {
+			apiErr.Details = errResponse.Details
 		}
+	}
 
-		if err := json.Unmarshal(responsePayload, &errResponse); err == nil {
-			if errResponse.Message != "" {
-				apiErr.Message = errResponse.Message
-			}
-
-			// Use whichever field is populated
-			if len(errResponse.Errors) > 0 {
-				apiErr.Details = errResponse.Errors
-			} else if len(errResponse.Details) > 0 {
-				apiErr.Details = errResponse.Details
-			}
-		}
-	*/
 	return apiErr
 }
