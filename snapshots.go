@@ -74,7 +74,7 @@ func (s *SnapshotService) List(instanceID string, snapshotDate string) (*GetSnap
 	}
 
 	s.logger.DebugContext(s.service.config.ctx, "making authenticated request",
-		slog.String("method", http.MethodGet),
+		slog.String("method", http.MethodPost),
 		slog.String("endpoint", endpoint),
 	)
 
@@ -115,7 +115,7 @@ func (s *SnapshotService) Create(instanceID string) (*CreateSnapshotResponse, er
 		return nil, err
 	}
 
-	s.logger.DebugContext(s.service.config.ctx, "snapshot creating", slog.String("snapshost Id", resp.Data.SnapshotId))
+	s.logger.DebugContext(s.service.config.ctx, "creating snapshot", slog.String("snapshost Id", resp.Data.SnapshotId))
 	return resp, nil
 
 }

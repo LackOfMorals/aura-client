@@ -1,4 +1,19 @@
-// Package aura provides a client for interacting with Neo4j Aura API.
+// Package aura provides a Go client library for the Neo4j Aura API.
+//
+// The client supports all major Aura API operations including instance management,
+// snapshots, tenant operations, and customer-managed encryption keys (CMEK).
+//
+// Example usage:
+//
+//	client, err := aura.NewClient(
+//	    aura.WithCredentials("client-id", "client-secret"),
+//	)
+
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//
+// instances, err := client.Instances.List()
 package aura
 
 import (

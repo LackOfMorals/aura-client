@@ -1,7 +1,6 @@
 package aura
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 )
@@ -37,13 +36,14 @@ type GDSSessionService struct {
 
 // GDS Session methods
 
-func (g *GDSSessionService) List(ctx context.Context) (*GetGDSSessionResponse, error) {
-	g.logger.DebugContext(ctx, "Listing GDS Sessions")
+func (g *GDSSessionService) List() (*GetGDSSessionResponse, error) {
+
+	g.logger.DebugContext(g.service.config.ctx, "Listing GDS Sessions")
 
 	// Get or update token if needed
-	err := g.service.authMgr.getToken(ctx, *g.service.transport)
+	err := g.service.authMgr.getToken(g.service.config.ctx, *g.service.transport)
 	if err != nil { // Token process failed
-		g.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
+		g.logger.ErrorContext(g.service.config.ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -51,18 +51,18 @@ func (g *GDSSessionService) List(ctx context.Context) (*GetGDSSessionResponse, e
 	auth := g.service.authMgr.tokenType + " " + g.service.authMgr.token
 	endpoint := g.service.config.version + "/graph-analytics/sessions"
 
-	g.logger.DebugContext(ctx, "making authenticated request",
+	g.logger.DebugContext(g.service.config.ctx, "making authenticated request",
 		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetGDSSessionResponse](ctx, *g.service.transport, auth, endpoint, http.MethodGet, content, "", g.logger)
+	resp, err := makeAuthenticatedRequest[GetGDSSessionResponse](g.service.config.ctx, *g.service.transport, auth, endpoint, http.MethodGet, content, "", g.logger)
 	if err != nil {
-		g.logger.ErrorContext(ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
+		g.logger.ErrorContext(g.service.config.ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	g.logger.DebugContext(ctx, "gds sessions listed successfully", slog.Int("count", len(resp.Data)))
+	g.logger.DebugContext(g.service.config.ctx, "gds sessions listed successfully", slog.Int("count", len(resp.Data)))
 	return resp, nil
 
 }
