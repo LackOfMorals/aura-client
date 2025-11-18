@@ -315,7 +315,7 @@ func (i *InstanceService) Update(instanceID string, instanceRequest *UpdateInsta
 
 // Overwrites an existing instane identified by it's ID with the contents of another instance using an ondemand snapshot. Alternatively, if the snapshot ID of the other instance is given, that is used instead.
 func (i *InstanceService) Overwrite(instanceID string, sourceInstanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "resuming instance", slog.String("instanceID", instanceID))
+	i.logger.DebugContext(i.service.config.ctx, "overwriting instance", slog.String("instanceID", instanceID))
 
 	// Get or update token if needed
 	err := i.service.authMgr.getToken(i.service.config.ctx, *i.service.transport)

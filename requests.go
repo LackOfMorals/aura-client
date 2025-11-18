@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
@@ -88,8 +89,8 @@ func makeAuthenticatedRequest[T any](
 		return nil, err
 	}
 
-	// Add timeout for long-running operations
-	ctx, cancel := context.WithTimeout(ctx, 120)
+	// Add timeout for long-running operations of 120 seconds.  If you used 120 only, this would be 120 nanseconds.
+	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
 	userAgent := "aura-go-client"

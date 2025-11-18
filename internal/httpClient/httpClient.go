@@ -96,7 +96,7 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 	// Ensure response body is closed when exiting function
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil && err == nil {
-			c.logger.DebugContext(ctx, "failed to close response body", slog.String("error", err.Error()))
+			c.logger.DebugContext(ctx, "failed to close response body", slog.String("error", cerr.Error()))
 			err = fmt.Errorf("failed to close response body: %w", cerr)
 		}
 	}()
@@ -126,7 +126,8 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 // checkResponse validates the HTTP response status code.
 // It returns an error if the status code is outside the 2xx success range.
 func checkResponse(resp *http.Response, body []byte) error {
-	if resp.StatusCode >= http.StatusOK && resp.StatusCode <= http.StatusNoContent {
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		return nil
 	}
 

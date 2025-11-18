@@ -39,7 +39,7 @@ type SnapshotService struct {
 	logger  *slog.Logger
 }
 
-// Snaphot methods
+// Snapshot methods
 
 // a list of available snapshots for an instance on a ( optional ) given date. If a date is not specified, snapshots from the current day will be returned.
 // Date is in ISO format YYYY-MM-DD
@@ -74,7 +74,7 @@ func (s *SnapshotService) List(instanceID string, snapshotDate string) (*GetSnap
 	}
 
 	s.logger.DebugContext(s.service.config.ctx, "making authenticated request",
-		slog.String("method", http.MethodPost),
+		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
@@ -105,7 +105,7 @@ func (s *SnapshotService) Create(instanceID string) (*CreateSnapshotResponse, er
 	endpoint := s.service.config.version + "/instances/" + instanceID + "/snapshots"
 
 	s.logger.DebugContext(s.service.config.ctx, "making authenticated request",
-		slog.String("method", http.MethodGet),
+		slog.String("method", http.MethodPost),
 		slog.String("endpoint", endpoint),
 	)
 
