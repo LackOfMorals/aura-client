@@ -3,5 +3,6 @@ internal/utils/env.go
 internal/httpClient/coverage.out
 internal/auraClient/coverage.out
 .env
-example/example.go
+example/
+
 
