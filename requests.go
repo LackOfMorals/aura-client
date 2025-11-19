@@ -183,3 +183,38 @@ func parseAPIError(responsePayload []byte, statusCode int) *APIError {
 
 	return apiErr
 }
+
+// This is a helper function for service requests e.g from instance.go
+// and deals with auth to the aura api.
+// this avoids having to deal with that in the service request code
+// as it is the same for all service requests.
+func makeServiceRequest[T any](
+	ctx context.Context, // Context to use
+	httpTransport httpClient.HTTPService, // the transport httpclient service
+	authMgr *authManager, // AuthManager
+	endpoint string, // the endpoint
+	method string, // the HTTP method e.g POST
+	body string, // The body of the request
+	logger *slog.Logger, // Logger, *slog.Logger
+) (*T, error) {
+
+	logger.DebugContext(ctx, "making service request",
+		slog.String("method", method),
+		slog.String("endpoint", endpoint),
+		slog.String("body", body),
+	)
+
+	// Get or update token if needed
+	err := authMgr.getToken(ctx, httpTransport)
+	if err != nil { // Token process failed
+		logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	auth := authMgr.tokenType + " " + authMgr.token
+
+	// content is always the same for every service request
+	contentType := "application/json"
+
+	return makeAuthenticatedRequest[T](ctx, httpTransport, auth, endpoint, method, contentType, body, logger)
+}

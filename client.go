@@ -34,11 +34,11 @@ type AuraAPIClient struct {
 	logger    *slog.Logger            // Structured logger
 
 	// Grouped services
-	Tenants        *TenantService
-	Instances      *InstanceService
-	Snapshots      *SnapshotService
-	Cmek           *CmekService
-	GraphAnalytics *GDSSessionService
+	Tenants        *tenantService
+	Instances      *instanceService
+	Snapshots      *snapshotService
+	Cmek           *cmekService
+	GraphAnalytics *gDSSessionService
 }
 
 // config holds internal configuration (unexported)
@@ -192,25 +192,25 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 	}
 
 	// Initialize sub-services
-	service.Tenants = &TenantService{
+	service.Tenants = &tenantService{
 		service: service,
-		logger:  service.logger.With(slog.String("service", "TenantService")),
+		logger:  service.logger.With(slog.String("service", "tenantService")),
 	}
-	service.Instances = &InstanceService{
+	service.Instances = &instanceService{
 		service: service,
-		logger:  service.logger.With(slog.String("service", "InstanceService")),
+		logger:  service.logger.With(slog.String("service", "instanceService")),
 	}
-	service.Snapshots = &SnapshotService{
+	service.Snapshots = &snapshotService{
 		service: service,
-		logger:  service.logger.With(slog.String("service", "SnapshotService")),
+		logger:  service.logger.With(slog.String("service", "snapshotService")),
 	}
-	service.Cmek = &CmekService{
+	service.Cmek = &cmekService{
 		service: service,
-		logger:  service.logger.With(slog.String("service", "CmekService")),
+		logger:  service.logger.With(slog.String("service", "cmekService")),
 	}
-	service.GraphAnalytics = &GDSSessionService{
+	service.GraphAnalytics = &gDSSessionService{
 		service: service,
-		logger:  service.logger.With(slog.String("service", "GDSSessionService")),
+		logger:  service.logger.With(slog.String("service", "gDSSessionService")),
 	}
 
 	service.logger.Info("Aura API service initialized successfully",

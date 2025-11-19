@@ -8,27 +8,27 @@ import (
 // Tenants
 
 // A list of tenants in your organisation, each with summary data
-type ListTenantsResponse struct {
-	Data []TenantsRepostData `json:"data"`
+type listTenantsResponse struct {
+	Data []tenantsReponseData `json:"data"`
 }
 
-type TenantsRepostData struct {
+type tenantsReponseData struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
 // Details of a tenant
-type GetTenantResponse struct {
-	Data TenantRepostData `json:"data"`
+type getTenantResponse struct {
+	Data tenantReponseData `json:"data"`
 }
 
-type TenantRepostData struct {
+type tenantReponseData struct {
 	Id                     string                        `json:"id"`
 	Name                   string                        `json:"name"`
-	InstanceConfigurations []TenantInstanceConfiguration `json:"instance_configurations"`
+	InstanceConfigurations []tenantInstanceConfiguration `json:"instance_configurations"`
 }
 
-type TenantInstanceConfiguration struct {
+type tenantInstanceConfiguration struct {
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
 	RegionName    string `json:"region_name"`
@@ -39,32 +39,23 @@ type TenantInstanceConfiguration struct {
 }
 
 // TenantService handles tenant operations
-type TenantService struct {
+type tenantService struct {
 	service *AuraAPIClient
 	logger  *slog.Logger
 }
 
 // Lists all of the tenants
-func (t *TenantService) List() (*ListTenantsResponse, error) {
+func (t *tenantService) List() (*listTenantsResponse, error) {
 	t.logger.DebugContext(t.service.config.ctx, "listing tenants")
 
-	// Get or update token if needed
-	err := t.service.authMgr.getToken(t.service.config.ctx, *t.service.transport)
-	if err != nil { // Token process failed
-		t.logger.ErrorContext(t.service.config.ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
-		return nil, err
-	}
-
-	content := "application/json"
-	auth := t.service.authMgr.tokenType + " " + t.service.authMgr.token
 	endpoint := t.service.config.version + "/tenants"
 
-	t.logger.DebugContext(t.service.config.ctx, "making authenticated request",
+	t.logger.DebugContext(t.service.config.ctx, "making service request",
 		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[ListTenantsResponse](t.service.config.ctx, *t.service.transport, auth, endpoint, http.MethodGet, content, "", t.logger)
+	resp, err := makeServiceRequest[listTenantsResponse](t.service.config.ctx, *t.service.transport, t.service.authMgr, endpoint, http.MethodGet, "", t.logger)
 	if err != nil {
 		t.logger.ErrorContext(t.service.config.ctx, "failed to list tenants", slog.String("error", err.Error()))
 		return nil, err
@@ -76,26 +67,17 @@ func (t *TenantService) List() (*ListTenantsResponse, error) {
 }
 
 // Get the details of a tenant
-func (t *TenantService) Get(tenantID string) (*GetTenantResponse, error) {
+func (t *tenantService) Get(tenantID string) (*getTenantResponse, error) {
 	t.logger.DebugContext(t.service.config.ctx, "getting tenant details")
 
-	// Get or update token if needed
-	err := t.service.authMgr.getToken(t.service.config.ctx, *t.service.transport)
-	if err != nil { // Token process failed
-		t.logger.ErrorContext(t.service.config.ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
-		return nil, err
-	}
-
-	content := "application/json"
-	auth := t.service.authMgr.tokenType + " " + t.service.authMgr.token
 	endpoint := t.service.config.version + "/tenants/" + tenantID
 
-	t.logger.DebugContext(t.service.config.ctx, "making authenticated request",
+	t.logger.DebugContext(t.service.config.ctx, "making service request",
 		slog.String("method", http.MethodGet),
 		slog.String("endpoint", endpoint),
 	)
 
-	resp, err := makeAuthenticatedRequest[GetTenantResponse](t.service.config.ctx, *t.service.transport, auth, endpoint, http.MethodGet, content, "", t.logger)
+	resp, err := makeServiceRequest[getTenantResponse](t.service.config.ctx, *t.service.transport, t.service.authMgr, endpoint, http.MethodGet, "", t.logger)
 	if err != nil {
 		t.logger.ErrorContext(t.service.config.ctx, "failed to get tenant details", slog.String("error", err.Error()))
 		return nil, err
