@@ -11,10 +11,6 @@ I've looped around writing Go, trying it, improving, seeing difference direction
 Note: I did mention this is my first Go project; There are rough edges. 
 
 
-##  Usage Guide
-
-A  Go client library for the Neo4j Aura API, supporting instance management, snapshots, tenants, and customer-managed encryption keys.
-
 ## Table of Contents
 
 - [Installation](#installation)
