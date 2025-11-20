@@ -5,4 +5,5 @@ internal/auraClient/coverage.out
 .env
 example/
 
+coverage.out
 
