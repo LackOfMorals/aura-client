@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	http "net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
@@ -20,6 +21,7 @@ type authManager struct {
 	obtainedAt int64        // The time when the token was obtained in number of seconds since midnight Jan 1st 1970
 	expiresAt  int64        // token duration in seconds
 	logger     *slog.Logger // the logger...
+	mu         sync.RWMutex // mutex to ensure thread safety in the unlikely event of concurrent access.
 
 }
 
@@ -33,21 +35,26 @@ type apiAuth struct {
 
 // If needed, updates AuthManager token to make a request to the aura api otherwise it does nothing as the current token is still valid
 func (am *authManager) getToken(ctx context.Context, httpClt httpClient.HTTPService) error {
-
 	var err error
 
+	am.mu.RLock()
 	// See if we have a token.  If this was the first time this function was called, token will be empty.
-	if len(am.token) > 0 {
-		// We do have a token, is it still valid?
-		am.logger.DebugContext(ctx, "already have a token", slog.String("debug", ""))
-		if time.Now().Unix() <= am.expiresAt-60 {
-			// We are not within 60 seconds of expiring .  Our token is still valid
-			am.logger.DebugContext(ctx, "token is still valid", slog.String("debug", ""))
-			return nil
-		}
+	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
+		am.logger.DebugContext(ctx, "token is still valid", slog.String("debug", ""))
+		am.mu.RUnlock()
+		return nil
+	}
+	am.mu.RUnlock()
+
+	am.mu.Lock()
+	defer am.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
+		return nil
 	}
 
-	// To get a token, we use Basic Auth for the Aura API token endpoint
+	//  Aura Auth endpoint requires Basic Auth
 	auth := "Basic" + " " + utils.Base64Encode(am.id, am.secret)
 
 	endpoint := "oauth/token"

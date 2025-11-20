@@ -2,8 +2,7 @@
 internal/utils/env.go
 internal/httpClient/coverage.out
 internal/auraClient/coverage.out
-examples/listTenants/env.go
-examples/createInstance/env.go
-examples/deleteInstance/env.go
-examples/getInstance/env.go
 .env
+example/
+
+
