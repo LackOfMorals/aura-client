@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 const (
@@ -36,20 +38,27 @@ type HTTPResponse struct {
 type HTTPRequestsService struct {
 	BaseURL string
 	Timeout time.Duration
-	client  *http.Client
+	client  *retryablehttp.Client
 	logger  *slog.Logger
 }
 
 // NewHTTPRequestService creates a new HTTPService with the specified base URL and timeout.
-// The service reuses an HTTP client for connection pooling efficiency.
-func NewHTTPRequestService(base string, timeout time.Duration, logger *slog.Logger) HTTPService {
+// The service allows for setting of a custom retry policy
+func NewHTTPRequestService(base string, timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = maxRetry
+	retryClient.RetryWaitMin = 1 * time.Second
+	retryClient.RetryWaitMax = 30 * time.Second
+	retryClient.HTTPClient.Timeout = timeout
+
+	// Integrate slog logger with retryablehttp
+	retryClient.Logger = &slogAdapter{logger: logger}
+
 	return &HTTPRequestsService{
 		BaseURL: base,
 		Timeout: timeout,
-		client: &http.Client{
-			Timeout: timeout,
-		},
-		logger: logger,
+		client:  retryClient,
+		logger:  logger,
 	}
 }
 
@@ -65,17 +74,18 @@ func toHTTPHeader(input map[string]string) http.Header {
 // MakeRequest performs an HTTP request with the specified parameters.
 // It validates the response status code and returns an error if the response indicates failure.
 // The response body is limited to DefaultMaxResponseSize to prevent memory exhaustion.
+// MakeRequest performs an HTTP request with automatic retry logic.
 func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, method string, header map[string]string, body string) (*HTTPResponse, error) {
 	endpointURL := c.BaseURL + endpoint
 
-	// Create request body reader, only if body is not empty
+	// Create request body reader
 	var bodyReader io.Reader
 	if body != "" {
 		bodyReader = bytes.NewReader([]byte(body))
 	}
 
-	// Create the HTTP request
-	req, err := http.NewRequestWithContext(ctx, method, endpointURL, bodyReader)
+	// Create the retryable HTTP request
+	req, err := retryablehttp.NewRequestWithContext(ctx, method, endpointURL, bodyReader)
 	if err != nil {
 		c.logger.DebugContext(ctx, "failed to create request", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -86,14 +96,14 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 		req.Header = toHTTPHeader(header)
 	}
 
-	// Execute the request
+	// Execute the request (with automatic retries)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		c.logger.DebugContext(ctx, "request failed", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 
-	// Ensure response body is closed when exiting function
+	// Ensure response body is closed
 	defer func() {
 		if cerr := resp.Body.Close(); cerr != nil && err == nil {
 			c.logger.DebugContext(ctx, "failed to close response body", slog.String("error", cerr.Error()))
@@ -101,7 +111,7 @@ func (c *HTTPRequestsService) MakeRequest(ctx context.Context, endpoint string, 
 		}
 	}()
 
-	// Read the response payload with size limit to prevent memory exhaustion
+	// Read the response payload with size limit
 	payload, err := io.ReadAll(io.LimitReader(resp.Body, int64(DefaultMaxResponseSize)))
 	if err != nil {
 		c.logger.DebugContext(ctx, "failed to read response body", slog.String("error", err.Error()))
@@ -138,4 +148,25 @@ func checkResponse(resp *http.Response, body []byte) error {
 		resp.Status,
 		string(body),
 	)
+}
+
+// slogAdapter adapts slog.Logger to retryablehttp.LeveledLogger interface
+type slogAdapter struct {
+	logger *slog.Logger
+}
+
+func (s *slogAdapter) Error(msg string, keysAndValues ...any) {
+	s.logger.Error(msg, keysAndValues...)
+}
+
+func (s *slogAdapter) Info(msg string, keysAndValues ...any) {
+	s.logger.Info(msg, keysAndValues...)
+}
+
+func (s *slogAdapter) Debug(msg string, keysAndValues ...any) {
+	s.logger.Debug(msg, keysAndValues...)
+}
+
+func (s *slogAdapter) Warn(msg string, keysAndValues ...any) {
+	s.logger.Warn(msg, keysAndValues...)
 }
