@@ -1,2 +1,6 @@
 github.com/LackOfMorals/aura-api-client v0.0.2-alpha h1:TN2Djd9+rSB4yN+tPtQaI1un+DbUlO6ZyKkwqiEZgXw=
 github.com/LackOfMorals/aura-api-client v0.0.2-alpha/go.mod h1:4ITbSEKut0BHJYWwjOdXdLJnxobFdxJqO1o7blYxHg0=
+github.com/hashicorp/go-cleanhttp v0.5.2 h1:035FKYIWjmULyFRBKPs8TBQoi0x6d9G4xc9neXJWAZQ=
+github.com/hashicorp/go-cleanhttp v0.5.2/go.mod h1:kO/YDlP8L1346E6Sodw+PrpBSV4/SoxCXGY6BqNFT48=
+github.com/hashicorp/go-retryablehttp v0.7.8 h1:ylXZWnqa7Lhqpk0L1P1LzDtGcCR0rPVUrx/c8Unxc48=
+github.com/hashicorp/go-retryablehttp v0.7.8/go.mod h1:rjiScheydd+CxvumBsIrFKlx3iS0jrZ7LvzFGFmuKbw=
