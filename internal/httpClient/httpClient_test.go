@@ -18,9 +18,10 @@ import (
 func TestNewHTTPRequestService(t *testing.T) {
 	baseURL := "https://api.example.com"
 	timeout := 30 * time.Second
+	maxRetry := 3
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	service := NewHTTPRequestService(baseURL, timeout, logger)
+	service := NewHTTPRequestService(baseURL, timeout, maxRetry, logger)
 
 	if service == nil {
 		t.Fatal("expected service to be non-nil")
@@ -84,7 +85,7 @@ func TestToHTTPHeader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := toHTTPHeader(tt.input)
-			
+
 			if len(result) != len(tt.expected) {
 				t.Errorf("expected %d headers, got %d", len(tt.expected), len(result))
 			}
@@ -110,7 +111,7 @@ func TestToHTTPHeader(t *testing.T) {
 // TestMakeRequest_Success verifies successful HTTP request
 func TestMakeRequest_Success(t *testing.T) {
 	expectedResponse := `{"message":"success"}`
-	
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(expectedResponse))
@@ -118,7 +119,7 @@ func TestMakeRequest_Success(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+	service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 	ctx := context.Background()
 	response, err := service.MakeRequest(ctx, "/test", http.MethodGet, nil, "")
@@ -161,7 +162,7 @@ func TestMakeRequest_WithHeaders(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+	service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 	ctx := context.Background()
 	_, err := service.MakeRequest(ctx, "/test", http.MethodGet, expectedHeaders, "")
@@ -188,7 +189,7 @@ func TestMakeRequest_WithBody(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+	service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 	ctx := context.Background()
 	_, err := service.MakeRequest(ctx, "/test", http.MethodPost, nil, expectedBody)
@@ -213,7 +214,7 @@ func TestMakeRequest_EmptyBody(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+	service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 	ctx := context.Background()
 	_, err := service.MakeRequest(ctx, "/test", http.MethodGet, nil, "")
@@ -244,7 +245,7 @@ func TestMakeRequest_HTTPMethods(t *testing.T) {
 			defer server.Close()
 
 			logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-			service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+			service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 			ctx := context.Background()
 			_, err := service.MakeRequest(ctx, "/test", method, nil, "")
@@ -294,7 +295,7 @@ func TestMakeRequest_NonSuccessStatus(t *testing.T) {
 			defer server.Close()
 
 			logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-			service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+			service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 			ctx := context.Background()
 			response, err := service.MakeRequest(ctx, "/test", http.MethodGet, nil, "")
@@ -324,7 +325,7 @@ func TestMakeRequest_ContextCancellation(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+	service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
@@ -348,7 +349,7 @@ func TestMakeRequest_Timeout(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 50*time.Millisecond, logger)
+	service := NewHTTPRequestService(server.URL, 50*time.Millisecond, 3, logger)
 
 	ctx := context.Background()
 	_, err := service.MakeRequest(ctx, "/test", http.MethodGet, nil, "")
@@ -370,7 +371,7 @@ func TestMakeRequest_LargeResponse(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+	service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 	ctx := context.Background()
 	response, err := service.MakeRequest(ctx, "/test", http.MethodGet, nil, "")
@@ -391,7 +392,7 @@ func TestMakeRequest_LargeResponse(t *testing.T) {
 // TestMakeRequest_InvalidURL verifies handling of malformed URLs
 func TestMakeRequest_InvalidURL(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService("http://[invalid-url", 10*time.Second, logger)
+	service := NewHTTPRequestService("http://[invalid-url", 10*time.Second, 3, logger)
 
 	ctx := context.Background()
 	_, err := service.MakeRequest(ctx, "/test", http.MethodGet, nil, "")
@@ -522,7 +523,7 @@ func TestMakeRequest_ConcurrentRequests(t *testing.T) {
 	defer server.Close()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	service := NewHTTPRequestService(server.URL, 10*time.Second, logger)
+	service := NewHTTPRequestService(server.URL, 10*time.Second, 3, logger)
 
 	ctx := context.Background()
 	done := make(chan bool)
