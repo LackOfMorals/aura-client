@@ -87,6 +87,15 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
+// WithURL sets the URL and version for the Aura API (optional)
+func WithURLAndVersion(URL string, version string) Option {
+	return func(o *options) error {
+		o.config.baseURL = URL
+		o.config.version = version
+		return nil
+	}
+}
+
 // WithClientID sets the client ID (required)
 func WithClientID(clientID string) Option {
 	return func(o *options) error {
@@ -112,7 +121,7 @@ func WithCredentials(clientID, clientSecret string) Option {
 	}
 }
 
-// WithTimeout sets a custom API timeout
+// WithTimeout sets a custom API timeout (optional)
 func WithTimeout(timeout time.Duration) Option {
 	return func(o *options) error {
 		if timeout <= 0 {
@@ -123,7 +132,7 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithMaxRetry sets a custom max number of retries
+// WithMaxRetry sets a custom max number of retries (optional)
 func WithMaxRetry(maxRetry int) Option {
 	return func(o *options) error {
 		if maxRetry <= 0 {
@@ -134,7 +143,7 @@ func WithMaxRetry(maxRetry int) Option {
 	}
 }
 
-// WithLogger sets a custom logger
+// WithLogger sets a custom logger (optional)
 func WithLogger(logger *slog.Logger) Option {
 	return func(o *options) error {
 		if logger == nil {
