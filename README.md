@@ -81,8 +81,7 @@ client, err := aura.NewClient(
 
 ```go
 client, err := aura.NewClient(
-    aura.WithClientID("your-client-id"),
-    aura.WithClientSecret("your-client-secret"),
+    aura.WithCredentials("client-id", "client-secret"),
     aura.WithTimeout(60 * time.Second),
     aura.WithContext(context.Background()),
 )
