@@ -87,15 +87,6 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
-// WithURL sets the URL and version for the Aura API (optional)
-func WithURLAndVersion(URL string, version string) Option {
-	return func(o *options) error {
-		o.config.baseURL = URL
-		o.config.version = version
-		return nil
-	}
-}
-
 // WithClientID sets the client ID (required)
 func WithClientID(clientID string) Option {
 	return func(o *options) error {
