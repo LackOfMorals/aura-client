@@ -87,22 +87,6 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
-// WithClientID sets the client ID (required)
-func WithClientID(clientID string) Option {
-	return func(o *options) error {
-		o.config.clientID = clientID
-		return nil
-	}
-}
-
-// WithClientSecret sets the client secret (required)
-func WithClientSecret(clientSecret string) Option {
-	return func(o *options) error {
-		o.config.clientSecret = clientSecret
-		return nil
-	}
-}
-
 // WithCredentials sets both client ID and secret
 func WithCredentials(clientID, clientSecret string) Option {
 	return func(o *options) error {
