@@ -88,42 +88,6 @@ func TestNewClient_AuthManagerInitialized(t *testing.T) {
 	}
 }
 
-// TestNewClient_EmptyClientID validates error for missing client ID
-func TestNewClient_EmptyClientID(t *testing.T) {
-	client, err := NewClient(
-		WithClientID(""),
-		WithClientSecret("test-secret"),
-	)
-
-	if err == nil {
-		t.Error("expected error for empty client ID, got nil")
-	}
-	if err.Error() != "client ID must not be empty" {
-		t.Errorf("expected error message 'client ID must not be empty', got '%s'", err.Error())
-	}
-	if client != nil {
-		t.Error("expected client to be nil when validation fails")
-	}
-}
-
-// TestNewClient_EmptyClientSecret validates error for missing client secret
-func TestNewClient_EmptyClientSecret(t *testing.T) {
-	client, err := NewClient(
-		WithClientID("test-id"),
-		WithClientSecret(""),
-	)
-
-	if err == nil {
-		t.Error("expected error for empty client secret, got nil")
-	}
-	if err.Error() != "client secret must not be empty" {
-		t.Errorf("expected error message 'client secret must not be empty', got '%s'", err.Error())
-	}
-	if client != nil {
-		t.Error("expected client to be nil when validation fails")
-	}
-}
-
 // TestNewClient_EmptyCredentials validates both credentials must be provided
 func TestNewClient_EmptyCredentials(t *testing.T) {
 	tests := []struct {
@@ -154,10 +118,7 @@ func TestNewClient_EmptyCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := NewClient(
-				WithClientID(tt.clientID),
-				WithClientSecret(tt.clientSecret),
-			)
+			client, err := NewClient(WithCredentials(tt.clientID, tt.clientSecret))
 
 			if err == nil {
 				t.Error("expected error, got nil")
@@ -305,8 +266,7 @@ func TestNewClient_MultipleOptions(t *testing.T) {
 	ctx := context.Background()
 
 	client, err := NewClient(
-		WithClientID("test-id"),
-		WithClientSecret("test-secret"),
+		WithCredentials("test-id", "test-secret"),
 		WithTimeout(customTimeout),
 		WithContext(ctx),
 	)

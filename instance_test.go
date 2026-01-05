@@ -14,15 +14,15 @@ import (
 // setupInstanceTestClient creates a test client with a mock server
 func setupInstanceTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptest.Server) {
 	server := httptest.NewServer(handler)
-	
+
 	client, _ := NewClient(
 		WithCredentials("test-id", "test-secret"),
 		WithTimeout(10*time.Second),
 	)
-	
+
 	// Override the base URL to use test server
 	client.config.baseURL = server.URL + "/"
-	
+
 	return client, server
 }
 
@@ -603,16 +603,16 @@ func TestInstanceService_List_EmptyResult(t *testing.T) {
 
 // TestInstanceService_ContextCancellation verifies context handling
 func TestInstanceService_ContextCancellation(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
-	}
+	})
 
 	server := httptest.NewServer(handler)
 	defer server.Close()
 
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	client := &AuraAPIClient{
 		config: &config{
