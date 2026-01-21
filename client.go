@@ -33,12 +33,12 @@ type AuraAPIClient struct {
 	authMgr   *authManager            // Manages authentication
 	logger    *slog.Logger            // Structured logger
 
-	// Grouped services
-	Tenants        *tenantService
-	Instances      *instanceService
-	Snapshots      *snapshotService
-	Cmek           *cmekService
-	GraphAnalytics *gDSSessionService
+	// Grouped services - using interface types for testability
+	Tenants        TenantService
+	Instances      InstanceService
+	Snapshots      SnapshotService
+	Cmek           CmekService
+	GraphAnalytics GDSSessionService
 }
 
 // config holds internal configuration (unexported)

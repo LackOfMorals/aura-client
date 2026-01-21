@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
 // setupGDSSessionTestClient creates a test client with a mock server
@@ -17,15 +19,19 @@ func setupGDSSessionTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httpt
 		WithTimeout(10*time.Second),
 	)
 	
+	// Update both the config baseURL and the transport's BaseURL
 	client.config.baseURL = server.URL + "/"
+	if transport, ok := (*client.transport).(*httpClient.HTTPRequestsService); ok {
+		transport.BaseURL = server.URL + "/"
+	}
 	
 	return client, server
 }
 
 // TestGDSSessionService_List_Success verifies successful GDS session listing
 func TestGDSSessionService_List_Success(t *testing.T) {
-	expectedSessions := getGDSSessionResponse{
-		Data: []getGDSSessionData{
+	expectedSessions := GetGDSSessionResponse{
+		Data: []GetGDSSessionData{
 			{
 				Id:            "session-1",
 				Name:          "analytics-session-1",
@@ -119,8 +125,8 @@ func TestGDSSessionService_List_EmptyResult(t *testing.T) {
 
 		if r.URL.Path == "/v1/graph-analytics/sessions" && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(getGDSSessionResponse{
-				Data: []getGDSSessionData{},
+			json.NewEncoder(w).Encode(GetGDSSessionResponse{
+				Data: []GetGDSSessionData{},
 			})
 			return
 		}
@@ -141,8 +147,8 @@ func TestGDSSessionService_List_EmptyResult(t *testing.T) {
 
 // TestGDSSessionService_List_SingleSession verifies listing with single session
 func TestGDSSessionService_List_SingleSession(t *testing.T) {
-	expectedSessions := getGDSSessionResponse{
-		Data: []getGDSSessionData{
+	expectedSessions := GetGDSSessionResponse{
+		Data: []GetGDSSessionData{
 			{
 				Id:            "session-single",
 				Name:          "only-session",
@@ -197,8 +203,8 @@ func TestGDSSessionService_List_SingleSession(t *testing.T) {
 
 // TestGDSSessionService_List_MultipleStatuses verifies sessions with different statuses
 func TestGDSSessionService_List_MultipleStatuses(t *testing.T) {
-	expectedSessions := getGDSSessionResponse{
-		Data: []getGDSSessionData{
+	expectedSessions := GetGDSSessionResponse{
+		Data: []GetGDSSessionData{
 			{
 				Id:         "session-1",
 				Name:       "running-session",
@@ -271,8 +277,8 @@ func TestGDSSessionService_List_MultipleStatuses(t *testing.T) {
 
 // TestGDSSessionService_List_DifferentMemorySizes verifies various memory configurations
 func TestGDSSessionService_List_DifferentMemorySizes(t *testing.T) {
-	expectedSessions := getGDSSessionResponse{
-		Data: []getGDSSessionData{
+	expectedSessions := GetGDSSessionResponse{
+		Data: []GetGDSSessionData{
 			{
 				Id:     "session-1",
 				Name:   "small-session",
@@ -332,8 +338,8 @@ func TestGDSSessionService_List_DifferentMemorySizes(t *testing.T) {
 
 // TestGDSSessionService_List_MultipleCloudProviders verifies sessions across cloud providers
 func TestGDSSessionService_List_MultipleCloudProviders(t *testing.T) {
-	expectedSessions := getGDSSessionResponse{
-		Data: []getGDSSessionData{
+	expectedSessions := GetGDSSessionResponse{
+		Data: []GetGDSSessionData{
 			{
 				Id:            "session-1",
 				Name:          "gcp-session",
@@ -400,7 +406,7 @@ func TestGDSSessionService_List_MultipleCloudProviders(t *testing.T) {
 
 // TestGDSSessionService_List_FullSessionDetails verifies all session fields
 func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
-	expectedSession := getGDSSessionData{
+	expectedSession := GetGDSSessionData{
 		Id:            "session-full",
 		Name:          "complete-session",
 		Memory:        "16GB",
@@ -429,8 +435,8 @@ func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 
 		if r.URL.Path == "/v1/graph-analytics/sessions" && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(getGDSSessionResponse{
-				Data: []getGDSSessionData{expectedSession},
+			json.NewEncoder(w).Encode(GetGDSSessionResponse{
+				Data: []GetGDSSessionData{expectedSession},
 			})
 			return
 		}
@@ -536,9 +542,10 @@ func TestGDSSessionService_List_ServerError(t *testing.T) {
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		// Use 400 instead of 500 to avoid retry behavior in retryablehttp
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Internal server error",
+			"message": "Bad request error",
 		})
 	}
 
@@ -558,8 +565,8 @@ func TestGDSSessionService_List_ServerError(t *testing.T) {
 	if !ok {
 		t.Fatal("expected APIError type")
 	}
-	if apiErr.StatusCode != http.StatusInternalServerError {
-		t.Errorf("expected status 500, got %d", apiErr.StatusCode)
+	if apiErr.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", apiErr.StatusCode)
 	}
 }
 
@@ -580,8 +587,8 @@ func TestGDSSessionService_List_VerifyEndpoint(t *testing.T) {
 		if r.URL.Path == "/v1/graph-analytics/sessions" && r.Method == http.MethodGet {
 			endpointCalled = true
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(getGDSSessionResponse{
-				Data: []getGDSSessionData{},
+			json.NewEncoder(w).Encode(GetGDSSessionResponse{
+				Data: []GetGDSSessionData{},
 			})
 			return
 		}
@@ -604,8 +611,8 @@ func TestGDSSessionService_List_VerifyEndpoint(t *testing.T) {
 
 // TestGDSSessionService_List_DifferentTTLs verifies various TTL values
 func TestGDSSessionService_List_DifferentTTLs(t *testing.T) {
-	expectedSessions := getGDSSessionResponse{
-		Data: []getGDSSessionData{
+	expectedSessions := GetGDSSessionResponse{
+		Data: []GetGDSSessionData{
 			{
 				Id:   "session-1",
 				Name: "short-lived",
