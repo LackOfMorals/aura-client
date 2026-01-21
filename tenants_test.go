@@ -11,21 +11,21 @@ import (
 // setupTenantTestClient creates a test client with a mock server
 func setupTenantTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptest.Server) {
 	server := httptest.NewServer(handler)
-	
+
 	client, _ := NewClient(
 		WithCredentials("test-id", "test-secret"),
 		WithTimeout(10*time.Second),
 	)
-	
+
 	client.config.baseURL = server.URL + "/"
-	
+
 	return client, server
 }
 
 // TestTenantService_List_Success verifies successful tenant listing
 func TestTenantService_List_Success(t *testing.T) {
 	expectedTenants := listTenantsResponse{
-		Data: []tenantsReponseData{
+		Data: []tenantsResponseData{
 			{
 				Id:   "tenant-1",
 				Name: "Development Team",
@@ -100,7 +100,7 @@ func TestTenantService_List_EmptyResult(t *testing.T) {
 		if r.URL.Path == "/v1/tenants" && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
 			json.NewEncoder(w).Encode(listTenantsResponse{
-				Data: []tenantsReponseData{},
+				Data: []tenantsResponseData{},
 			})
 			return
 		}
@@ -240,7 +240,7 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 	}
 
 	config := result.Data.InstanceConfigurations[0]
-	
+
 	if config.CloudProvider != "gcp" {
 		t.Errorf("expected cloud provider 'gcp', got '%s'", config.CloudProvider)
 	}
@@ -502,7 +502,7 @@ func TestTenantService_List_ServerError(t *testing.T) {
 // TestTenantService_SingleTenant verifies list with single tenant
 func TestTenantService_SingleTenant(t *testing.T) {
 	expectedTenants := listTenantsResponse{
-		Data: []tenantsReponseData{
+		Data: []tenantsResponseData{
 			{
 				Id:   "tenant-single",
 				Name: "Only Tenant",

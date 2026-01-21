@@ -43,7 +43,7 @@ func CheckDate(t string) error {
 
 	_, err := time.Parse(time.DateOnly, t)
 	if err != nil {
-		return fmt.Errorf("date must in the format of YYYY-MM-DD")
+		return fmt.Errorf("the date must in the format of YYYY-MM-DD")
 	}
 
 	return nil
@@ -52,15 +52,29 @@ func CheckDate(t string) error {
 
 // Regex expression for a valid tenant Id
 // Doing it here ensures it is compiled once to improve performance
-var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+var uuidTenantIdRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // ValidateTenantID checks if the tenant ID is valid and returns an error if not
 func ValidateTenantID(tenantID string) error {
 	if tenantID == "" {
 		return fmt.Errorf("tenant ID must not be empty")
 	}
-	if !uuidRegex.MatchString(tenantID) {
+	if !uuidTenantIdRegex.MatchString(tenantID) {
 		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
+	}
+	return nil
+}
+
+// Regex for instance Id
+var uuidInstanceIdRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}$`)
+
+// ValidateInstanceID checks if the instance ID is valid and returns an error if not
+func ValidateInstanceID(InstanceID string) error {
+	if InstanceID == "" {
+		return fmt.Errorf("instance ID must not be empty")
+	}
+	if !uuidInstanceIdRegex.MatchString(InstanceID) {
+		return fmt.Errorf("instance ID must be a valid UUID format (xxxxxxxx)")
 	}
 	return nil
 }

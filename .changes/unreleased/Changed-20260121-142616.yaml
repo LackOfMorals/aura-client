@@ -1,0 +1,3 @@
+kind: Changed
+body: instances service checks instance id is valid where needed.  Added instance id validation func in utils. fixed typo in tenants.go and in tenants_test.go
+time: 2026-01-21T14:26:16.938815Z

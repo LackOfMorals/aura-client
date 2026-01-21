@@ -111,6 +111,11 @@ func (i *instanceService) List() (*listInstancesResponse, error) {
 func (i *instanceService) Get(instanceID string) (*getInstanceResponse, error) {
 	i.logger.DebugContext(i.service.config.ctx, "getting instance details", slog.String("instanceID", instanceID))
 
+	//Check instance id
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		return nil, err
+	}
+
 	endpoint := i.service.config.version + "/instances/" + instanceID
 
 	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodGet, "", i.logger)
@@ -149,6 +154,11 @@ func (i *instanceService) Create(instanceRequest *CreateInstanceConfigData) (*cr
 func (i *instanceService) Delete(instanceID string) (*getInstanceResponse, error) {
 	i.logger.DebugContext(i.service.config.ctx, "deleting instance", slog.String("instanceID", instanceID))
 
+	//Check instance id
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		return nil, err
+	}
+
 	endpoint := i.service.config.version + "/instances/" + instanceID
 
 	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodDelete, "", i.logger)
@@ -164,6 +174,11 @@ func (i *instanceService) Delete(instanceID string) (*getInstanceResponse, error
 // Pause an instance identified by it's ID
 func (i *instanceService) Pause(instanceID string) (*getInstanceResponse, error) {
 	i.logger.DebugContext(i.service.config.ctx, "pausing instance", slog.String("instanceID", instanceID))
+
+	//Check instance id
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		return nil, err
+	}
 
 	endpoint := i.service.config.version + "/instances/" + instanceID + "/pause"
 
@@ -181,6 +196,11 @@ func (i *instanceService) Pause(instanceID string) (*getInstanceResponse, error)
 func (i *instanceService) Resume(instanceID string) (*getInstanceResponse, error) {
 	i.logger.DebugContext(i.service.config.ctx, "resuming instance", slog.String("instanceID", instanceID))
 
+	//Check instance id
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		return nil, err
+	}
+
 	endpoint := i.service.config.version + "/instances/" + instanceID + "/resume"
 
 	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodPost, "", i.logger)
@@ -196,6 +216,11 @@ func (i *instanceService) Resume(instanceID string) (*getInstanceResponse, error
 // Updates an instance identified by it's ID
 func (i *instanceService) Update(instanceID string, instanceRequest *UpdateInstanceData) (*getInstanceResponse, error) {
 	i.logger.DebugContext(i.service.config.ctx, "updating instance", slog.String("instanceID", instanceID))
+
+	//Check instance id
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		return nil, err
+	}
 
 	endpoint := i.service.config.version + "/instances/" + instanceID
 
@@ -218,6 +243,16 @@ func (i *instanceService) Update(instanceID string, instanceRequest *UpdateInsta
 // Overwrites an existing instane identified by it's ID with the contents of another instance using an ondemand snapshot. Alternatively, if the snapshot ID of the other instance is given, that is used instead.
 func (i *instanceService) Overwrite(instanceID string, sourceInstanceID string, sourceSnapshotID string) (*overwriteInstanceResponse, error) {
 	i.logger.DebugContext(i.service.config.ctx, "overwriting instance", slog.String("instanceID", instanceID))
+
+	//Check instance id
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		return nil, err
+	}
+
+	//Check source instance id
+	if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
+		return nil, err
+	}
 
 	// create the request body
 	// A key will be omitted when empty
