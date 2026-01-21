@@ -1,3 +1,0 @@
-kind: Changed
-body: The various services that represent each area of the Aura API, instances, snapshots, tenants, etc.. have been abstracted with interfaces. This makes mocking , for tests, easier
-time: 2026-01-21T14:35:53.844166Z
