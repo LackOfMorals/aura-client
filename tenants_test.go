@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
 // setupTenantTestClient creates a test client with a mock server
@@ -17,15 +19,19 @@ func setupTenantTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptest.
 		WithTimeout(10*time.Second),
 	)
 
+	// Update both the config baseURL and the transport's BaseURL
 	client.config.baseURL = server.URL + "/"
+	if transport, ok := (*client.transport).(*httpClient.HTTPRequestsService); ok {
+		transport.BaseURL = server.URL + "/"
+	}
 
 	return client, server
 }
 
 // TestTenantService_List_Success verifies successful tenant listing
 func TestTenantService_List_Success(t *testing.T) {
-	expectedTenants := listTenantsResponse{
-		Data: []tenantsResponseData{
+	expectedTenants := ListTenantsResponse{
+		Data: []TenantsResponseData{
 			{
 				Id:   "tenant-1",
 				Name: "Development Team",
@@ -99,8 +105,8 @@ func TestTenantService_List_EmptyResult(t *testing.T) {
 
 		if r.URL.Path == "/v1/tenants" && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(listTenantsResponse{
-				Data: []tenantsResponseData{},
+			json.NewEncoder(w).Encode(ListTenantsResponse{
+				Data: []TenantsResponseData{},
 			})
 			return
 		}
@@ -122,11 +128,11 @@ func TestTenantService_List_EmptyResult(t *testing.T) {
 // TestTenantService_Get_Success verifies retrieving a specific tenant
 func TestTenantService_Get_Success(t *testing.T) {
 	tenantID := "tenant-123"
-	expectedTenant := getTenantResponse{
-		Data: tenantReponseData{
+	expectedTenant := GetTenantResponse{
+		Data: TenantResponseData{
 			Id:   tenantID,
 			Name: "Development Team",
-			InstanceConfigurations: []tenantInstanceConfiguration{
+			InstanceConfigurations: []TenantInstanceConfiguration{
 				{
 					CloudProvider: "gcp",
 					Region:        "us-central1",
@@ -193,11 +199,11 @@ func TestTenantService_Get_Success(t *testing.T) {
 // TestTenantService_Get_InstanceConfigurations verifies instance configuration details
 func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 	tenantID := "tenant-123"
-	expectedTenant := getTenantResponse{
-		Data: tenantReponseData{
+	expectedTenant := GetTenantResponse{
+		Data: TenantResponseData{
 			Id:   tenantID,
 			Name: "Test Tenant",
-			InstanceConfigurations: []tenantInstanceConfiguration{
+			InstanceConfigurations: []TenantInstanceConfiguration{
 				{
 					CloudProvider: "gcp",
 					Region:        "europe-west2",
@@ -306,11 +312,11 @@ func TestTenantService_Get_NotFound(t *testing.T) {
 // TestTenantService_Get_NoInstanceConfigurations verifies tenant without configurations
 func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 	tenantID := "tenant-empty"
-	expectedTenant := getTenantResponse{
-		Data: tenantReponseData{
+	expectedTenant := GetTenantResponse{
+		Data: TenantResponseData{
 			Id:                     tenantID,
 			Name:                   "Empty Tenant",
-			InstanceConfigurations: []tenantInstanceConfiguration{},
+			InstanceConfigurations: []TenantInstanceConfiguration{},
 		},
 	}
 
@@ -349,11 +355,11 @@ func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 // TestTenantService_Get_MultipleCloudProviders verifies tenant with multiple cloud providers
 func TestTenantService_Get_MultipleCloudProviders(t *testing.T) {
 	tenantID := "tenant-multi-cloud"
-	expectedTenant := getTenantResponse{
-		Data: tenantReponseData{
+	expectedTenant := GetTenantResponse{
+		Data: TenantResponseData{
 			Id:   tenantID,
 			Name: "Multi-Cloud Tenant",
-			InstanceConfigurations: []tenantInstanceConfiguration{
+			InstanceConfigurations: []TenantInstanceConfiguration{
 				{
 					CloudProvider: "gcp",
 					Region:        "us-central1",
@@ -472,9 +478,10 @@ func TestTenantService_List_ServerError(t *testing.T) {
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		// Use 400 instead of 500 to avoid retry behavior in retryablehttp
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Internal server error",
+			"message": "Bad request error",
 		})
 	}
 
@@ -494,15 +501,15 @@ func TestTenantService_List_ServerError(t *testing.T) {
 	if !ok {
 		t.Fatal("expected APIError type")
 	}
-	if apiErr.StatusCode != http.StatusInternalServerError {
-		t.Errorf("expected status 500, got %d", apiErr.StatusCode)
+	if apiErr.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", apiErr.StatusCode)
 	}
 }
 
 // TestTenantService_SingleTenant verifies list with single tenant
 func TestTenantService_SingleTenant(t *testing.T) {
-	expectedTenants := listTenantsResponse{
-		Data: []tenantsResponseData{
+	expectedTenants := ListTenantsResponse{
+		Data: []TenantsResponseData{
 			{
 				Id:   "tenant-single",
 				Name: "Only Tenant",

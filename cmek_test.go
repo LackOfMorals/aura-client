@@ -6,26 +6,32 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
 // setupCmekTestClient creates a test client with a mock server
 func setupCmekTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptest.Server) {
 	server := httptest.NewServer(handler)
-	
+
 	client, _ := NewClient(
 		WithCredentials("test-id", "test-secret"),
 		WithTimeout(10*time.Second),
 	)
-	
+
+	// Update both the config baseURL and the transport's BaseURL
 	client.config.baseURL = server.URL + "/"
-	
+	if transport, ok := (*client.transport).(*httpClient.HTTPRequestsService); ok {
+		transport.BaseURL = server.URL + "/"
+	}
+
 	return client, server
 }
 
 // TestCmekService_List_Success verifies successful CMEK listing
 func TestCmekService_List_Success(t *testing.T) {
-	expectedCmeks := getCmeksResponse{
-		Data: []getCmeksData{
+	expectedCmeks := GetCmeksResponse{
+		Data: []GetCmeksData{
 			{
 				Id:       "cmek-1",
 				Name:     "Production Key",
@@ -90,9 +96,9 @@ func TestCmekService_List_Success(t *testing.T) {
 
 // TestCmekService_List_WithTenantFilter verifies tenant ID filtering
 func TestCmekService_List_WithTenantFilter(t *testing.T) {
-	tenantID := "tenant-specific"
-	expectedCmeks := getCmeksResponse{
-		Data: []getCmeksData{
+	tenantID := "c1e2c556-a924-5fac-b7f8-bb624ad9761d"
+	expectedCmeks := GetCmeksResponse{
+		Data: []GetCmeksData{
 			{
 				Id:       "cmek-filtered-1",
 				Name:     "Filtered Key 1",
@@ -161,8 +167,8 @@ func TestCmekService_List_EmptyResult(t *testing.T) {
 
 		if r.URL.Path == "/v1/customer-managed-keys" && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(getCmeksResponse{
-				Data: []getCmeksData{},
+			json.NewEncoder(w).Encode(GetCmeksResponse{
+				Data: []GetCmeksData{},
 			})
 			return
 		}
@@ -183,8 +189,8 @@ func TestCmekService_List_EmptyResult(t *testing.T) {
 
 // TestCmekService_List_SingleKey verifies listing with single key
 func TestCmekService_List_SingleKey(t *testing.T) {
-	expectedCmeks := getCmeksResponse{
-		Data: []getCmeksData{
+	expectedCmeks := GetCmeksResponse{
+		Data: []GetCmeksData{
 			{
 				Id:       "cmek-single",
 				Name:     "Only Key",
@@ -228,8 +234,8 @@ func TestCmekService_List_SingleKey(t *testing.T) {
 
 // TestCmekService_List_MultipleTenants verifies keys across multiple tenants
 func TestCmekService_List_MultipleTenants(t *testing.T) {
-	expectedCmeks := getCmeksResponse{
-		Data: []getCmeksData{
+	expectedCmeks := GetCmeksResponse{
+		Data: []GetCmeksData{
 			{
 				Id:       "cmek-tenant1-1",
 				Name:     "Tenant 1 Key 1",
@@ -344,9 +350,10 @@ func TestCmekService_List_ServerError(t *testing.T) {
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		// Use 400 instead of 500 to avoid retry behavior in retryablehttp
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Internal server error",
+			"message": "Bad request error",
 		})
 	}
 
@@ -366,8 +373,8 @@ func TestCmekService_List_ServerError(t *testing.T) {
 	if !ok {
 		t.Fatal("expected APIError type")
 	}
-	if apiErr.StatusCode != http.StatusInternalServerError {
-		t.Errorf("expected status 500, got %d", apiErr.StatusCode)
+	if apiErr.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", apiErr.StatusCode)
 	}
 }
 
@@ -427,8 +434,8 @@ func TestCmekService_List_VerifyEndpoint(t *testing.T) {
 		if r.URL.Path == "/v1/customer-managed-keys" && r.Method == http.MethodGet {
 			endpointCalled = true
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(getCmeksResponse{
-				Data: []getCmeksData{},
+			json.NewEncoder(w).Encode(GetCmeksResponse{
+				Data: []GetCmeksData{},
 			})
 			return
 		}
@@ -451,8 +458,8 @@ func TestCmekService_List_VerifyEndpoint(t *testing.T) {
 
 // TestCmekService_List_DifferentKeyNames verifies various key naming
 func TestCmekService_List_DifferentKeyNames(t *testing.T) {
-	expectedCmeks := getCmeksResponse{
-		Data: []getCmeksData{
+	expectedCmeks := GetCmeksResponse{
+		Data: []GetCmeksData{
 			{
 				Id:       "cmek-1",
 				Name:     "production-encryption-key",

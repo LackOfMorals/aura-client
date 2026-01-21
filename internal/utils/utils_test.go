@@ -232,15 +232,15 @@ func TestCheckDate_ValidDates(t *testing.T) {
 // TestCheckDate_InvalidDates verifies invalid date formats
 func TestCheckDate_InvalidDates(t *testing.T) {
 	invalidDates := []string{
-		"2024/01/15",     // Wrong separator
-		"15-01-2024",     // Wrong order
-		"2024-1-15",      // Missing leading zero
-		"2024-01-32",     // Invalid day
-		"2024-13-01",     // Invalid month
-		"24-01-15",       // Wrong year format
-		"2024-01",        // Incomplete
-		"not-a-date",     // Not a date
-		"",               // Empty
+		"2024/01/15",          // Wrong separator
+		"15-01-2024",          // Wrong order
+		"2024-1-15",           // Missing leading zero
+		"2024-01-32",          // Invalid day
+		"2024-13-01",          // Invalid month
+		"24-01-15",            // Wrong year format
+		"2024-01",             // Incomplete
+		"not-a-date",          // Not a date
+		"",                    // Empty
 		"2024-01-15T00:00:00", // With time
 	}
 
@@ -261,7 +261,7 @@ func TestCheckDate_ErrorMessage(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 
-	expectedMsg := "date must in the format of YYYY-MM-DD"
+	expectedMsg := "the date must in the format of YYYY-MM-DD"
 	if err.Error() != expectedMsg {
 		t.Errorf("expected error message '%s', got '%s'", expectedMsg, err.Error())
 	}

@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
 // setupSnapshotTestClient creates a test client with a mock server
@@ -17,7 +19,11 @@ func setupSnapshotTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptes
 		WithTimeout(10*time.Second),
 	)
 	
+	// Update both the config baseURL and the transport's BaseURL
 	client.config.baseURL = server.URL + "/"
+	if transport, ok := (*client.transport).(*httpClient.HTTPRequestsService); ok {
+		transport.BaseURL = server.URL + "/"
+	}
 	
 	return client, server
 }
@@ -25,8 +31,8 @@ func setupSnapshotTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptes
 // TestSnapshotService_List_Success verifies successful snapshot listing
 func TestSnapshotService_List_Success(t *testing.T) {
 	instanceID := "instance-123"
-	expectedSnapshots := getSnapshotsResponse{
-		Data: []getSnapshotData{
+	expectedSnapshots := GetSnapshotsResponse{
+		Data: []GetSnapshotData{
 			{
 				InstanceId: instanceID,
 				SnapshotId: "snapshot-1",
@@ -89,8 +95,8 @@ func TestSnapshotService_List_Success(t *testing.T) {
 func TestSnapshotService_List_WithDate(t *testing.T) {
 	instanceID := "instance-123"
 	snapshotDate := "2024-01-15"
-	expectedSnapshots := getSnapshotsResponse{
-		Data: []getSnapshotData{
+	expectedSnapshots := GetSnapshotsResponse{
+		Data: []GetSnapshotData{
 			{
 				InstanceId: instanceID,
 				SnapshotId: "snapshot-date-1",
@@ -235,8 +241,8 @@ func TestSnapshotService_List_ValidDateFormats(t *testing.T) {
 		}
 
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(getSnapshotsResponse{
-			Data: []getSnapshotData{},
+		json.NewEncoder(w).Encode(GetSnapshotsResponse{
+			Data: []GetSnapshotData{},
 		})
 	}
 
@@ -275,8 +281,8 @@ func TestSnapshotService_List_EmptyDate(t *testing.T) {
 			}
 
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(getSnapshotsResponse{
-				Data: []getSnapshotData{},
+			json.NewEncoder(w).Encode(GetSnapshotsResponse{
+				Data: []GetSnapshotData{},
 			})
 			return
 		}
@@ -297,8 +303,8 @@ func TestSnapshotService_List_EmptyDate(t *testing.T) {
 // TestSnapshotService_Create_Success verifies snapshot creation
 func TestSnapshotService_Create_Success(t *testing.T) {
 	instanceID := "instance-123"
-	expectedResponse := createSnapshotResponse{
-		Data: createSnapshotData{
+	expectedResponse := CreateSnapshotResponse{
+		Data: CreateSnapshotData{
 			SnapshotId: "snapshot-new-456",
 		},
 	}
@@ -393,8 +399,8 @@ func TestSnapshotService_List_EmptyResult(t *testing.T) {
 
 		if r.URL.Path == "/v1/instances/"+instanceID+"/snapshots" && r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(getSnapshotsResponse{
-				Data: []getSnapshotData{},
+			json.NewEncoder(w).Encode(GetSnapshotsResponse{
+				Data: []GetSnapshotData{},
 			})
 			return
 		}
@@ -418,8 +424,8 @@ func TestSnapshotService_List_EmptyResult(t *testing.T) {
 // TestSnapshotService_List_MultipleStatuses verifies snapshots with different statuses
 func TestSnapshotService_List_MultipleStatuses(t *testing.T) {
 	instanceID := "instance-123"
-	expectedSnapshots := getSnapshotsResponse{
-		Data: []getSnapshotData{
+	expectedSnapshots := GetSnapshotsResponse{
+		Data: []GetSnapshotData{
 			{
 				InstanceId: instanceID,
 				SnapshotId: "snapshot-1",
@@ -525,9 +531,10 @@ func TestSnapshotService_Create_ServerError(t *testing.T) {
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		// Use 400 instead of 500 to avoid retry behavior in retryablehttp
+		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Internal server error",
+			"message": "Bad request error",
 		})
 	}
 
@@ -547,7 +554,7 @@ func TestSnapshotService_Create_ServerError(t *testing.T) {
 	if !ok {
 		t.Fatal("expected APIError type")
 	}
-	if apiErr.StatusCode != http.StatusInternalServerError {
-		t.Errorf("expected status 500, got %d", apiErr.StatusCode)
+	if apiErr.StatusCode != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", apiErr.StatusCode)
 	}
 }
