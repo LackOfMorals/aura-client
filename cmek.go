@@ -1,8 +1,11 @@
 package aura
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
+
+	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Customer Managed Encryption Keys
@@ -30,6 +33,23 @@ func (c *cmekService) List(tenantId string) (*getCmeksResponse, error) {
 	c.logger.DebugContext(c.service.config.ctx, "listing custom managed keys")
 
 	endpoint := c.service.config.version + "/customer-managed-keys"
+
+	// Check / validate for tenant Id . If it is ok, add filter to endpoint
+	switch tenantIdLen := len(tenantId); tenantIdLen {
+
+	// empty string, do not need to do anything
+	case 0:
+		break
+	case 36:
+		// Check if tenant ID has correct format
+		err := utils.ValidateTenantID(tenantId)
+		if err != nil {
+			return nil, err
+		}
+		endpoint = endpoint + "?tenantid=" + tenantId
+	default:
+		return nil, fmt.Errorf("Tenant Id must be in the format of hex 8-4-4-12 pattern ")
+	}
 
 	resp, err := makeServiceRequest[getCmeksResponse](c.service.config.ctx, *c.service.transport, c.service.authMgr, endpoint, http.MethodGet, "", c.logger)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -37,6 +38,7 @@ func MarshallIndent(payload any) ([]byte, error) {
 
 }
 
+// Checks a string to see if it contains a valid date. Returns error if not valid
 func CheckDate(t string) error {
 
 	_, err := time.Parse(time.DateOnly, t)
@@ -46,4 +48,19 @@ func CheckDate(t string) error {
 
 	return nil
 
+}
+
+// Regex expression for a valid tenant Id
+// Doing it here ensures it is compiled once to improve performance
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// ValidateTenantID checks if the tenant ID is valid and returns an error if not
+func ValidateTenantID(tenantID string) error {
+	if tenantID == "" {
+		return fmt.Errorf("tenant ID must not be empty")
+	}
+	if !uuidRegex.MatchString(tenantID) {
+		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
+	}
+	return nil
 }
