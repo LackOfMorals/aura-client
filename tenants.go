@@ -9,10 +9,10 @@ import (
 
 // A list of tenants in your organisation, each with summary data
 type listTenantsResponse struct {
-	Data []tenantsReponseData `json:"data"`
+	Data []tenantsResponseData `json:"data"`
 }
 
-type tenantsReponseData struct {
+type tenantsResponseData struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 }
