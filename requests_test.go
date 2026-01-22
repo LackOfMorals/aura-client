@@ -2,20 +2,21 @@ package aura
 
 import (
 	"encoding/json"
-	"net/http"
 	"testing"
+
+	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
 // TestAPIError_Error verifies error message formatting
 func TestAPIError_Error(t *testing.T) {
 	tests := []struct {
 		name        string
-		apiErr      *APIError
+		apiErr      *api.APIError
 		expectedMsg string
 	}{
 		{
 			name: "error without details",
-			apiErr: &APIError{
+			apiErr: &api.APIError{
 				StatusCode: 404,
 				Message:    "Not Found",
 				Details:    nil,
@@ -24,10 +25,10 @@ func TestAPIError_Error(t *testing.T) {
 		},
 		{
 			name: "error with single detail",
-			apiErr: &APIError{
+			apiErr: &api.APIError{
 				StatusCode: 400,
 				Message:    "Bad Request",
-				Details: []APIErrorDetail{
+				Details: []api.APIErrorDetail{
 					{Message: "Invalid parameter"},
 				},
 			},
@@ -35,10 +36,10 @@ func TestAPIError_Error(t *testing.T) {
 		},
 		{
 			name: "error with multiple details",
-			apiErr: &APIError{
+			apiErr: &api.APIError{
 				StatusCode: 422,
 				Message:    "Validation Error",
-				Details: []APIErrorDetail{
+				Details: []api.APIErrorDetail{
 					{Message: "Field 'name' is required"},
 					{Message: "Field 'region' is invalid"},
 					{Message: "Field 'memory' must be positive"},
@@ -59,10 +60,10 @@ func TestAPIError_Error(t *testing.T) {
 
 // TestAPIError_AllErrors verifies getting all error messages
 func TestAPIError_AllErrors(t *testing.T) {
-	apiErr := &APIError{
+	apiErr := &api.APIError{
 		StatusCode: 400,
 		Message:    "Multiple errors occurred",
-		Details: []APIErrorDetail{
+		Details: []api.APIErrorDetail{
 			{Message: "Error 1"},
 			{Message: "Error 2"},
 			{Message: "Error 3"},
@@ -87,12 +88,12 @@ func TestAPIError_AllErrors(t *testing.T) {
 func TestAPIError_HasMultipleErrors(t *testing.T) {
 	tests := []struct {
 		name     string
-		apiErr   *APIError
+		apiErr   *api.APIError
 		expected bool
 	}{
 		{
 			name: "no details",
-			apiErr: &APIError{
+			apiErr: &api.APIError{
 				StatusCode: 404,
 				Message:    "Not Found",
 				Details:    nil,
@@ -101,10 +102,10 @@ func TestAPIError_HasMultipleErrors(t *testing.T) {
 		},
 		{
 			name: "single detail",
-			apiErr: &APIError{
+			apiErr: &api.APIError{
 				StatusCode: 400,
 				Message:    "Error",
-				Details: []APIErrorDetail{
+				Details: []api.APIErrorDetail{
 					{Message: "Single error"},
 				},
 			},
@@ -112,10 +113,10 @@ func TestAPIError_HasMultipleErrors(t *testing.T) {
 		},
 		{
 			name: "multiple details",
-			apiErr: &APIError{
+			apiErr: &api.APIError{
 				StatusCode: 422,
 				Message:    "Error",
-				Details: []APIErrorDetail{
+				Details: []api.APIErrorDetail{
 					{Message: "Error 1"},
 					{Message: "Error 2"},
 				},
@@ -147,7 +148,7 @@ func TestAPIError_IsNotFound(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiErr := &APIError{StatusCode: tt.statusCode}
+		apiErr := &api.APIError{StatusCode: tt.statusCode}
 		if apiErr.IsNotFound() != tt.expected {
 			t.Errorf("statusCode %d: expected IsNotFound() = %v, got %v",
 				tt.statusCode, tt.expected, apiErr.IsNotFound())
@@ -169,7 +170,7 @@ func TestAPIError_IsUnauthorized(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiErr := &APIError{StatusCode: tt.statusCode}
+		apiErr := &api.APIError{StatusCode: tt.statusCode}
 		if apiErr.IsUnauthorized() != tt.expected {
 			t.Errorf("statusCode %d: expected IsUnauthorized() = %v, got %v",
 				tt.statusCode, tt.expected, apiErr.IsUnauthorized())
@@ -191,7 +192,7 @@ func TestAPIError_IsBadRequest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiErr := &APIError{StatusCode: tt.statusCode}
+		apiErr := &api.APIError{StatusCode: tt.statusCode}
 		if apiErr.IsBadRequest() != tt.expected {
 			t.Errorf("statusCode %d: expected IsBadRequest() = %v, got %v",
 				tt.statusCode, tt.expected, apiErr.IsBadRequest())
@@ -199,98 +200,14 @@ func TestAPIError_IsBadRequest(t *testing.T) {
 	}
 }
 
-// TestParseAPIError_EmptyResponse verifies handling of empty response
-func TestParseAPIError_EmptyResponse(t *testing.T) {
-	apiErr := parseAPIError([]byte{}, 500)
-
-	if apiErr.StatusCode != 500 {
-		t.Errorf("expected statusCode 500, got %d", apiErr.StatusCode)
-	}
-	if apiErr.Message != http.StatusText(500) {
-		t.Errorf("expected message '%s', got '%s'", http.StatusText(500), apiErr.Message)
-	}
-	if len(apiErr.Details) != 0 {
-		t.Errorf("expected no details, got %d", len(apiErr.Details))
-	}
-}
-
-// TestParseAPIError_ValidJSON_ErrorsField verifies parsing with 'errors' field
-func TestParseAPIError_ValidJSON_ErrorsField(t *testing.T) {
-	responseBody := `{
-		"message": "Validation failed",
-		"errors": [
-			{"message": "Field required", "field": "name"},
-			{"message": "Invalid format", "field": "email"}
-		]
-	}`
-
-	apiErr := parseAPIError([]byte(responseBody), 400)
-
-	if apiErr.StatusCode != 400 {
-		t.Errorf("expected statusCode 400, got %d", apiErr.StatusCode)
-	}
-	if apiErr.Message != "Validation failed" {
-		t.Errorf("expected message 'Validation failed', got '%s'", apiErr.Message)
-	}
-	if len(apiErr.Details) != 2 {
-		t.Errorf("expected 2 error details, got %d", len(apiErr.Details))
-	}
-	if apiErr.Details[0].Message != "Field required" {
-		t.Errorf("expected first detail message 'Field required', got '%s'", apiErr.Details[0].Message)
-	}
-	if apiErr.Details[0].Field != "name" {
-		t.Errorf("expected first detail field 'name', got '%s'", apiErr.Details[0].Field)
-	}
-}
-
-// TestParseAPIError_ValidJSON_DetailsField verifies parsing with 'details' field
-func TestParseAPIError_ValidJSON_DetailsField(t *testing.T) {
-	responseBody := `{
-		"message": "Operation failed",
-		"details": [
-			{"message": "Insufficient resources", "reason": "quota_exceeded"}
-		]
-	}`
-
-	apiErr := parseAPIError([]byte(responseBody), 503)
-
-	if apiErr.StatusCode != 503 {
-		t.Errorf("expected statusCode 503, got %d", apiErr.StatusCode)
-	}
-	if apiErr.Message != "Operation failed" {
-		t.Errorf("expected message 'Operation failed', got '%s'", apiErr.Message)
-	}
-	if len(apiErr.Details) != 1 {
-		t.Errorf("expected 1 error detail, got %d", len(apiErr.Details))
-	}
-	if apiErr.Details[0].Reason != "quota_exceeded" {
-		t.Errorf("expected reason 'quota_exceeded', got '%s'", apiErr.Details[0].Reason)
-	}
-}
-
-// TestParseAPIError_InvalidJSON verifies handling of malformed JSON
-func TestParseAPIError_InvalidJSON(t *testing.T) {
-	responseBody := `{"invalid json`
-
-	apiErr := parseAPIError([]byte(responseBody), 500)
-
-	// Should still create APIError with status code and default message
-	if apiErr.StatusCode != 500 {
-		t.Errorf("expected statusCode 500, got %d", apiErr.StatusCode)
-	}
-	if apiErr.Message != http.StatusText(500) {
-		t.Errorf("expected default message, got '%s'", apiErr.Message)
-	}
-}
-
 // TestAPIError_TypeAssertion verifies error can be type asserted
 func TestAPIError_TypeAssertion(t *testing.T) {
-	var err error = &APIError{
+	var err error = &api.APIError{
 		StatusCode: 404,
 		Message:    "Not Found",
 	}
 
-	apiErr, ok := err.(*APIError)
+	apiErr, ok := err.(*api.APIError)
 	if !ok {
 		t.Fatal("failed to type assert error to *APIError")
 	}
@@ -302,10 +219,10 @@ func TestAPIError_TypeAssertion(t *testing.T) {
 
 // TestAPIError_JSONMarshaling verifies APIError can be marshaled to JSON
 func TestAPIError_JSONMarshaling(t *testing.T) {
-	apiErr := &APIError{
+	apiErr := &api.APIError{
 		StatusCode: 400,
 		Message:    "Test error",
-		Details: []APIErrorDetail{
+		Details: []api.APIErrorDetail{
 			{
 				Message: "Detail message",
 				Reason:  "test_reason",
@@ -319,7 +236,7 @@ func TestAPIError_JSONMarshaling(t *testing.T) {
 		t.Fatalf("failed to marshal APIError: %v", err)
 	}
 
-	var unmarshaled APIError
+	var unmarshaled api.APIError
 	if err := json.Unmarshal(data, &unmarshaled); err != nil {
 		t.Fatalf("failed to unmarshal APIError: %v", err)
 	}
@@ -329,5 +246,18 @@ func TestAPIError_JSONMarshaling(t *testing.T) {
 	}
 	if unmarshaled.Message != apiErr.Message {
 		t.Errorf("expected message '%s', got '%s'", apiErr.Message, unmarshaled.Message)
+	}
+}
+
+// TestAPIErrorAlias verifies the type alias works correctly
+func TestAPIErrorAlias(t *testing.T) {
+	// Test that the type alias works
+	var err APIError = api.APIError{
+		StatusCode: 404,
+		Message:    "Test",
+	}
+
+	if err.StatusCode != 404 {
+		t.Errorf("expected status 404, got %d", err.StatusCode)
 	}
 }

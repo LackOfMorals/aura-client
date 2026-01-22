@@ -1,17 +1,21 @@
 package aura
 
 import (
+	"context"
+	"encoding/json"
 	"log/slog"
-	"net/http"
+
+	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
 // GDS Sessions
 
-type getGDSSessionResponse struct {
-	Data []getGDSSessionData `json:"data"`
+// GetGDSSessionResponse contains a list of GDS sessions
+type GetGDSSessionResponse struct {
+	Data []GetGDSSessionData `json:"data"`
 }
 
-type getGDSSessionData struct {
+type GetGDSSessionData struct {
 	Id            string `json:"id"`
 	Name          string `json:"name"`
 	Memory        string `json:"memory"`
@@ -28,27 +32,29 @@ type getGDSSessionData struct {
 	Region        string `json:"region"`
 }
 
-// GDSSessionService handles GDS Session operations
+// gDSSessionService handles GDS Session operations
 type gDSSessionService struct {
-	service *AuraAPIClient
-	logger  *slog.Logger
+	api    api.APIRequestService
+	ctx    context.Context
+	logger *slog.Logger
 }
 
-// GDS Session methods
+// List returns all GDS sessions accessible to the authenticated user
+func (g *gDSSessionService) List() (*GetGDSSessionResponse, error) {
+	g.logger.DebugContext(g.ctx, "listing GDS sessions")
 
-func (g *gDSSessionService) List() (*getGDSSessionResponse, error) {
-
-	g.logger.DebugContext(g.service.config.ctx, "Listing GDS Sessions")
-
-	endpoint := g.service.config.version + "/graph-analytics/sessions"
-
-	resp, err := makeServiceRequest[getGDSSessionResponse](g.service.config.ctx, *g.service.transport, g.service.authMgr, endpoint, http.MethodGet, "", g.logger)
+	resp, err := g.api.Get(g.ctx, "graph-analytics/sessions")
 	if err != nil {
-		g.logger.ErrorContext(g.service.config.ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
+		g.logger.ErrorContext(g.ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	g.logger.DebugContext(g.service.config.ctx, "gds sessions listed successfully", slog.Int("count", len(resp.Data)))
-	return resp, nil
+	var result GetGDSSessionResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		g.logger.ErrorContext(g.ctx, "failed to unmarshal GDS sessions response", slog.String("error", err.Error()))
+		return nil, err
+	}
 
+	g.logger.DebugContext(g.ctx, "GDS sessions listed successfully", slog.Int("count", len(result.Data)))
+	return &result, nil
 }

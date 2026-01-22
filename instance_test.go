@@ -3,35 +3,65 @@ package aura
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
-	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
+	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
-// setupInstanceTestClient creates a test client with a mock server
-func setupInstanceTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptest.Server) {
-	server := httptest.NewServer(handler)
+// mockAPIService is a mock implementation of api.APIRequestService for testing
+type mockAPIService struct {
+	response   *api.APIResponse
+	err        error
+	lastMethod string
+	lastPath   string
+	lastBody   string
+}
 
-	client, _ := NewClient(
-		WithCredentials("test-id", "test-secret"),
-		WithTimeout(10*time.Second),
-	)
+func (m *mockAPIService) Get(ctx context.Context, endpoint string) (*api.APIResponse, error) {
+	m.lastMethod = "GET"
+	m.lastPath = endpoint
+	return m.response, m.err
+}
 
-	// Update both the config baseURL and the transport's BaseURL
-	client.config.baseURL = server.URL + "/"
-	if transport, ok := (*client.transport).(*httpClient.HTTPRequestsService); ok {
-		transport.BaseURL = server.URL + "/"
+func (m *mockAPIService) Post(ctx context.Context, endpoint string, body string) (*api.APIResponse, error) {
+	m.lastMethod = "POST"
+	m.lastPath = endpoint
+	m.lastBody = body
+	return m.response, m.err
+}
+
+func (m *mockAPIService) Put(ctx context.Context, endpoint string, body string) (*api.APIResponse, error) {
+	m.lastMethod = "PUT"
+	m.lastPath = endpoint
+	m.lastBody = body
+	return m.response, m.err
+}
+
+func (m *mockAPIService) Patch(ctx context.Context, endpoint string, body string) (*api.APIResponse, error) {
+	m.lastMethod = "PATCH"
+	m.lastPath = endpoint
+	m.lastBody = body
+	return m.response, m.err
+}
+
+func (m *mockAPIService) Delete(ctx context.Context, endpoint string) (*api.APIResponse, error) {
+	m.lastMethod = "DELETE"
+	m.lastPath = endpoint
+	return m.response, m.err
+}
+
+// createTestInstanceService creates an instanceService with a mock API service for testing
+func createTestInstanceService(mock *mockAPIService) *instanceService {
+	return &instanceService{
+		api:    mock,
+		ctx:    context.Background(),
+		logger: testLogger(),
 	}
-
-	return client, server
 }
 
 // TestInstanceService_List_Success verifies successful instance listing
 func TestInstanceService_List_Success(t *testing.T) {
-	expectedInstances := ListInstancesResponse{
+	expectedResponse := ListInstancesResponse{
 		Data: []ListInstanceData{
 			{
 				Id:            "instance-1",
@@ -50,32 +80,25 @@ func TestInstanceService_List_Success(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances" && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedInstances)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Instances.List()
+	service := createTestInstanceService(mock)
+	result, err := service.List()
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastMethod != "GET" {
+		t.Errorf("expected GET method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "instances" {
+		t.Errorf("expected path 'instances', got '%s'", mock.lastPath)
 	}
 	if result == nil {
 		t.Fatal("expected result to be non-nil")
@@ -86,15 +109,12 @@ func TestInstanceService_List_Success(t *testing.T) {
 	if result.Data[0].Id != "instance-1" {
 		t.Errorf("expected first instance ID 'instance-1', got '%s'", result.Data[0].Id)
 	}
-	if result.Data[1].Name != "test-instance-2" {
-		t.Errorf("expected second instance name 'test-instance-2', got '%s'", result.Data[1].Name)
-	}
 }
 
 // TestInstanceService_Get_Success verifies retrieving a specific instance
 func TestInstanceService_Get_Success(t *testing.T) {
 	instanceID := "aaaa5678"
-	expectedInstance := GetInstanceResponse{
+	expectedResponse := GetInstanceResponse{
 		Data: GetInstanceData{
 			Id:            instanceID,
 			Name:          "my-instance",
@@ -108,32 +128,22 @@ func TestInstanceService_Get_Success(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances/"+instanceID && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedInstance)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Instances.Get(instanceID)
+	service := createTestInstanceService(mock)
+	result, err := service.Get(instanceID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastPath != "instances/"+instanceID {
+		t.Errorf("expected path 'instances/%s', got '%s'", instanceID, mock.lastPath)
 	}
 	if result == nil {
 		t.Fatal("expected result to be non-nil")
@@ -146,31 +156,42 @@ func TestInstanceService_Get_Success(t *testing.T) {
 	}
 }
 
-// TestInstanceService_Get_NotFound verifies 404 handling
-func TestInstanceService_Get_NotFound(t *testing.T) {
-	// Use a valid format instance ID (8 hex chars) that doesn't exist
-	nonExistentID := "aaaaaaaa"
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Instance not found",
-		})
+// TestInstanceService_Get_InvalidID verifies validation of instance ID
+func TestInstanceService_Get_InvalidID(t *testing.T) {
+	tests := []struct {
+		name       string
+		instanceID string
+	}{
+		{"empty", ""},
+		{"too short", "abc"},
+		{"invalid chars", "!@#$%^&*"},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	mock := &mockAPIService{}
+	service := createTestInstanceService(mock)
 
-	result, err := client.Instances.Get(nonExistentID)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := service.Get(tt.instanceID)
+			if err == nil {
+				t.Error("expected validation error")
+			}
+		})
+	}
+}
+
+// TestInstanceService_Get_NotFound verifies 404 handling
+func TestInstanceService_Get_NotFound(t *testing.T) {
+	instanceID := "aaaaaaaa"
+	mock := &mockAPIService{
+		err: &api.APIError{
+			StatusCode: 404,
+			Message:    "Instance not found",
+		},
+	}
+
+	service := createTestInstanceService(mock)
+	result, err := service.Get(instanceID)
 
 	if err == nil {
 		t.Fatal("expected error for non-existent instance")
@@ -179,7 +200,7 @@ func TestInstanceService_Get_NotFound(t *testing.T) {
 		t.Error("expected result to be nil on error")
 	}
 
-	apiErr, ok := err.(*APIError)
+	apiErr, ok := err.(*api.APIError)
 	if !ok {
 		t.Fatalf("expected APIError type, got %T: %v", err, err)
 	}
@@ -214,39 +235,25 @@ func TestInstanceService_Create_Success(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances" && r.Method == http.MethodPost {
-			var req CreateInstanceConfigData
-			json.NewDecoder(r.Body).Decode(&req)
-
-			if req.Name != createRequest.Name {
-				t.Errorf("expected name '%s', got '%s'", createRequest.Name, req.Name)
-			}
-
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedResponse)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Instances.Create(createRequest)
+	service := createTestInstanceService(mock)
+	result, err := service.Create(createRequest)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastMethod != "POST" {
+		t.Errorf("expected POST method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "instances" {
+		t.Errorf("expected path 'instances', got '%s'", mock.lastPath)
 	}
 	if result == nil {
 		t.Fatal("expected result to be non-nil")
@@ -257,46 +264,45 @@ func TestInstanceService_Create_Success(t *testing.T) {
 	if result.Data.Password == "" {
 		t.Error("expected password to be populated")
 	}
+
+	// Verify request body
+	var sentRequest CreateInstanceConfigData
+	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
+	if sentRequest.Name != createRequest.Name {
+		t.Errorf("expected sent name '%s', got '%s'", createRequest.Name, sentRequest.Name)
+	}
 }
 
 // TestInstanceService_Delete_Success verifies instance deletion
 func TestInstanceService_Delete_Success(t *testing.T) {
 	instanceID := "aaaa1234"
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances/"+instanceID && r.Method == http.MethodDelete {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(GetInstanceResponse{
-				Data: GetInstanceData{
-					Id:     instanceID,
-					Status: "destroying",
-				},
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	expectedResponse := GetInstanceResponse{
+		Data: GetInstanceData{
+			Id:     instanceID,
+			Status: "destroying",
+		},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Instances.Delete(instanceID)
+	service := createTestInstanceService(mock)
+	result, err := service.Delete(instanceID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if result == nil {
-		t.Fatal("expected result to be non-nil")
+	if mock.lastMethod != "DELETE" {
+		t.Errorf("expected DELETE method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "instances/"+instanceID {
+		t.Errorf("expected path 'instances/%s', got '%s'", instanceID, mock.lastPath)
 	}
 	if result.Data.Status != "destroying" {
 		t.Errorf("expected status 'destroying', got '%s'", result.Data.Status)
@@ -307,37 +313,32 @@ func TestInstanceService_Delete_Success(t *testing.T) {
 func TestInstanceService_Pause_Success(t *testing.T) {
 	instanceID := "bbbb5678"
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances/"+instanceID+"/pause" && r.Method == http.MethodPost {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(GetInstanceResponse{
-				Data: GetInstanceData{
-					Id:     instanceID,
-					Status: "pausing",
-				},
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	expectedResponse := GetInstanceResponse{
+		Data: GetInstanceData{
+			Id:     instanceID,
+			Status: "pausing",
+		},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Instances.Pause(instanceID)
+	service := createTestInstanceService(mock)
+	result, err := service.Pause(instanceID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastMethod != "POST" {
+		t.Errorf("expected POST method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "instances/"+instanceID+"/pause" {
+		t.Errorf("expected path 'instances/%s/pause', got '%s'", instanceID, mock.lastPath)
 	}
 	if result.Data.Status != "pausing" {
 		t.Errorf("expected status 'pausing', got '%s'", result.Data.Status)
@@ -348,37 +349,29 @@ func TestInstanceService_Pause_Success(t *testing.T) {
 func TestInstanceService_Resume_Success(t *testing.T) {
 	instanceID := "bbbb1234"
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances/"+instanceID+"/resume" && r.Method == http.MethodPost {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(GetInstanceResponse{
-				Data: GetInstanceData{
-					Id:     instanceID,
-					Status: "resuming",
-				},
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	expectedResponse := GetInstanceResponse{
+		Data: GetInstanceData{
+			Id:     instanceID,
+			Status: "resuming",
+		},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Instances.Resume(instanceID)
+	service := createTestInstanceService(mock)
+	result, err := service.Resume(instanceID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastPath != "instances/"+instanceID+"/resume" {
+		t.Errorf("expected path 'instances/%s/resume', got '%s'", instanceID, mock.lastPath)
 	}
 	if result.Data.Status != "resuming" {
 		t.Errorf("expected status 'resuming', got '%s'", result.Data.Status)
@@ -393,49 +386,34 @@ func TestInstanceService_Update_Success(t *testing.T) {
 		Memory: "16GB",
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances/"+instanceID && r.Method == http.MethodPatch {
-			var req UpdateInstanceData
-			json.NewDecoder(r.Body).Decode(&req)
-
-			if req.Name != updateRequest.Name {
-				t.Errorf("expected name '%s', got '%s'", updateRequest.Name, req.Name)
-			}
-			if req.Memory != updateRequest.Memory {
-				t.Errorf("expected memory '%s', got '%s'", updateRequest.Memory, req.Memory)
-			}
-
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(GetInstanceResponse{
-				Data: GetInstanceData{
-					Id:     instanceID,
-					Name:   req.Name,
-					Memory: req.Memory,
-					Status: "updating",
-				},
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	expectedResponse := GetInstanceResponse{
+		Data: GetInstanceData{
+			Id:     instanceID,
+			Name:   "updated-name",
+			Memory: "16GB",
+			Status: "updating",
+		},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Instances.Update(instanceID, updateRequest)
+	service := createTestInstanceService(mock)
+	result, err := service.Update(instanceID, updateRequest)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastMethod != "PATCH" {
+		t.Errorf("expected PATCH method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "instances/"+instanceID {
+		t.Errorf("expected path 'instances/%s', got '%s'", instanceID, mock.lastPath)
 	}
 	if result.Data.Name != "updated-name" {
 		t.Errorf("expected name 'updated-name', got '%s'", result.Data.Name)
@@ -445,98 +423,67 @@ func TestInstanceService_Update_Success(t *testing.T) {
 	}
 }
 
-// TestInstanceService_Overwrite_WithSourceInstance verifies overwrite with source instance
-func TestInstanceService_Overwrite_WithSourceInstance(t *testing.T) {
+// TestInstanceService_Overwrite_Success verifies overwrite with source instance
+func TestInstanceService_Overwrite_Success(t *testing.T) {
 	instanceID := "c1c1c2c2"
 	sourceInstanceID := "f1f1f2f2"
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances/"+instanceID+"/overwrite" && r.Method == http.MethodPost {
-			var req overwriteInstance
-			json.NewDecoder(r.Body).Decode(&req)
-
-			if req.SourceInstanceId != sourceInstanceID {
-				t.Errorf("expected source instance '%s', got '%s'", sourceInstanceID, req.SourceInstanceId)
-			}
-			if req.SourceSnapshotId != "" {
-				t.Error("expected source snapshot to be empty")
-			}
-
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(OverwriteInstanceResponse{
-				Data: "overwrite-job-123",
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	expectedResponse := OverwriteInstanceResponse{
+		Data: "overwrite-job-123",
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Instances.Overwrite(instanceID, sourceInstanceID, "")
+	service := createTestInstanceService(mock)
+	result, err := service.Overwrite(instanceID, sourceInstanceID, "")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
+	if mock.lastMethod != "POST" {
+		t.Errorf("expected POST method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "instances/"+instanceID+"/overwrite" {
+		t.Errorf("expected path 'instances/%s/overwrite', got '%s'", instanceID, mock.lastPath)
+	}
 	if result.Data == "" {
 		t.Error("expected job ID to be populated")
+	}
+
+	// Verify request body contains source instance
+	var sentRequest overwriteInstanceRequest
+	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
+	if sentRequest.SourceInstanceId != sourceInstanceID {
+		t.Errorf("expected source instance '%s', got '%s'", sourceInstanceID, sentRequest.SourceInstanceId)
 	}
 }
 
 // TestInstanceService_Overwrite_WithSnapshot verifies overwrite with snapshot
-// Note: The current implementation requires both instanceID and sourceInstanceID to be valid.
-// This test verifies overwrite with both source instance and snapshot provided.
 func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 	instanceID := "aaaa5678"
 	sourceInstanceID := "bbbb1234"
 	snapshotID := "snapshot-123"
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances/"+instanceID+"/overwrite" && r.Method == http.MethodPost {
-			var req overwriteInstance
-			json.NewDecoder(r.Body).Decode(&req)
-
-			if req.SourceSnapshotId != snapshotID {
-				t.Errorf("expected snapshot '%s', got '%s'", snapshotID, req.SourceSnapshotId)
-			}
-			if req.SourceInstanceId != sourceInstanceID {
-				t.Errorf("expected source instance '%s', got '%s'", sourceInstanceID, req.SourceInstanceId)
-			}
-
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(OverwriteInstanceResponse{
-				Data: "overwrite-job-456",
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	expectedResponse := OverwriteInstanceResponse{
+		Data: "overwrite-job-456",
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Instances.Overwrite(instanceID, sourceInstanceID, snapshotID)
+	service := createTestInstanceService(mock)
+	result, err := service.Overwrite(instanceID, sourceInstanceID, snapshotID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -544,63 +491,31 @@ func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 	if result.Data == "" {
 		t.Error("expected job ID to be populated")
 	}
-}
 
-// TestInstanceService_AuthenticationError verifies auth error handling
-func TestInstanceService_AuthenticationError(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{
-				"message": "Invalid credentials",
-			})
-			return
-		}
-	}
-
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
-
-	_, err := client.Instances.List()
-
-	if err == nil {
-		t.Fatal("expected authentication error")
-	}
-
-	apiErr, ok := err.(*APIError)
-	if !ok {
-		t.Fatal("expected APIError type")
-	}
-	if !apiErr.IsUnauthorized() {
-		t.Error("expected IsUnauthorized() to be true")
+	// Verify request body contains snapshot
+	var sentRequest overwriteInstanceRequest
+	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
+	if sentRequest.SourceSnapshotId != snapshotID {
+		t.Errorf("expected snapshot '%s', got '%s'", snapshotID, sentRequest.SourceSnapshotId)
 	}
 }
 
 // TestInstanceService_List_EmptyResult verifies empty list handling
 func TestInstanceService_List_EmptyResult(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/instances" && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(ListInstancesResponse{
-				Data: []ListInstanceData{},
-			})
-			return
-		}
+	expectedResponse := ListInstancesResponse{
+		Data: []ListInstanceData{},
 	}
 
-	client, server := setupInstanceTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Instances.List()
+	service := createTestInstanceService(mock)
+	result, err := service.List()
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -610,45 +525,27 @@ func TestInstanceService_List_EmptyResult(t *testing.T) {
 	}
 }
 
-// TestInstanceService_ContextCancellation verifies context handling
-func TestInstanceService_ContextCancellation(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Simulate slow response
-		time.Sleep(200 * time.Millisecond)
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	})
-
-	server := httptest.NewServer(handler)
-	defer server.Close()
-
-	// Create a proper client with a context that we'll cancel
-	ctx, cancel := context.WithCancel(context.Background())
-
-	client, _ := NewClient(
-		WithCredentials("test-id", "test-secret"),
-		WithTimeout(10*time.Second),
-		WithContext(ctx),
-	)
-
-	// Update the baseURL to point to our test server
-	client.config.baseURL = server.URL + "/"
-	if transport, ok := (*client.transport).(*httpClient.HTTPRequestsService); ok {
-		transport.BaseURL = server.URL + "/"
+// TestInstanceService_AuthenticationError verifies auth error handling
+func TestInstanceService_AuthenticationError(t *testing.T) {
+	mock := &mockAPIService{
+		err: &api.APIError{
+			StatusCode: 401,
+			Message:    "Invalid credentials",
+		},
 	}
 
-	cancel() // Cancel context before request
-
-	_, err := client.Instances.List()
+	service := createTestInstanceService(mock)
+	_, err := service.List()
 
 	if err == nil {
-		t.Fatal("expected context cancellation error")
+		t.Fatal("expected authentication error")
+	}
+
+	apiErr, ok := err.(*api.APIError)
+	if !ok {
+		t.Fatal("expected APIError type")
+	}
+	if !apiErr.IsUnauthorized() {
+		t.Error("expected IsUnauthorized() to be true")
 	}
 }

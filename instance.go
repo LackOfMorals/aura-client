@@ -1,19 +1,22 @@
 package aura
 
 import (
+	"context"
+	"encoding/json"
 	"log/slog"
-	"net/http"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Instances
-// List of instances in a tenant
-type listInstancesResponse struct {
-	Data []listInstanceData `json:"data"`
+
+// ListInstancesResponse contains a list of instances in a tenant
+type ListInstancesResponse struct {
+	Data []ListInstanceData `json:"data"`
 }
 
-type listInstanceData struct {
+type ListInstanceData struct {
 	Id            string `json:"id"`
 	Name          string `json:"name"`
 	Created       string `json:"created_at"`
@@ -31,7 +34,7 @@ type CreateInstanceConfigData struct {
 	Memory        string `json:"memory"`
 }
 
-type createInstanceResponse struct {
+type CreateInstanceResponse struct {
 	Data CreateInstanceData `json:"data"`
 }
 
@@ -52,11 +55,11 @@ type UpdateInstanceData struct {
 	Memory string `json:"memory"`
 }
 
-type getInstanceResponse struct {
-	Data getInstanceData `json:"data"`
+type GetInstanceResponse struct {
+	Data GetInstanceData `json:"data"`
 }
 
-type getInstanceData struct {
+type GetInstanceData struct {
 	Id              string  `json:"id"`
 	Name            string  `json:"name"`
 	Status          string  `json:"status"`
@@ -74,207 +77,229 @@ type getInstanceData struct {
 	VectorOptimized bool    `json:"vector_optimized"`
 }
 
-type overwriteInstance struct {
+type overwriteInstanceRequest struct {
 	SourceInstanceId string `json:"source_instance_id,omitempty"`
 	SourceSnapshotId string `json:"source_snapshot_id,omitempty"`
 }
 
-type overwriteInstanceResponse struct {
+type OverwriteInstanceResponse struct {
 	Data string `json:"data"`
 }
 
-// InstanceService handles instance operations
+// instanceService handles instance operations
 type instanceService struct {
-	service *AuraAPIClient
-	logger  *slog.Logger
+	api    api.APIRequestService
+	ctx    context.Context
+	logger *slog.Logger
 }
 
-// Instance methods
+// List returns all instances accessible to the authenticated user
+func (i *instanceService) List() (*ListInstancesResponse, error) {
+	i.logger.DebugContext(i.ctx, "listing instances")
 
-// List all current instances
-func (i *instanceService) List() (*listInstancesResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "listing instances")
-
-	endpoint := i.service.config.version + "/instances"
-
-	resp, err := makeServiceRequest[listInstancesResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodGet, "", i.logger)
+	resp, err := i.api.Get(i.ctx, "instances")
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to list instances", slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to list instances", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.DebugContext(i.service.config.ctx, "instances listed successfully", slog.Int("count", len(resp.Data)))
-	return resp, nil
+	var result ListInstancesResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal instances response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.DebugContext(i.ctx, "instances listed successfully", slog.Int("count", len(result.Data)))
+	return &result, nil
 }
 
-// Get the details of an instance
-func (i *instanceService) Get(instanceID string) (*getInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "getting instance details", slog.String("instanceID", instanceID))
+// Get retrieves details for a specific instance by ID
+func (i *instanceService) Get(instanceID string) (*GetInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "getting instance details", slog.String("instanceID", instanceID))
 
-	//Check instance id
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
 	}
 
-	endpoint := i.service.config.version + "/instances/" + instanceID
-
-	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodGet, "", i.logger)
+	resp, err := i.api.Get(i.ctx, "instances/"+instanceID)
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to get instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to get instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.DebugContext(i.service.config.ctx, "instance retrieved successfully", slog.String("instanceID", instanceID), slog.String("name", resp.Data.Name), slog.String("status", resp.Data.Status))
-	return resp, nil
+	var result GetInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.DebugContext(i.ctx, "instance retrieved successfully", slog.String("instanceID", instanceID), slog.String("name", result.Data.Name), slog.String("status", result.Data.Status))
+	return &result, nil
 }
 
-// Creates an instance
-func (i *instanceService) Create(instanceRequest *CreateInstanceConfigData) (*createInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "creating instance", slog.String("name", instanceRequest.Name), slog.String("tenantID", instanceRequest.TenantId))
-
-	endpoint := i.service.config.version + "/instances"
+// Create provisions a new database instance
+func (i *instanceService) Create(instanceRequest *CreateInstanceConfigData) (*CreateInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "creating instance", slog.String("name", instanceRequest.Name), slog.String("tenantID", instanceRequest.TenantId))
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to marshal instance request", slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	resp, err := makeServiceRequest[createInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodPost, string(body), i.logger)
+	resp, err := i.api.Post(i.ctx, "instances", string(body))
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to create instance", slog.String("name", instanceRequest.Name), slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to create instance", slog.String("name", instanceRequest.Name), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.InfoContext(i.service.config.ctx, "instance created successfully", slog.String("instanceID", resp.Data.Id), slog.String("name", resp.Data.Name))
-	return resp, nil
+	var result CreateInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal create instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(i.ctx, "instance created successfully", slog.String("instanceID", result.Data.Id), slog.String("name", result.Data.Name))
+	return &result, nil
 }
 
-// Deletes an instance identified by it's ID
-func (i *instanceService) Delete(instanceID string) (*getInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "deleting instance", slog.String("instanceID", instanceID))
+// Delete removes an instance by ID
+func (i *instanceService) Delete(instanceID string) (*GetInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "deleting instance", slog.String("instanceID", instanceID))
 
-	//Check instance id
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
 	}
 
-	endpoint := i.service.config.version + "/instances/" + instanceID
-
-	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodDelete, "", i.logger)
+	resp, err := i.api.Delete(i.ctx, "instances/"+instanceID)
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to delete instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to delete instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.InfoContext(i.service.config.ctx, "instance deleted successfully", slog.String("instanceID", instanceID))
-	return resp, nil
+	var result GetInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal delete instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(i.ctx, "instance deleted successfully", slog.String("instanceID", instanceID))
+	return &result, nil
 }
 
-// Pause an instance identified by it's ID
-func (i *instanceService) Pause(instanceID string) (*getInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "pausing instance", slog.String("instanceID", instanceID))
+// Pause suspends an instance by ID
+func (i *instanceService) Pause(instanceID string) (*GetInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "pausing instance", slog.String("instanceID", instanceID))
 
-	//Check instance id
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
 	}
 
-	endpoint := i.service.config.version + "/instances/" + instanceID + "/pause"
-
-	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodPost, "", i.logger)
+	resp, err := i.api.Post(i.ctx, "instances/"+instanceID+"/pause", "")
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to pause instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to pause instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.InfoContext(i.service.config.ctx, "instance paused successfully", slog.String("instanceID", instanceID))
-	return resp, nil
+	var result GetInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal pause instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(i.ctx, "instance paused successfully", slog.String("instanceID", instanceID))
+	return &result, nil
 }
 
-// Resumes an instance identified by it's ID
-func (i *instanceService) Resume(instanceID string) (*getInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "resuming instance", slog.String("instanceID", instanceID))
+// Resume restarts a paused instance by ID
+func (i *instanceService) Resume(instanceID string) (*GetInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "resuming instance", slog.String("instanceID", instanceID))
 
-	//Check instance id
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
 	}
 
-	endpoint := i.service.config.version + "/instances/" + instanceID + "/resume"
-
-	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodPost, "", i.logger)
+	resp, err := i.api.Post(i.ctx, "instances/"+instanceID+"/resume", "")
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to resume instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to resume instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.InfoContext(i.service.config.ctx, "instance resumed successfully", slog.String("instanceID", instanceID))
-	return resp, nil
+	var result GetInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal resume instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(i.ctx, "instance resumed successfully", slog.String("instanceID", instanceID))
+	return &result, nil
 }
 
-// Updates an instance identified by it's ID
-func (i *instanceService) Update(instanceID string, instanceRequest *UpdateInstanceData) (*getInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "updating instance", slog.String("instanceID", instanceID))
+// Update modifies an instance's configuration
+func (i *instanceService) Update(instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "updating instance", slog.String("instanceID", instanceID))
 
-	//Check instance id
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
 	}
-
-	endpoint := i.service.config.version + "/instances/" + instanceID
 
 	body, err := utils.Marshall(instanceRequest)
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to marshal instance request", slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	resp, err := makeServiceRequest[getInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodPatch, string(body), i.logger)
+	resp, err := i.api.Patch(i.ctx, "instances/"+instanceID, string(body))
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to update instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to update instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.InfoContext(i.service.config.ctx, "instance updated successfully", slog.String("instanceID", instanceID), slog.String("name", resp.Data.Name))
-	return resp, nil
+	var result GetInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal update instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(i.ctx, "instance updated successfully", slog.String("instanceID", instanceID), slog.String("name", result.Data.Name))
+	return &result, nil
 }
 
-// Overwrites an existing instane identified by it's ID with the contents of another instance using an ondemand snapshot. Alternatively, if the snapshot ID of the other instance is given, that is used instead.
-func (i *instanceService) Overwrite(instanceID string, sourceInstanceID string, sourceSnapshotID string) (*overwriteInstanceResponse, error) {
-	i.logger.DebugContext(i.service.config.ctx, "overwriting instance", slog.String("instanceID", instanceID))
+// Overwrite replaces instance data from another instance or snapshot
+func (i *instanceService) Overwrite(instanceID string, sourceInstanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "overwriting instance", slog.String("instanceID", instanceID))
 
-	//Check instance id
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
 	}
 
-	//Check source instance id
 	if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
 		return nil, err
 	}
 
-	// create the request body
-	// A key will be omitted when empty
-	requestBody := overwriteInstance{
+	requestBody := overwriteInstanceRequest{
 		SourceInstanceId: sourceInstanceID,
 		SourceSnapshotId: sourceSnapshotID,
 	}
 
 	body, err := utils.Marshall(requestBody)
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to marshal instance request", slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	endpoint := i.service.config.version + "/instances/" + instanceID + "/overwrite"
-
-	resp, err := makeServiceRequest[overwriteInstanceResponse](i.service.config.ctx, *i.service.transport, i.service.authMgr, endpoint, http.MethodPost, string(body), i.logger)
+	resp, err := i.api.Post(i.ctx, "instances/"+instanceID+"/overwrite", string(body))
 	if err != nil {
-		i.logger.ErrorContext(i.service.config.ctx, "failed to overwrite instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(i.ctx, "failed to overwrite instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.InfoContext(i.service.config.ctx, "overwriting instance", slog.String("instanceID", instanceID))
-	return resp, nil
+	var result OverwriteInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to unmarshal overwrite instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(i.ctx, "overwriting instance", slog.String("instanceID", instanceID))
+	return &result, nil
 }

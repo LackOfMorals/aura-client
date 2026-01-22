@@ -23,11 +23,8 @@ func TestNewClient_Success(t *testing.T) {
 	if client.config == nil {
 		t.Error("expected config to be initialized")
 	}
-	if client.transport == nil {
-		t.Error("expected transport to be initialized")
-	}
-	if client.authMgr == nil {
-		t.Error("expected authMgr to be initialized")
+	if client.api == nil {
+		t.Error("expected api service to be initialized")
 	}
 	if client.logger == nil {
 		t.Error("expected logger to be initialized")
@@ -58,33 +55,6 @@ func TestNewClient_SubServicesInitialized(t *testing.T) {
 	}
 	if client.GraphAnalytics == nil {
 		t.Error("expected GraphAnalytics service to be initialized")
-	}
-}
-
-// TestNewClient_AuthManagerInitialized verifies auth manager setup
-func TestNewClient_AuthManagerInitialized(t *testing.T) {
-	clientID := "my-client-id"
-	clientSecret := "my-client-secret"
-
-	client, err := NewClient(
-		WithCredentials(clientID, clientSecret),
-	)
-
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if client.authMgr.id != clientID {
-		t.Errorf("expected authMgr.id to be '%s', got '%s'", clientID, client.authMgr.id)
-	}
-	if client.authMgr.secret != clientSecret {
-		t.Errorf("expected authMgr.secret to be '%s', got '%s'", clientSecret, client.authMgr.secret)
-	}
-	if client.authMgr.token != "" {
-		t.Error("expected authMgr.token to be empty initially")
-	}
-	if client.authMgr.expiresAt != 0 {
-		t.Error("expected authMgr.expiresAt to be 0 initially")
 	}
 }
 
@@ -329,5 +299,37 @@ func TestWithCredentials(t *testing.T) {
 	}
 	if client.config.clientSecret != clientSecret {
 		t.Errorf("expected clientSecret '%s', got '%s'", clientSecret, client.config.clientSecret)
+	}
+}
+
+// TestWithMaxRetry_Valid verifies custom max retry configuration
+func TestWithMaxRetry_Valid(t *testing.T) {
+	customMaxRetry := 5
+
+	client, err := NewClient(
+		WithCredentials("test-id", "test-secret"),
+		WithMaxRetry(customMaxRetry),
+	)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if client.config.apiRetryMax != customMaxRetry {
+		t.Errorf("expected maxRetry %d, got %d", customMaxRetry, client.config.apiRetryMax)
+	}
+}
+
+// TestWithMaxRetry_Zero validates error for zero max retry
+func TestWithMaxRetry_Zero(t *testing.T) {
+	client, err := NewClient(
+		WithCredentials("test-id", "test-secret"),
+		WithMaxRetry(0),
+	)
+
+	if err == nil {
+		t.Error("expected error for zero max retry, got nil")
+	}
+	if client != nil {
+		t.Error("expected client to be nil")
 	}
 }

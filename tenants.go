@@ -1,34 +1,37 @@
 package aura
 
 import (
+	"context"
+	"encoding/json"
 	"log/slog"
-	"net/http"
+
+	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
 // Tenants
 
-// A list of tenants in your organisation, each with summary data
-type listTenantsResponse struct {
-	Data []tenantsResponseData `json:"data"`
+// ListTenantsResponse contains a list of tenants in your organisation
+type ListTenantsResponse struct {
+	Data []TenantsResponseData `json:"data"`
 }
 
-type tenantsResponseData struct {
+type TenantsResponseData struct {
 	Id   string `json:"id"`
 	Name string `json:"name"`
 }
 
-// Details of a tenant
-type getTenantResponse struct {
-	Data tenantReponseData `json:"data"`
+// GetTenantResponse contains details of a tenant
+type GetTenantResponse struct {
+	Data TenantResponseData `json:"data"`
 }
 
-type tenantReponseData struct {
+type TenantResponseData struct {
 	Id                     string                        `json:"id"`
 	Name                   string                        `json:"name"`
-	InstanceConfigurations []tenantInstanceConfiguration `json:"instance_configurations"`
+	InstanceConfigurations []TenantInstanceConfiguration `json:"instance_configurations"`
 }
 
-type tenantInstanceConfiguration struct {
+type TenantInstanceConfiguration struct {
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
 	RegionName    string `json:"region_name"`
@@ -38,52 +41,49 @@ type tenantInstanceConfiguration struct {
 	Version       string `json:"version"`
 }
 
-// TenantService handles tenant operations
+// tenantService handles tenant operations
 type tenantService struct {
-	service *AuraAPIClient
-	logger  *slog.Logger
+	api    api.APIRequestService
+	ctx    context.Context
+	logger *slog.Logger
 }
 
-// Lists all of the tenants
-func (t *tenantService) List() (*listTenantsResponse, error) {
-	t.logger.DebugContext(t.service.config.ctx, "listing tenants")
+// List returns all tenants accessible to the authenticated user
+func (t *tenantService) List() (*ListTenantsResponse, error) {
+	t.logger.DebugContext(t.ctx, "listing tenants")
 
-	endpoint := t.service.config.version + "/tenants"
-
-	t.logger.DebugContext(t.service.config.ctx, "making service request",
-		slog.String("method", http.MethodGet),
-		slog.String("endpoint", endpoint),
-	)
-
-	resp, err := makeServiceRequest[listTenantsResponse](t.service.config.ctx, *t.service.transport, t.service.authMgr, endpoint, http.MethodGet, "", t.logger)
+	resp, err := t.api.Get(t.ctx, "tenants")
 	if err != nil {
-		t.logger.ErrorContext(t.service.config.ctx, "failed to list tenants", slog.String("error", err.Error()))
+		t.logger.ErrorContext(t.ctx, "failed to list tenants", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	t.logger.DebugContext(t.service.config.ctx, "tenants listed successfully", slog.Int("count", len(resp.Data)))
-	return resp, nil
-
-}
-
-// Get the details of a tenant
-func (t *tenantService) Get(tenantID string) (*getTenantResponse, error) {
-	t.logger.DebugContext(t.service.config.ctx, "getting tenant details")
-
-	endpoint := t.service.config.version + "/tenants/" + tenantID
-
-	t.logger.DebugContext(t.service.config.ctx, "making service request",
-		slog.String("method", http.MethodGet),
-		slog.String("endpoint", endpoint),
-	)
-
-	resp, err := makeServiceRequest[getTenantResponse](t.service.config.ctx, *t.service.transport, t.service.authMgr, endpoint, http.MethodGet, "", t.logger)
-	if err != nil {
-		t.logger.ErrorContext(t.service.config.ctx, "failed to get tenant details", slog.String("error", err.Error()))
+	var result ListTenantsResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		t.logger.ErrorContext(t.ctx, "failed to unmarshal tenants response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	t.logger.DebugContext(t.service.config.ctx, "tenant obtained successfully", slog.String("name : ", resp.Data.Name))
-	return resp, nil
+	t.logger.DebugContext(t.ctx, "tenants listed successfully", slog.Int("count", len(result.Data)))
+	return &result, nil
+}
 
+// Get retrieves details for a specific tenant by ID
+func (t *tenantService) Get(tenantID string) (*GetTenantResponse, error) {
+	t.logger.DebugContext(t.ctx, "getting tenant details", slog.String("tenantID", tenantID))
+
+	resp, err := t.api.Get(t.ctx, "tenants/"+tenantID)
+	if err != nil {
+		t.logger.ErrorContext(t.ctx, "failed to get tenant details", slog.String("tenantID", tenantID), slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	var result GetTenantResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		t.logger.ErrorContext(t.ctx, "failed to unmarshal tenant response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	t.logger.DebugContext(t.ctx, "tenant obtained successfully", slog.String("name", result.Data.Name))
+	return &result, nil
 }
