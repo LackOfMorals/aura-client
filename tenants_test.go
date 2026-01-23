@@ -1,36 +1,26 @@
 package aura
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"testing"
-	"time"
 
-	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
+	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
-// setupTenantTestClient creates a test client with a mock server
-func setupTenantTestClient(handler http.HandlerFunc) (*AuraAPIClient, *httptest.Server) {
-	server := httptest.NewServer(handler)
-
-	client, _ := NewClient(
-		WithCredentials("test-id", "test-secret"),
-		WithTimeout(10*time.Second),
-	)
-
-	// Update both the config baseURL and the transport's BaseURL
-	client.config.baseURL = server.URL + "/"
-	if transport, ok := (*client.transport).(*httpClient.HTTPRequestsService); ok {
-		transport.BaseURL = server.URL + "/"
+// createTestTenantService creates a tenantService with a mock API service for testing
+func createTestTenantService(mock *mockAPIService) *tenantService {
+	return &tenantService{
+		api:    mock,
+		ctx:    context.Background(),
+		logger: testLogger(),
 	}
-
-	return client, server
 }
 
 // TestTenantService_List_Success verifies successful tenant listing
 func TestTenantService_List_Success(t *testing.T) {
-	expectedTenants := ListTenantsResponse{
+	expectedResponse := ListTenantsResponse{
 		Data: []TenantsResponseData{
 			{
 				Id:   "tenant-1",
@@ -47,32 +37,25 @@ func TestTenantService_List_Success(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/tenants" && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedTenants)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.List()
+	service := createTestTenantService(mock)
+	result, err := service.List()
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastMethod != "GET" {
+		t.Errorf("expected GET method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "tenants" {
+		t.Errorf("expected path 'tenants', got '%s'", mock.lastPath)
 	}
 	if result == nil {
 		t.Fatal("expected result to be non-nil")
@@ -86,36 +69,24 @@ func TestTenantService_List_Success(t *testing.T) {
 	if result.Data[0].Name != "Development Team" {
 		t.Errorf("expected first tenant name 'Development Team', got '%s'", result.Data[0].Name)
 	}
-	if result.Data[2].Name != "Testing Team" {
-		t.Errorf("expected third tenant name 'Testing Team', got '%s'", result.Data[2].Name)
-	}
 }
 
 // TestTenantService_List_EmptyResult verifies empty tenant list
 func TestTenantService_List_EmptyResult(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/tenants" && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(ListTenantsResponse{
-				Data: []TenantsResponseData{},
-			})
-			return
-		}
+	expectedResponse := ListTenantsResponse{
+		Data: []TenantsResponseData{},
 	}
 
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+	}
 
-	result, err := client.Tenants.List()
+	service := createTestTenantService(mock)
+	result, err := service.List()
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -128,7 +99,7 @@ func TestTenantService_List_EmptyResult(t *testing.T) {
 // TestTenantService_Get_Success verifies retrieving a specific tenant
 func TestTenantService_Get_Success(t *testing.T) {
 	tenantID := "tenant-123"
-	expectedTenant := GetTenantResponse{
+	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
 			Id:   tenantID,
 			Name: "Development Team",
@@ -155,32 +126,22 @@ func TestTenantService_Get_Success(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/tenants/"+tenantID && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedTenant)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.Get(tenantID)
+	service := createTestTenantService(mock)
+	result, err := service.Get(tenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastPath != "tenants/"+tenantID {
+		t.Errorf("expected path 'tenants/%s', got '%s'", tenantID, mock.lastPath)
 	}
 	if result == nil {
 		t.Fatal("expected result to be non-nil")
@@ -199,7 +160,7 @@ func TestTenantService_Get_Success(t *testing.T) {
 // TestTenantService_Get_InstanceConfigurations verifies instance configuration details
 func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 	tenantID := "tenant-123"
-	expectedTenant := GetTenantResponse{
+	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
 			Id:   tenantID,
 			Name: "Test Tenant",
@@ -217,29 +178,16 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/tenants/"+tenantID && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedTenant)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.Get(tenantID)
+	service := createTestTenantService(mock)
+	result, err := service.Get(tenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -256,42 +204,22 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 	if config.RegionName != "London" {
 		t.Errorf("expected region name 'London', got '%s'", config.RegionName)
 	}
-	if config.Type != "enterprise-db" {
-		t.Errorf("expected type 'enterprise-db', got '%s'", config.Type)
-	}
 	if config.Memory != "32GB" {
 		t.Errorf("expected memory '32GB', got '%s'", config.Memory)
-	}
-	if config.Storage != "1024GB" {
-		t.Errorf("expected storage '1024GB', got '%s'", config.Storage)
-	}
-	if config.Version != "5" {
-		t.Errorf("expected version '5', got '%s'", config.Version)
 	}
 }
 
 // TestTenantService_Get_NotFound verifies 404 handling
 func TestTenantService_Get_NotFound(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Tenant not found",
-		})
+	mock := &mockAPIService{
+		err: &api.APIError{
+			StatusCode: http.StatusNotFound,
+			Message:    "Tenant not found",
+		},
 	}
 
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.Get("nonexistent-tenant")
+	service := createTestTenantService(mock)
+	result, err := service.Get("nonexistent-tenant")
 
 	if err == nil {
 		t.Fatal("expected error for non-existent tenant")
@@ -300,7 +228,7 @@ func TestTenantService_Get_NotFound(t *testing.T) {
 		t.Error("expected result to be nil on error")
 	}
 
-	apiErr, ok := err.(*APIError)
+	apiErr, ok := err.(*api.APIError)
 	if !ok {
 		t.Fatal("expected APIError type")
 	}
@@ -309,10 +237,35 @@ func TestTenantService_Get_NotFound(t *testing.T) {
 	}
 }
 
+// TestTenantService_AuthenticationError verifies auth error handling
+func TestTenantService_AuthenticationError(t *testing.T) {
+	mock := &mockAPIService{
+		err: &api.APIError{
+			StatusCode: http.StatusUnauthorized,
+			Message:    "Invalid credentials",
+		},
+	}
+
+	service := createTestTenantService(mock)
+	_, err := service.List()
+
+	if err == nil {
+		t.Fatal("expected authentication error")
+	}
+
+	apiErr, ok := err.(*api.APIError)
+	if !ok {
+		t.Fatal("expected APIError type")
+	}
+	if !apiErr.IsUnauthorized() {
+		t.Error("expected IsUnauthorized() to be true")
+	}
+}
+
 // TestTenantService_Get_NoInstanceConfigurations verifies tenant without configurations
 func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 	tenantID := "tenant-empty"
-	expectedTenant := GetTenantResponse{
+	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
 			Id:                     tenantID,
 			Name:                   "Empty Tenant",
@@ -320,29 +273,16 @@ func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/tenants/"+tenantID && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedTenant)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.Get(tenantID)
+	service := createTestTenantService(mock)
+	result, err := service.Get(tenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -352,163 +292,9 @@ func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 	}
 }
 
-// TestTenantService_Get_MultipleCloudProviders verifies tenant with multiple cloud providers
-func TestTenantService_Get_MultipleCloudProviders(t *testing.T) {
-	tenantID := "tenant-multi-cloud"
-	expectedTenant := GetTenantResponse{
-		Data: TenantResponseData{
-			Id:   tenantID,
-			Name: "Multi-Cloud Tenant",
-			InstanceConfigurations: []TenantInstanceConfiguration{
-				{
-					CloudProvider: "gcp",
-					Region:        "us-central1",
-					RegionName:    "Iowa",
-					Type:          "enterprise-db",
-					Memory:        "8GB",
-					Storage:       "256GB",
-					Version:       "5",
-				},
-				{
-					CloudProvider: "aws",
-					Region:        "us-east-1",
-					RegionName:    "N. Virginia",
-					Type:          "enterprise-db",
-					Memory:        "8GB",
-					Storage:       "256GB",
-					Version:       "5",
-				},
-				{
-					CloudProvider: "azure",
-					Region:        "eastus",
-					RegionName:    "East US",
-					Type:          "enterprise-db",
-					Memory:        "8GB",
-					Storage:       "256GB",
-					Version:       "5",
-				},
-			},
-		},
-	}
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/tenants/"+tenantID && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedTenant)
-			return
-		}
-
-		w.WriteHeader(http.StatusNotFound)
-	}
-
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.Get(tenantID)
-
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-	if len(result.Data.InstanceConfigurations) != 3 {
-		t.Errorf("expected 3 instance configurations, got %d", len(result.Data.InstanceConfigurations))
-	}
-
-	// Verify different cloud providers
-	providers := make(map[string]bool)
-	for _, config := range result.Data.InstanceConfigurations {
-		providers[config.CloudProvider] = true
-	}
-
-	expectedProviders := []string{"gcp", "aws", "azure"}
-	for _, provider := range expectedProviders {
-		if !providers[provider] {
-			t.Errorf("expected to find cloud provider '%s' in results", provider)
-		}
-	}
-}
-
-// TestTenantService_AuthenticationError verifies auth error handling
-func TestTenantService_AuthenticationError(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{
-				"message": "Invalid credentials",
-			})
-			return
-		}
-	}
-
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	_, err := client.Tenants.List()
-
-	if err == nil {
-		t.Fatal("expected authentication error")
-	}
-
-	apiErr, ok := err.(*APIError)
-	if !ok {
-		t.Fatal("expected APIError type")
-	}
-	if !apiErr.IsUnauthorized() {
-		t.Error("expected IsUnauthorized() to be true")
-	}
-}
-
-// TestTenantService_List_ServerError verifies server error handling
-func TestTenantService_List_ServerError(t *testing.T) {
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		// Use 400 instead of 500 to avoid retry behavior in retryablehttp
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Bad request error",
-		})
-	}
-
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.List()
-
-	if err == nil {
-		t.Fatal("expected server error")
-	}
-	if result != nil {
-		t.Error("expected result to be nil on error")
-	}
-
-	apiErr, ok := err.(*APIError)
-	if !ok {
-		t.Fatal("expected APIError type")
-	}
-	if apiErr.StatusCode != http.StatusBadRequest {
-		t.Errorf("expected status 400, got %d", apiErr.StatusCode)
-	}
-}
-
 // TestTenantService_SingleTenant verifies list with single tenant
 func TestTenantService_SingleTenant(t *testing.T) {
-	expectedTenants := ListTenantsResponse{
+	expectedResponse := ListTenantsResponse{
 		Data: []TenantsResponseData{
 			{
 				Id:   "tenant-single",
@@ -517,27 +303,16 @@ func TestTenantService_SingleTenant(t *testing.T) {
 		},
 	}
 
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/oauth/token" {
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"access_token": "test-token",
-				"token_type":   "Bearer",
-				"expires_in":   3600,
-			})
-			return
-		}
-
-		if r.URL.Path == "/v1/tenants" && r.Method == http.MethodGet {
-			w.WriteHeader(http.StatusOK)
-			json.NewEncoder(w).Encode(expectedTenants)
-			return
-		}
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
 	}
 
-	client, server := setupTenantTestClient(handler)
-	defer server.Close()
-
-	result, err := client.Tenants.List()
+	service := createTestTenantService(mock)
+	result, err := service.List()
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)

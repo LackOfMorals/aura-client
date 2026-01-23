@@ -1,19 +1,23 @@
 package aura
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net/http"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Snapshots
-type getSnapshotsResponse struct {
-	Data []getSnapshotData `json:"data"`
+
+// GetSnapshotsResponse contains a list of snapshots for an instance
+type GetSnapshotsResponse struct {
+	Data []GetSnapshotData `json:"data"`
 }
 
-type getSnapshotData struct {
+type GetSnapshotData struct {
 	InstanceId string `json:"instance_id"`
 	SnapshotId string `json:"snapshot_id"`
 	Profile    string `json:"profile"`
@@ -21,42 +25,35 @@ type getSnapshotData struct {
 	Timestamp  string `json:"timestamp"`
 }
 
-type getSnapshotResponse struct {
-	Data getSnapshotData `json:"data"`
+// CreateSnapshotResponse contains the result of creating a snapshot
+type CreateSnapshotResponse struct {
+	Data CreateSnapshotData `json:"data"`
 }
 
-type createSnapshotResponse struct {
-	Data createSnapshotData `json:"data"`
-}
-
-type createSnapshotData struct {
+type CreateSnapshotData struct {
 	SnapshotId string `json:"snapshot_id"`
 }
 
 // snapshotService handles snapshot operations
 type snapshotService struct {
-	service *AuraAPIClient
-	logger  *slog.Logger
+	api    api.APIRequestService
+	ctx    context.Context
+	logger *slog.Logger
 }
 
-// Snapshot methods
+// List returns snapshots for an instance, optionally filtered by date (YYYY-MM-DD)
+func (s *snapshotService) List(instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {
+	s.logger.DebugContext(s.ctx, "listing snapshots", slog.String("instanceID", instanceID))
 
-// a list of available snapshots for an instance on a ( optional ) given date. If a date is not specified, snapshots from the current day will be returned.
-// Date is in ISO format YYYY-MM-DD
-func (s *snapshotService) List(instanceID string, snapshotDate string) (*getSnapshotsResponse, error) {
-	s.logger.DebugContext(s.service.config.ctx, "listing snapshots")
-
-	endpoint := s.service.config.version + "/instances/" + instanceID + "/snapshots"
+	endpoint := "instances/" + instanceID + "/snapshots"
 
 	switch datelen := len(snapshotDate); datelen {
-
-	// empty string
 	case 0:
+		// empty string, no date filter
 		break
 	case 10:
 		// Check if date is in correct format
-		err := utils.CheckDate(snapshotDate)
-		if err != nil {
+		if err := utils.CheckDate(snapshotDate); err != nil {
 			return nil, err
 		}
 		endpoint = endpoint + "?date=" + snapshotDate
@@ -64,30 +61,40 @@ func (s *snapshotService) List(instanceID string, snapshotDate string) (*getSnap
 		return nil, fmt.Errorf("date must be in the format of YYYY-MM-DD")
 	}
 
-	resp, err := makeServiceRequest[getSnapshotsResponse](s.service.config.ctx, *s.service.transport, s.service.authMgr, endpoint, http.MethodGet, "", s.logger)
+	resp, err := s.api.Get(s.ctx, endpoint)
 	if err != nil {
-		s.logger.ErrorContext(s.service.config.ctx, "failed to list snapshots", slog.String("error", err.Error()))
+		s.logger.ErrorContext(s.ctx, "failed to list snapshots", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	s.logger.DebugContext(s.service.config.ctx, "snapshots listed  successfully", slog.Int("count", len(resp.Data)))
-	return resp, nil
+	var result GetSnapshotsResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		s.logger.ErrorContext(s.ctx, "failed to unmarshal snapshots response", slog.String("error", err.Error()))
+		return nil, err
+	}
 
+	s.logger.DebugContext(s.ctx, "snapshots listed successfully", slog.Int("count", len(result.Data)))
+	return &result, nil
 }
 
-// create a snapshot for an instance identified by its Id
-func (s *snapshotService) Create(instanceID string) (*createSnapshotResponse, error) {
-	s.logger.DebugContext(s.service.config.ctx, "creating snapshot")
+// Create triggers an on-demand snapshot for an instance
+func (s *snapshotService) Create(instanceID string) (*CreateSnapshotResponse, error) {
+	s.logger.DebugContext(s.ctx, "creating snapshot", slog.String("instanceID", instanceID))
 
-	endpoint := s.service.config.version + "/instances/" + instanceID + "/snapshots"
+	endpoint := "instances/" + instanceID + "/snapshots"
 
-	resp, err := makeServiceRequest[createSnapshotResponse](s.service.config.ctx, *s.service.transport, s.service.authMgr, endpoint, http.MethodPost, "", s.logger)
+	resp, err := s.api.Post(s.ctx, endpoint, "")
 	if err != nil {
-		s.logger.ErrorContext(s.service.config.ctx, "failed to create snapshot", slog.String("error", err.Error()))
+		s.logger.ErrorContext(s.ctx, "failed to create snapshot", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	s.logger.DebugContext(s.service.config.ctx, "creating snapshot", slog.String("snapshost Id", resp.Data.SnapshotId))
-	return resp, nil
+	var result CreateSnapshotResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		s.logger.ErrorContext(s.ctx, "failed to unmarshal snapshot response", slog.String("error", err.Error()))
+		return nil, err
+	}
 
+	s.logger.DebugContext(s.ctx, "snapshot created", slog.String("snapshotId", result.Data.SnapshotId))
+	return &result, nil
 }

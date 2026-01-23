@@ -23,15 +23,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
 // Core service configuration
 type AuraAPIClient struct {
-	config    *config                 // Internal configuration (unexported)
-	transport *httpClient.HTTPService // Deals with connectivity over http
-	authMgr   *authManager            // Manages authentication
-	logger    *slog.Logger            // Structured logger
+	config *config       // Internal configuration (unexported)
+	api    api.APIRequestService // Handles authenticated API requests
+	logger *slog.Logger  // Structured logger
 
 	// Grouped services - using interface types for testability
 	Tenants        TenantService
@@ -171,43 +171,48 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		slog.Duration("apiTimeout", o.config.apiTimeout),
 	)
 
-	trans := httpClient.NewHTTPRequestService(o.config.baseURL, o.config.apiTimeout, o.config.apiRetryMax, o.logger)
+	// Create the HTTP service (lowest layer)
+	httpSvc := httpClient.NewHTTPService(o.config.baseURL, o.config.apiTimeout, o.config.apiRetryMax, o.logger)
+
+	// Create the API request service (middle layer - handles auth)
+	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+		ClientID:     o.config.clientID,
+		ClientSecret: o.config.clientSecret,
+		APIVersion:   o.config.version,
+		Timeout:      o.config.apiTimeout,
+	}, o.logger)
 
 	service := &AuraAPIClient{
-		config:    &o.config,
-		transport: &trans,
-		authMgr: &authManager{
-			id:         o.config.clientID,
-			secret:     o.config.clientSecret,
-			token:      "",
-			tokenType:  "",
-			expiresAt:  0,
-			obtainedAt: 0,
-			logger:     o.logger,
-		},
+		config: &o.config,
+		api:    apiSvc,
 		logger: o.logger.With(slog.String("component", "AuraAPIClient")),
 	}
 
 	// Initialize sub-services
 	service.Tenants = &tenantService{
-		service: service,
-		logger:  service.logger.With(slog.String("service", "tenantService")),
+		api:    apiSvc,
+		ctx:    o.config.ctx,
+		logger: service.logger.With(slog.String("service", "tenantService")),
 	}
 	service.Instances = &instanceService{
-		service: service,
-		logger:  service.logger.With(slog.String("service", "instanceService")),
+		api:    apiSvc,
+		ctx:    o.config.ctx,
+		logger: service.logger.With(slog.String("service", "instanceService")),
 	}
 	service.Snapshots = &snapshotService{
-		service: service,
-		logger:  service.logger.With(slog.String("service", "snapshotService")),
+		api:    apiSvc,
+		ctx:    o.config.ctx,
+		logger: service.logger.With(slog.String("service", "snapshotService")),
 	}
 	service.Cmek = &cmekService{
-		service: service,
-		logger:  service.logger.With(slog.String("service", "cmekService")),
+		api:    apiSvc,
+		ctx:    o.config.ctx,
+		logger: service.logger.With(slog.String("service", "cmekService")),
 	}
 	service.GraphAnalytics = &gDSSessionService{
-		service: service,
-		logger:  service.logger.With(slog.String("service", "gDSSessionService")),
+		api:    apiSvc,
+		ctx:    o.config.ctx,
+		logger: service.logger.With(slog.String("service", "gDSSessionService")),
 	}
 
 	service.logger.Info("Aura API service initialized successfully",
