@@ -2,13 +2,10 @@
 
 ## Overview
 
-Go is a language that is used in a number of companies I have worked for and my current employer uses it extensively.  My intention is to get to the point where I can read Go to understand what it is going on and to use it for my hobby projects, taking over from Python.
+A Go package that enables the use of Neo4j Aura API in a friendly way e.g `instances.list()` to return a list of instances in Aura. 
 
-This is my first hobby project to build out a Go client for Neo4j Aura API.   There's another subsequent project that I want to do - creation of a cli shell for the Aura API - that would use it.   
+Client Id and Secret are required and these can be obtained from the [Neo4j Aura Console](https://neo4j.com/docs/aura/api/authentication/).
 
-I've looped around writing Go, trying it, improving, seeing difference directions to take and have had several chats with Claude to fill holes in my knowledge.  It's been a great learning experience.   
-
-Note: I did mention this is my first Go project; There are rough edges. 
 
 
 ## Table of Contents
