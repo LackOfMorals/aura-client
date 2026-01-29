@@ -18,6 +18,7 @@ Client Id and Secret are required and these can be obtained from the [Neo4j Aura
 - [Snapshot Operations](#snapshot-operations)
 - [CMEK Operations](#cmek-operations)
 - [GDS Session Operations](#gds-session-operations)
+- [Prometheus Metrics Operations](#prometheus-metrics-operations)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
 
@@ -416,6 +417,124 @@ for _, session := range sessions.Data {
     fmt.Printf("    Expires: %s\n", session.Expiry)
 }
 ```
+
+---
+
+## Prometheus Metrics Operations
+
+### Query Prometheus Metrics
+
+Each Aura instance exposes Prometheus metrics for monitoring. The client provides a convenient way to query these metrics.
+
+```go
+// Get instance details to retrieve the Prometheus URL
+instanceID := "your-instance-id"
+instance, err := client.Instances.Get(instanceID)
+if err != nil {
+    log.Fatalf("Error: %v", err)
+}
+
+prometheusURL := instance.Data.MetricsURL
+// e.g., "https://c9f0d13a.metrics.neo4j.io/prometheus"
+```
+
+### Execute Instant Queries
+
+```go
+// Query current CPU usage
+resp, err := client.Prometheus.Query(prometheusURL, "up")
+if err != nil {
+    log.Fatalf("Error: %v", err)
+}
+
+for _, result := range resp.Data.Result {
+    fmt.Printf("Metric: %v, Value: %v\n", result.Metric, result.Value)
+}
+```
+
+### Execute Range Queries
+
+```go
+// Query metrics over the last hour
+end := time.Now()
+start := end.Add(-1 * time.Hour)
+
+resp, err := client.Prometheus.QueryRange(
+    prometheusURL,
+    "rate(process_cpu_seconds_total[5m])",
+    start,
+    end,
+    "5m", // step interval
+)
+if err != nil {
+    log.Fatalf("Error: %v", err)
+}
+
+for _, result := range resp.Data.Result {
+    fmt.Printf("Metric: %v\n", result.Metric)
+    fmt.Printf("Data points: %d\n", len(result.Values))
+}
+```
+
+### Get Instance Health Metrics
+
+```go
+// Get comprehensive health metrics for an instance
+health, err := client.Prometheus.GetInstanceHealth(instanceID, prometheusURL)
+if err != nil {
+    log.Fatalf("Error: %v", err)
+}
+
+fmt.Printf("Instance Health Status: %s\n", health.OverallStatus)
+fmt.Printf("CPU Usage: %.2f%%\n", health.Resources.CPUUsagePercent)
+fmt.Printf("Memory Usage: %.2f%%\n", health.Resources.MemoryUsagePercent)
+fmt.Printf("Queries/sec: %.2f\n", health.Query.QueriesPerSecond)
+fmt.Printf("Active Connections: %d/%d (%.1f%%)\n",
+    health.Connections.ActiveConnections,
+    health.Connections.MaxConnections,
+    health.Connections.UsagePercent)
+
+if len(health.Issues) > 0 {
+    fmt.Println("\nIssues detected:")
+    for _, issue := range health.Issues {
+        fmt.Printf("  - %s\n", issue)
+    }
+}
+
+if len(health.Recommendations) > 0 {
+    fmt.Println("\nRecommendations:")
+    for _, rec := range health.Recommendations {
+        fmt.Printf("  - %s\n", rec)
+    }
+}
+```
+
+### Common Neo4j Metrics
+
+```go
+// Database operations
+queries := map[string]string{
+    "Transaction Rate": "rate(neo4j_transaction_started_total[5m])",
+    "Store Size":       "neo4j_store_size_total",
+    "CPU Usage":        "rate(process_cpu_seconds_total[5m]) * 100",
+    "Memory Usage":     "process_resident_memory_bytes",
+    "Page Cache Hit":   "rate(neo4j_page_cache_hits_total[5m]) / (rate(neo4j_page_cache_hits_total[5m]) + rate(neo4j_page_cache_faults_total[5m])) * 100",
+}
+
+for name, query := range queries {
+    resp, err := client.Prometheus.Query(prometheusURL, query)
+    if err != nil {
+        log.Printf("Query '%s' failed: %v", name, err)
+        continue
+    }
+    
+    if len(resp.Data.Result) > 0 {
+        fmt.Printf("%s: %v\n", name, resp.Data.Result[0].Value[1])
+    }
+}
+```
+
+For more detailed information on Prometheus operations, see the [Prometheus documentation](./docs/prometheus.md).
 
 ---
 

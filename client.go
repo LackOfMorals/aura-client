@@ -39,6 +39,7 @@ type AuraAPIClient struct {
 	Snapshots      SnapshotService
 	Cmek           CmekService
 	GraphAnalytics GDSSessionService
+	Prometheus     PrometheusService
 }
 
 // config holds internal configuration (unexported)
@@ -214,9 +215,14 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		ctx:    o.config.ctx,
 		logger: service.logger.With(slog.String("service", "gDSSessionService")),
 	}
+	service.Prometheus = &prometheusService{
+		httpClient: httpSvc,
+		ctx:        o.config.ctx,
+		logger:     service.logger.With(slog.String("service", "prometheusService")),
+	}
 
 	service.logger.Info("Aura API service initialized successfully",
-		slog.Int("subServices", 5),
+		slog.Int("subServices", 6),
 	)
 
 	return service, nil

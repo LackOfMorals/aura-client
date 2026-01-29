@@ -1,6 +1,8 @@
 // interfaces.go
 package aura
 
+import "time"
+
 // TenantService defines operations for managing tenants
 type TenantService interface {
 	// List returns all tenants accessible to the authenticated user
@@ -49,6 +51,16 @@ type GDSSessionService interface {
 	List() (*GetGDSSessionResponse, error)
 }
 
+// PrometheusService defines operations for querying Prometheus metrics
+type PrometheusService interface {
+	// Query executes an instant query against a Prometheus endpoint
+	Query(prometheusURL string, query string) (*PrometheusQueryResponse, error)
+	// QueryRange executes a range query against a Prometheus endpoint
+	QueryRange(prometheusURL string, query string, start, end time.Time, step string) (*PrometheusRangeQueryResponse, error)
+	// GetInstanceHealth retrieves comprehensive health metrics for an instance
+	GetInstanceHealth(instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error)
+}
+
 // Compile-time interface compliance checks
 var (
 	_ TenantService     = (*tenantService)(nil)
@@ -56,4 +68,5 @@ var (
 	_ SnapshotService   = (*snapshotService)(nil)
 	_ CmekService       = (*cmekService)(nil)
 	_ GDSSessionService = (*gDSSessionService)(nil)
+	_ PrometheusService = (*prometheusService)(nil)
 )
