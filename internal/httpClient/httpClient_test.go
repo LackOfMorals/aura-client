@@ -537,3 +537,62 @@ func TestMockHTTPService_CallHistory(t *testing.T) {
 		t.Errorf("expected third call to be DELETE, got %s", mock.CallHistory[2].Method)
 	}
 }
+
+// TestHTTPService_FullURL verifies that full URLs are used as-is without prepending base URL
+func TestHTTPService_FullURL(t *testing.T) {
+	// Create a test server
+	var requestedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	tests := []struct {
+		name         string
+		endpoint     string
+		expectedPath string
+	}{
+		{
+			name:         "relative endpoint",
+			endpoint:     "api/test",
+			expectedPath: "/api/test",
+		},
+		{
+			name:         "https full URL",
+			endpoint:     server.URL + "/api/v1/query",
+			expectedPath: "/api/v1/query",
+		},
+		{
+			name:         "http full URL to different endpoint",
+			endpoint:     server.URL + "/metrics",
+			expectedPath: "/metrics",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Use a different base URL to ensure full URLs bypass it
+			service := NewHTTPService("https://wrong-base-url.example.com/", 10*time.Second, 3, testLogger())
+
+			ctx := context.Background()
+			_, err := service.Get(ctx, tt.endpoint, nil)
+
+			// For relative endpoints, we expect it to fail (wrong base URL)
+			// For full URLs, we expect it to succeed (uses provided URL)
+			if strings.HasPrefix(tt.endpoint, "http://") || strings.HasPrefix(tt.endpoint, "https://") {
+				if err != nil {
+					t.Fatalf("expected no error for full URL, got %v", err)
+				}
+				if requestedPath != tt.expectedPath {
+					t.Errorf("expected path '%s', got '%s'", tt.expectedPath, requestedPath)
+				}
+			} else {
+				// Relative endpoint with wrong base URL should fail
+				if err == nil {
+					t.Error("expected error for relative endpoint with wrong base URL, got nil")
+				}
+			}
+		})
+	}
+}

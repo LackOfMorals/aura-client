@@ -91,6 +91,7 @@ type APIRequestService interface {
 type Config struct {
 	ClientID     string
 	ClientSecret string
+	BaseURL      string
 	APIVersion   string
 	Timeout      time.Duration
 }
@@ -99,6 +100,7 @@ type Config struct {
 type apiRequestService struct {
 	httpClient httpClient.HTTPService
 	authMgr    *authManager
+	baseURL    string
 	apiVersion string
 	timeout    time.Duration
 	logger     *slog.Logger
@@ -132,6 +134,7 @@ func NewAPIRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *sl
 			clientSecret: cfg.ClientSecret,
 			logger:       logger,
 		},
+		baseURL:    cfg.BaseURL,
 		apiVersion: cfg.APIVersion,
 		timeout:    cfg.Timeout,
 		logger:     logger,
@@ -163,7 +166,10 @@ func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*APIRe
 	return s.doAuthenticatedRequest(ctx, http.MethodDelete, endpoint, "")
 }
 
-// doAuthenticatedRequest handles the common pattern of making an authenticated API request
+// doAuthenticatedRequest handles the common pattern of making an authenticated API request.
+// It supports both relative endpoints (which will be prefixed with the API version)
+// and full URLs (which will be used as-is). Full URLs are detected automatically by
+// checking for http:// or https:// prefix in httpClient.
 func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*APIResponse, error) {
 	// Check if context is already cancelled
 	if err := ctx.Err(); err != nil {
@@ -176,13 +182,14 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 	defer cancel()
 
 	// Get or refresh token
-	if err := s.authMgr.ensureValidToken(ctx, s.httpClient); err != nil {
+	if err := s.authMgr.ensureValidToken(ctx, s.baseURL, s.httpClient); err != nil {
 		s.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	// Build full endpoint with API version
-	fullEndpoint := s.apiVersion + "/" + endpoint
+
+	fullEndpoint := endpoint
 
 	// Set up headers
 	headers := map[string]string{
@@ -249,7 +256,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 }
 
 // ensureValidToken gets or refreshes the authentication token
-func (am *authManager) ensureValidToken(ctx context.Context, httpSvc httpClient.HTTPService) error {
+func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, httpSvc httpClient.HTTPService) error {
 	am.mu.RLock()
 	// Check if we have a valid token
 	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
@@ -280,7 +287,7 @@ func (am *authManager) ensureValidToken(ctx context.Context, httpSvc httpClient.
 	body := url.Values{}
 	body.Set("grant_type", "client_credentials")
 
-	resp, err := httpSvc.Post(ctx, "oauth/token", headers, body.Encode())
+	resp, err := httpSvc.Post(ctx, baseURL+"/oauth/token", headers, body.Encode())
 	if err != nil {
 		am.logger.DebugContext(ctx, "failed to obtain token", slog.String("error", err.Error()))
 		return err

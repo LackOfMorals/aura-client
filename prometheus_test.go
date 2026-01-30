@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
@@ -17,11 +18,17 @@ func TestPrometheusService_Query(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", 30*time.Second, 3, logger)
+	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		APIVersion:   "v1",
+		Timeout:      30 * time.Second,
+	}, logger)
 	
 	promSvc := &prometheusService{
-		httpClient: httpSvc,
-		ctx:        context.Background(),
-		logger:     logger,
+		api:    apiSvc,
+		ctx:    context.Background(),
+		logger: logger,
 	}
 
 	// Test with invalid URL (should fail gracefully)
@@ -42,11 +49,17 @@ func TestPrometheusService_QueryRange(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", 30*time.Second, 3, logger)
+	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		APIVersion:   "v1",
+		Timeout:      30 * time.Second,
+	}, logger)
 	
 	promSvc := &prometheusService{
-		httpClient: httpSvc,
-		ctx:        context.Background(),
-		logger:     logger,
+		api:    apiSvc,
+		ctx:    context.Background(),
+		logger: logger,
 	}
 
 	t.Run("EmptyURL", func(t *testing.T) {
@@ -65,11 +78,17 @@ func TestPrometheusService_GetInstanceHealth(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", 30*time.Second, 3, logger)
+	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		APIVersion:   "v1",
+		Timeout:      30 * time.Second,
+	}, logger)
 	
 	promSvc := &prometheusService{
-		httpClient: httpSvc,
-		ctx:        context.Background(),
-		logger:     logger,
+		api:    apiSvc,
+		ctx:    context.Background(),
+		logger: logger,
 	}
 
 	t.Run("InvalidInstanceID", func(t *testing.T) {
@@ -93,11 +112,17 @@ func TestAssessHealth(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", 30*time.Second, 3, logger)
+	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+		ClientID:     "test-client-id",
+		ClientSecret: "test-client-secret",
+		APIVersion:   "v1",
+		Timeout:      30 * time.Second,
+	}, logger)
 	
 	promSvc := &prometheusService{
-		httpClient: httpSvc,
-		ctx:        context.Background(),
-		logger:     logger,
+		api:    apiSvc,
+		ctx:    context.Background(),
+		logger: logger,
 	}
 
 	tests := []struct {

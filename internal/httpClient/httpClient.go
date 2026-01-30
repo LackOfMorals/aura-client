@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/go-retryablehttp"
@@ -37,14 +38,15 @@ type HTTPService interface {
 // httpService is the concrete implementation of HTTPService.
 // It handles HTTP requests with configurable timeouts, retries, and connection pooling.
 type httpService struct {
-	baseURL string
-	timeout time.Duration
-	client  *retryablehttp.Client
-	logger  *slog.Logger
+	baseURL    string
+	apiVersion string
+	timeout    time.Duration
+	client     *retryablehttp.Client
+	logger     *slog.Logger
 }
 
 // NewHTTPService creates a new HTTPService with the specified configuration.
-func NewHTTPService(baseURL string, timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
+func NewHTTPService(baseURL string, apiVersion string, timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = maxRetry
 	retryClient.RetryWaitMin = 1 * time.Second
@@ -53,10 +55,11 @@ func NewHTTPService(baseURL string, timeout time.Duration, maxRetry int, logger 
 	retryClient.Logger = &slogAdapter{logger: logger}
 
 	return &httpService{
-		baseURL: baseURL,
-		timeout: timeout,
-		client:  retryClient,
-		logger:  logger,
+		baseURL:    baseURL,
+		apiVersion: apiVersion,
+		timeout:    timeout,
+		client:     retryClient,
+		logger:     logger,
 	}
 }
 
@@ -86,8 +89,18 @@ func (s *httpService) Delete(ctx context.Context, url string, headers map[string
 }
 
 // doRequest performs the actual HTTP request with the specified parameters.
+// It automatically detects whether the endpoint is a full URL (starting with http:// or https://)
+// or a relative path. Full URLs are used as-is, while relative paths are appended to the base URL.
 func (s *httpService) doRequest(ctx context.Context, method, endpoint string, headers map[string]string, body string) (*HTTPResponse, error) {
-	fullURL := s.baseURL + endpoint
+	// Determine if endpoint is already a full URL
+	var fullURL string
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		// Endpoint is already a full URL, use it as-is
+		fullURL = endpoint
+	} else {
+		// Endpoint is relative, prepend base URL
+		fullURL = s.baseURL + "/" + s.apiVersion + "/" + endpoint
+	}
 
 	var bodyReader io.Reader
 	if body != "" {

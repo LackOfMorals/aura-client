@@ -29,9 +29,9 @@ import (
 
 // Core service configuration
 type AuraAPIClient struct {
-	config *config       // Internal configuration (unexported)
+	config *config               // Internal configuration (unexported)
 	api    api.APIRequestService // Handles authenticated API requests
-	logger *slog.Logger  // Structured logger
+	logger *slog.Logger          // Structured logger
 
 	// Grouped services - using interface types for testability
 	Tenants        TenantService
@@ -70,7 +70,7 @@ func defaultOptions() *options {
 
 	return &options{
 		config: config{
-			baseURL:     "https://api.neo4j.io/",
+			baseURL:     "https://api.neo4j.io",
 			version:     "v1",
 			apiTimeout:  120 * time.Second,
 			apiRetryMax: 3,
@@ -173,12 +173,13 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 	)
 
 	// Create the HTTP service (lowest layer)
-	httpSvc := httpClient.NewHTTPService(o.config.baseURL, o.config.apiTimeout, o.config.apiRetryMax, o.logger)
+	httpSvc := httpClient.NewHTTPService(o.config.baseURL, o.config.version, o.config.apiTimeout, o.config.apiRetryMax, o.logger)
 
 	// Create the API request service (middle layer - handles auth)
 	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
 		ClientID:     o.config.clientID,
 		ClientSecret: o.config.clientSecret,
+		BaseURL:      o.config.baseURL,
 		APIVersion:   o.config.version,
 		Timeout:      o.config.apiTimeout,
 	}, o.logger)
@@ -216,9 +217,9 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		logger: service.logger.With(slog.String("service", "gDSSessionService")),
 	}
 	service.Prometheus = &prometheusService{
-		httpClient: httpSvc,
-		ctx:        o.config.ctx,
-		logger:     service.logger.With(slog.String("service", "prometheusService")),
+		api:    apiSvc,
+		ctx:    o.config.ctx,
+		logger: service.logger.With(slog.String("service", "prometheusService")),
 	}
 
 	service.logger.Info("Aura API service initialized successfully",

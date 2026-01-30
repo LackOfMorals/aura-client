@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"time"
 
-	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
+	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
@@ -94,9 +94,9 @@ type StorageMetrics struct {
 
 // prometheusService handles Prometheus metrics operations
 type prometheusService struct {
-	httpClient httpClient.HTTPService
-	ctx        context.Context
-	logger     *slog.Logger
+	api    api.APIRequestService
+	ctx    context.Context
+	logger *slog.Logger
 }
 
 // Query executes an instant query against a Prometheus endpoint
@@ -113,7 +113,7 @@ func (p *prometheusService) Query(prometheusURL string, query string) (*Promethe
 
 	fullURL := prometheusURL + "/api/v1/query?" + params.Encode()
 
-	resp, err := p.httpClient.Get(p.ctx, fullURL, nil)
+	resp, err := p.api.Get(p.ctx, fullURL)
 	if err != nil {
 		p.logger.ErrorContext(p.ctx, "failed to execute Prometheus query", slog.String("error", err.Error()))
 		return nil, err
@@ -165,7 +165,7 @@ func (p *prometheusService) QueryRange(prometheusURL string, query string, start
 
 	fullURL := prometheusURL + "/api/v1/query_range?" + params.Encode()
 
-	resp, err := p.httpClient.Get(p.ctx, fullURL, nil)
+	resp, err := p.api.Get(p.ctx, fullURL)
 	if err != nil {
 		p.logger.ErrorContext(p.ctx, "failed to execute Prometheus range query", slog.String("error", err.Error()))
 		return nil, err
