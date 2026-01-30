@@ -159,6 +159,7 @@ func (s *httpService) doRequest(ctx context.Context, method, endpoint string, he
 		slog.String("method", method),
 		slog.String("url", fullURL),
 		slog.Int("statusCode", resp.StatusCode),
+		slog.String("body", string(respBody)),
 	)
 
 	return httpResp, nil

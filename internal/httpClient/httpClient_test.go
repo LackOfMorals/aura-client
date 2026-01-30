@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -24,11 +25,12 @@ func testLogger() *slog.Logger {
 // TestNewHTTPService verifies service creation with proper configuration
 func TestNewHTTPService(t *testing.T) {
 	baseURL := "https://api.example.com"
+	apiVersion := "v1"
 	timeout := 30 * time.Second
 	maxRetry := 3
 	logger := testLogger()
 
-	service := NewHTTPService(baseURL, timeout, maxRetry, logger)
+	service := NewHTTPService(baseURL, apiVersion, timeout, maxRetry, logger)
 
 	if service == nil {
 		t.Fatal("expected service to be non-nil")
@@ -48,7 +50,7 @@ func TestHTTPService_Get_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	response, err := service.Get(ctx, "test", nil)
@@ -85,7 +87,7 @@ func TestHTTPService_Post_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	response, err := service.Post(ctx, "test", nil, expectedBody)
@@ -117,7 +119,7 @@ func TestHTTPService_Put_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	response, err := service.Put(ctx, "test", nil, expectedBody)
@@ -146,7 +148,7 @@ func TestHTTPService_Patch_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	response, err := service.Patch(ctx, "test", nil, expectedBody)
@@ -169,7 +171,7 @@ func TestHTTPService_Delete_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	response, err := service.Delete(ctx, "test", nil)
@@ -201,7 +203,7 @@ func TestHTTPService_WithHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	_, err := service.Get(ctx, "test", expectedHeaders)
@@ -222,7 +224,7 @@ func TestHTTPService_EmptyBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	_, err := service.Get(ctx, "test", nil)
@@ -264,7 +266,7 @@ func TestHTTPService_NonSuccessStatus(t *testing.T) {
 			}))
 			defer server.Close()
 
-			service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+			service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 			ctx := context.Background()
 			response, err := service.Get(ctx, "test", nil)
@@ -295,7 +297,7 @@ func TestHTTPService_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
@@ -318,7 +320,7 @@ func TestHTTPService_Timeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 50*time.Millisecond, 0, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 50*time.Millisecond, 0, testLogger())
 
 	ctx := context.Background()
 	_, err := service.Get(ctx, "test", nil)
@@ -339,7 +341,7 @@ func TestHTTPService_LargeResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	response, err := service.Get(ctx, "test", nil)
@@ -359,7 +361,7 @@ func TestHTTPService_LargeResponse(t *testing.T) {
 
 // TestHTTPService_InvalidURL verifies handling of malformed URLs
 func TestHTTPService_InvalidURL(t *testing.T) {
-	service := NewHTTPService("http://[invalid-url", 10*time.Second, 3, testLogger())
+	service := NewHTTPService("http://[invalid-url", "", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	_, err := service.Get(ctx, "test", nil)
@@ -395,15 +397,15 @@ func TestHTTPResponse_Structure(t *testing.T) {
 
 // TestHTTPService_ConcurrentRequests verifies thread safety
 func TestHTTPService_ConcurrentRequests(t *testing.T) {
-	requestCount := 0
+	var requestCount int32 // Use int32 for atomic operations
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestCount++
+		count := atomic.AddInt32(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf("response-%d", requestCount)))
+		w.Write([]byte(fmt.Sprintf("response-%d", count)))
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", "", 0*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	done := make(chan bool)
@@ -573,7 +575,7 @@ func TestHTTPService_FullURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Use a different base URL to ensure full URLs bypass it
-			service := NewHTTPService("https://wrong-base-url.example.com/", 10*time.Second, 3, testLogger())
+			service := NewHTTPService("https://wrong-base-url.example.com/", "", 10*time.Second, 3, testLogger())
 
 			ctx := context.Background()
 			_, err := service.Get(ctx, tt.endpoint, nil)

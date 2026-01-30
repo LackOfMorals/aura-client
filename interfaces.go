@@ -1,8 +1,6 @@
 // interfaces.go
 package aura
 
-import "time"
-
 // TenantService defines operations for managing tenants
 type TenantService interface {
 	// List returns all tenants accessible to the authenticated user
@@ -53,10 +51,10 @@ type GDSSessionService interface {
 
 // PrometheusService defines operations for querying Prometheus metrics
 type PrometheusService interface {
-	// Query executes an instant query against a Prometheus endpoint
-	Query(prometheusURL string, query string) (*PrometheusQueryResponse, error)
-	// QueryRange executes a range query against a Prometheus endpoint
-	QueryRange(prometheusURL string, query string, start, end time.Time, step string) (*PrometheusRangeQueryResponse, error)
+	// FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint
+	FetchRawMetrics(prometheusURL string) (*PrometheusMetricsResponse, error)
+	// GetMetricValue retrieves a specific metric value by name and optional label filters
+	GetMetricValue(metrics *PrometheusMetricsResponse, name string, labelFilters map[string]string) (float64, error)
 	// GetInstanceHealth retrieves comprehensive health metrics for an instance
 	GetInstanceHealth(instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error)
 }

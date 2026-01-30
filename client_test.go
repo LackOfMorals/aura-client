@@ -56,6 +56,9 @@ func TestNewClient_SubServicesInitialized(t *testing.T) {
 	if client.GraphAnalytics == nil {
 		t.Error("expected GraphAnalytics service to be initialized")
 	}
+	if client.Prometheus == nil {
+		t.Error("expected Prometheus service to be initialized")
+	}
 }
 
 // TestNewClient_EmptyCredentials validates both credentials must be provided
@@ -213,8 +216,8 @@ func TestWithLogger_Nil(t *testing.T) {
 func TestDefaultOptions(t *testing.T) {
 	opts := defaultOptions()
 
-	if opts.config.baseURL != "https://api.neo4j.io/" {
-		t.Errorf("expected default baseURL 'https://api.neo4j.io/', got '%s'", opts.config.baseURL)
+	if opts.config.baseURL != "https://api.neo4j.io" {
+		t.Errorf("expected default baseURL 'https://api.neo4j.io', got '%s'", opts.config.baseURL)
 	}
 	if opts.config.version != "v1" {
 		t.Errorf("expected default version 'v1', got '%s'", opts.config.version)
@@ -270,7 +273,7 @@ func TestNewClient_DefaultValues(t *testing.T) {
 	}
 
 	// Check defaults
-	if client.config.baseURL != "https://api.neo4j.io/" {
+	if client.config.baseURL != "https://api.neo4j.io" {
 		t.Errorf("expected default baseURL, got '%s'", client.config.baseURL)
 	}
 	if client.config.version != "v1" {
