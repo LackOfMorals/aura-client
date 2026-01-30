@@ -49,6 +49,16 @@ type GDSSessionService interface {
 	List() (*GetGDSSessionResponse, error)
 }
 
+// PrometheusService defines operations for querying Prometheus metrics
+type PrometheusService interface {
+	// FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint
+	FetchRawMetrics(prometheusURL string) (*PrometheusMetricsResponse, error)
+	// GetMetricValue retrieves a specific metric value by name and optional label filters
+	GetMetricValue(metrics *PrometheusMetricsResponse, name string, labelFilters map[string]string) (float64, error)
+	// GetInstanceHealth retrieves comprehensive health metrics for an instance
+	GetInstanceHealth(instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error)
+}
+
 // Compile-time interface compliance checks
 var (
 	_ TenantService     = (*tenantService)(nil)
@@ -56,4 +66,5 @@ var (
 	_ SnapshotService   = (*snapshotService)(nil)
 	_ CmekService       = (*cmekService)(nil)
 	_ GDSSessionService = (*gDSSessionService)(nil)
+	_ PrometheusService = (*prometheusService)(nil)
 )
