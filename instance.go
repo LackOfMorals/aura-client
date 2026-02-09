@@ -3,6 +3,7 @@ package aura
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
@@ -89,6 +90,7 @@ type OverwriteInstanceResponse struct {
 // instanceService handles instance operations
 type instanceService struct {
 	api    api.APIRequestService
+	store  StoreService
 	ctx    context.Context
 	logger *slog.Logger
 }
@@ -161,6 +163,28 @@ func (i *instanceService) Create(instanceRequest *CreateInstanceConfigData) (*Cr
 
 	i.logger.InfoContext(i.ctx, "instance created successfully", slog.String("instanceID", result.Data.Id), slog.String("name", result.Data.Name))
 	return &result, nil
+}
+
+// CreateFromStore provisions a new database instance using a stored configuration
+func (i *instanceService) CreateFromStore(label string) (*CreateInstanceResponse, error) {
+	i.logger.DebugContext(i.ctx, "creating instance from store", slog.String("label", label))
+
+	if i.store == nil {
+		i.logger.ErrorContext(i.ctx, "store service not initialized")
+		return nil, errors.New("store service not initialized")
+	}
+
+	// Read configuration from store
+	config, err := i.store.Read(label)
+	if err != nil {
+		i.logger.ErrorContext(i.ctx, "failed to read configuration from store", slog.String("label", label), slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.DebugContext(i.ctx, "configuration loaded from store", slog.String("label", label), slog.String("name", config.Name))
+
+	// Create instance using the stored configuration
+	return i.Create(config)
 }
 
 // Delete removes an instance by ID

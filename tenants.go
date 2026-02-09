@@ -41,6 +41,14 @@ type TenantInstanceConfiguration struct {
 	Version       string `json:"version"`
 }
 
+type GetTenantMetricsURLResponse struct {
+	Data GetTenantMetricsURLData `json:"data"`
+}
+
+type GetTenantMetricsURLData struct {
+	Endpoint string `json:"endpoint"`
+}
+
 // tenantService handles tenant operations
 type tenantService struct {
 	api    api.APIRequestService
@@ -86,4 +94,24 @@ func (t *tenantService) Get(tenantID string) (*GetTenantResponse, error) {
 
 	t.logger.DebugContext(t.ctx, "tenant obtained successfully", slog.String("name", result.Data.Name))
 	return &result, nil
+}
+
+func (t *tenantService) GetMetrics(tenantID string) (*GetTenantMetricsURLResponse, error) {
+	t.logger.DebugContext(t.ctx, "getting tenant prometheus metrics url", slog.String("tenantID", tenantID))
+
+	resp, err := t.api.Get(t.ctx, "tenants/"+tenantID+"/metrics-integration")
+	if err != nil {
+		t.logger.ErrorContext(t.ctx, "failed to get tenant prometheus metrics url", slog.String("tenantID", tenantID), slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	var result GetTenantMetricsURLResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		t.logger.ErrorContext(t.ctx, "failed to unmarshal tenant metrics url response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	t.logger.DebugContext(t.ctx, "tenant metrics url obtained successfully", slog.String("name", result.Data.Endpoint))
+	return &result, nil
+
 }
