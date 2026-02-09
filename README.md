@@ -13,6 +13,7 @@ Client Id and Secret are required and these can be obtained from the [Neo4j Aura
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Configuration Store](#configuration-store)
 - [Tenant Operations](#tenant-operations)
 - [Instance Operations](#instance-operations)
 - [Snapshot Operations](#snapshot-operations)
@@ -102,6 +103,91 @@ client, err := aura.NewClient(
 ```
 
 ---
+
+## Configuration Store
+
+
+The Store service provides persistent storage for instance configurations, allowing you to save, manage, and reuse configurations across sessions.
+
+### Store a Configuration
+
+```go
+config := &aura.CreateInstanceConfigData{
+    Name:          "production-db",
+    TenantId:      "tenant-123",
+    CloudProvider: "gcp",
+    Region:        "us-central1",
+    Type:          "enterprise-db",
+    Version:       "5",
+    Memory:        "8GB",
+}
+
+err := client.Store.Create("prod-config", config)
+```
+
+### Read a Configuration
+
+```go
+config, err := client.Store.Read("prod-config")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Config: %s (%s)\n", config.Name, config.CloudProvider)
+```
+
+### Update a Configuration
+
+```go
+config.Memory = "16GB"
+err := client.Store.Update("prod-config", config)
+```
+
+### Delete a Configuration
+
+```go
+err := client.Store.Delete("prod-config")
+```
+
+### List All Configurations
+
+```go
+labels, err := client.Store.List()
+for _, label := range labels {
+    fmt.Println(label)
+}
+```
+
+### Custom Store Path
+
+By default, configurations are stored in `~/.aura-client/store.db`. You can customize this:
+
+```go
+client, err := aura.NewClient(
+    aura.WithCredentials("client-id", "client-secret"),
+    aura.WithStorePath("/custom/path/to/store.db"),
+)
+```
+
+### Store Error Handling
+
+```go
+config, err := client.Store.Read("nonexistent")
+if err != nil {
+    if errors.Is(err, aura.ErrConfigNotFound) {
+        fmt.Println("Configuration not found")
+    }
+}
+```
+
+### Common Store Errors
+
+- `ErrConfigNotFound`: Configuration doesn't exist
+- `ErrConfigAlreadyExists`: Label already in use
+- `ErrInvalidLabel`: Label is empty
+- `ErrInvalidConfig`: Configuration is nil
+
+---
+
 
 ## Tenant Operations
 
@@ -206,6 +292,33 @@ fmt.Printf("  Password: %s\n", instance.Data.Password)
 // ⚠️ IMPORTANT: Save these credentials securely!
 // The password is only shown once during creation.
 ```
+
+### Create Instance from Stored Configuration
+
+The most powerful feature - create instances directly from stored configurations:
+
+```go
+// Store configuration once
+config := &aura.CreateInstanceConfigData{
+    Name:          "my-database",
+    TenantId:      "tenant-123",
+    CloudProvider: "gcp",
+    Region:        "us-central1",
+    Type:          "enterprise-db",
+    Version:       "5",
+    Memory:        "8GB",
+}
+client.Store.Create("my-config", config)
+
+// Later, create instance from stored config
+instance, err := client.Instances.CreateFromStore("my-config")
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("Created: %s (ID: %s)\n", instance.Data.Name, instance.Data.Id)
+```
+
+
 
 ### Update an Instance
 

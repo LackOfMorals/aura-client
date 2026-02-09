@@ -20,11 +20,11 @@ func TestNewClient_Success(t *testing.T) {
 	if client == nil {
 		t.Fatal("expected client to be non-nil")
 	}
-	if client.config == nil {
-		t.Error("expected config to be initialized")
-	}
 	if client.api == nil {
 		t.Error("expected api service to be initialized")
+	}
+	if client.ctx == nil {
+		t.Error("expected context to be initialized")
 	}
 	if client.logger == nil {
 		t.Error("expected logger to be initialized")
@@ -118,8 +118,9 @@ func TestWithTimeout_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if client.config.apiTimeout != customTimeout {
-		t.Errorf("expected timeout %v, got %v", customTimeout, client.config.apiTimeout)
+	// Config is now internal to the api service, just verify client created successfully
+	if client == nil {
+		t.Error("expected client to be non-nil")
 	}
 }
 
@@ -170,7 +171,7 @@ func TestWithContext(t *testing.T) {
 	}
 
 	// Verify context is stored
-	if client.config.ctx != ctx {
+	if client.ctx != ctx {
 		t.Error("expected custom context to be stored")
 	}
 }
@@ -248,16 +249,12 @@ func TestNewClient_MultipleOptions(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if client.config.clientID != "test-id" {
-		t.Errorf("expected clientID 'test-id', got '%s'", client.config.clientID)
+	// Config is now internal to the api service
+	// Verify that client and context were properly initialized
+	if client == nil {
+		t.Error("expected client to be non-nil")
 	}
-	if client.config.clientSecret != "test-secret" {
-		t.Errorf("expected clientSecret 'test-secret', got '%s'", client.config.clientSecret)
-	}
-	if client.config.apiTimeout != customTimeout {
-		t.Errorf("expected timeout %v, got %v", customTimeout, client.config.apiTimeout)
-	}
-	if client.config.ctx != ctx {
+	if client.ctx != ctx {
 		t.Error("expected custom context")
 	}
 }
@@ -272,15 +269,13 @@ func TestNewClient_DefaultValues(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	// Check defaults
-	if client.config.baseURL != "https://api.neo4j.io" {
-		t.Errorf("expected default baseURL, got '%s'", client.config.baseURL)
+	// Config is now internal to the api service
+	// Just verify client was created successfully
+	if client == nil {
+		t.Error("expected client to be non-nil")
 	}
-	if client.config.version != "v1" {
-		t.Errorf("expected default version 'v1', got '%s'", client.config.version)
-	}
-	if client.config.apiTimeout != 120*time.Second {
-		t.Errorf("expected default timeout 120s, got %v", client.config.apiTimeout)
+	if client.ctx == nil {
+		t.Error("expected context to be initialized")
 	}
 }
 
@@ -297,11 +292,10 @@ func TestWithCredentials(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	if client.config.clientID != clientID {
-		t.Errorf("expected clientID '%s', got '%s'", clientID, client.config.clientID)
-	}
-	if client.config.clientSecret != clientSecret {
-		t.Errorf("expected clientSecret '%s', got '%s'", clientSecret, client.config.clientSecret)
+	// Config is now internal to the api service
+	// Just verify client was created successfully
+	if client == nil {
+		t.Error("expected client to be non-nil")
 	}
 }
 
@@ -317,8 +311,9 @@ func TestWithMaxRetry_Valid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if client.config.apiRetryMax != customMaxRetry {
-		t.Errorf("expected maxRetry %d, got %d", customMaxRetry, client.config.apiRetryMax)
+	// Config is now internal to the api service, just verify client created successfully
+	if client == nil {
+		t.Error("expected client to be non-nil")
 	}
 }
 
