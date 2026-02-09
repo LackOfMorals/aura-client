@@ -296,7 +296,7 @@ fmt.Printf("Overwrite from snapshot initiated\n")
 
 ## Snapshot Operations
 
-### List Snapshots for Today
+### List Snapshots
 
 ```go
 instanceID := "your-instance-id"
@@ -336,6 +336,24 @@ for _, snapshot := range snapshots.Data {
     )
 }
 ```
+### Get the details of a Snapshot
+
+```go
+instanceID := "your-instance-id"
+snapshotID := "your-snapshot-id"
+
+snapshot, err := client.Snapshots.Get(instanceID, snapshotID)
+if err != nil {
+    log.Fatalf("Error: %v", err)
+}
+
+fmt.Printf("Snapshot details: \n Instance ID: %s \n Snapshot ID: %s \n Status: %s \n Timestamp: %s ", 
+    snapshot.Data.InstanceId, 
+    snapshot.Data.SnapshotId, 
+    snapshot.Data.Status,
+    snapshot.Data.Timestamp,
+    )
+```
 
 ### Create an On-Demand Snapshot
 
@@ -352,6 +370,22 @@ fmt.Printf("Snapshot ID: %s\n", snapshot.Data.SnapshotId)
 
 // Note: Snapshot creation is asynchronous
 // Poll with List() to check completion status
+```
+
+### Restore from a snapshot
+
+instanceID := "your-instance-id"
+snapshotID := "your-snapshot-id"
+
+result, err := client.Snapshots.Restore(instanceID, snapshotID)
+if err != nil {
+    log.Fatalf("Error: %v", err)
+}
+
+fmt.Printf("Snapshot details: \n Instance ID: %s \n Status: %s", 
+    result.Data.InstanceId, 
+    result.Data.Status,
+    )
 ```
 
 ---
