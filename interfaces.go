@@ -35,6 +35,10 @@ type SnapshotService interface {
 	List(instanceID string, snapshotDate string) (*GetSnapshotsResponse, error)
 	// Create triggers an on-demand snapshot for an instance
 	Create(instanceID string) (*CreateSnapshotResponse, error)
+	// Gets details for a snapshot of an instance
+	Get(instanceID string, snapshotID string) (*GetSnapshotDataResponse, error)
+	// Restore instance from a snapshot
+	Restore(instanceID string, snapshotID string) (*RestoreSnapshotResponse, error)
 }
 
 // CmekService defines operations for customer-managed encryption keys
