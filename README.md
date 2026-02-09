@@ -374,6 +374,7 @@ fmt.Printf("Snapshot ID: %s\n", snapshot.Data.SnapshotId)
 
 ### Restore from a snapshot
 
+```
 instanceID := "your-instance-id"
 snapshotID := "your-snapshot-id"
 
