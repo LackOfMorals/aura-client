@@ -50,6 +50,48 @@ func TestSnapshotService_List_Success(t *testing.T) {
 	}
 }
 
+// TestSnapshotService_Get_Success verifies successful obtaining of snapshot details
+func TestSnapshotService_Get_Success(t *testing.T) {
+	instanceID := "instance-123"
+	snapshotID := "snapshot-1"
+
+	expectedResponse := GetSnapshotDataResponse{
+		Data: GetSnapshotData{
+			InstanceId: instanceID,
+			SnapshotId: snapshotID,
+			Profile:    "daily",
+			Status:     "completed",
+			Timestamp:  "2024-01-01T00:00:00Z",
+			Exportable: true,
+		},
+	}
+
+	responseBody, _ := json.Marshal(expectedResponse)
+	mock := &mockAPIService{
+		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+	}
+
+	service := createTestSnapshotService(mock)
+	result, err := service.Get(instanceID, snapshotID)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if mock.lastMethod != "GET" {
+		t.Errorf("expected GET method, got %s", mock.lastMethod)
+	}
+	if mock.lastPath != "instances/"+instanceID+"/snapshots/"+snapshotID+"" {
+		t.Errorf("expected path 'instances/%s/snapshots', got '%s'", instanceID, mock.lastPath)
+	}
+
+	// We should have the same result as our mock data
+	if result.Data != expectedResponse.Data {
+		t.Errorf("result does not match expected response, got '%v'", result)
+
+	}
+
+}
+
 // TestSnapshotService_List_WithDate verifies listing snapshots for specific date
 func TestSnapshotService_List_WithDate(t *testing.T) {
 	instanceID := "instance-123"
