@@ -527,7 +527,7 @@ if err != nil {
 instance, err := client.Instances.Get("non-existent-id")
 if err != nil {
     // Type assert to Error for detailed information
-    if apiErr, ok := err.(*api.Error); ok {
+    if apiErr, ok := err.(*aura.Error); ok {
         fmt.Printf("API Error %d: %s\n", 
             apiErr.StatusCode, 
             apiErr.Message,
@@ -690,7 +690,7 @@ func retryOperation(maxRetries int, fn func() error) error {
         }
         
         // Check if error is retryable
-        if apiErr, ok := err.(*api.Error); ok {
+        if apiErr, ok := err.(*aura.Error); ok {
             // Don't retry client errors (4xx except 429)
             if apiErr.StatusCode >= 400 && 
                apiErr.StatusCode < 500 && 
@@ -790,6 +790,169 @@ export AURA_CLIENT_SECRET="your-client-secret"
 export AURA_TENANT_ID="your-tenant-id"
 go run main.go
 ```
+
+---
+
+## Migration from v1.x
+
+### Breaking Changes in v2.0
+
+#### 1. Type Name Changes
+
+**Before (v1.x):**
+```go
+var client *aura.AuraAPIClient
+```
+
+**After (v2.0):**
+```go
+var client *aura.APIClient  // "Aura" prefix removed
+```
+
+#### 2. Error Type Alias
+
+Error types now use cleaner names. Type aliases maintain backward compatibility:
+
+**Before (v1.x):**
+```go
+if apiErr, ok := err.(*aura.APIError); ok {
+    // Error handling
+}
+```
+
+**After (v2.0):**
+```go
+if apiErr, ok := err.(*aura.Error); ok {  // Simpler name
+    // Same error handling methods work
+}
+```
+
+#### 3. Configuration Store Removed
+
+The built-in store service has been removed. Implement your own storage:
+
+**Before (v1.x):**
+```go
+client, _ := aura.NewClient(
+    aura.WithCredentials(id, secret),
+    aura.WithStorePath("./store.db"),  // ❌ Removed
+)
+client.Store.Create("prod", config)     // ❌ Removed
+instance, _ := client.Instances.CreateFromStore("prod")  // ❌ Removed
+```
+
+**After (v2.0):**
+```go
+client, _ := aura.NewClient(
+    aura.WithCredentials(id, secret),
+    // No store-related options
+)
+
+// Implement your own storage pattern
+// See example implementations below
+```
+
+#### 4. Prometheus Parser Enhancement
+
+The Prometheus parsing now uses the official library (internal change, no API impact):
+
+- ✅ More robust parsing
+- ✅ Better error messages
+- ✅ Handles all metric types
+- ✅ No code changes required in your application
+
+### Migration Steps
+
+#### Step 1: Update Import
+```bash
+go get github.com/LackOfMorals/aura-client@v2.0.0
+go mod tidy
+```
+
+#### Step 2: Update Type Names
+
+If you're storing the client in a variable:
+
+```go
+// Find and replace in your codebase:
+// *aura.AuraAPIClient → *aura.APIClient
+```
+
+#### Step 3: Update Error Handling (Optional)
+
+Error type aliases maintain compatibility, but for clarity:
+
+```go
+// Old (still works):
+if apiErr, ok := err.(*aura.APIError); ok { }
+
+// New (recommended):
+if apiErr, ok := err.(*aura.Error); ok { }
+```
+
+#### Step 4: Remove Store Dependencies (If Used)
+
+If you were using the built-in store:
+
+1. Remove `WithStorePath()` from client initialization
+2. Remove calls to `client.Store.*`
+3. Remove calls to `client.Instances.CreateFromStore()`
+4. Implement your own configuration storage
+
+**Simple replacement pattern:**
+
+```go
+// Your storage interface
+type ConfigStorage interface {
+    Save(label string, config *aura.CreateInstanceConfigData) error
+    Load(label string) (*aura.CreateInstanceConfigData, error)
+}
+
+// Use it
+config, _ := storage.Load("production")
+instance, _ := client.Instances.Create(config)
+```
+
+### Quick Migration Checklist
+
+- [ ] Update to v2.0.0: `go get github.com/LackOfMorals/aura-client@v2.0.0`
+- [ ] Run `go mod tidy`
+- [ ] Replace `*aura.AuraAPIClient` with `*aura.APIClient` (if used)
+- [ ] Update error type assertions from `*aura.APIError` to `*aura.Error` (optional)
+- [ ] Remove store service code if used
+- [ ] Run tests: `go test ./...`
+- [ ] Verify build: `go build ./...`
+
+### Common Migration Issues
+
+**Issue: "undefined: aura.AuraAPIClient"**
+
+```go
+// Fix: Update type name
+var client *aura.APIClient  // Changed from AuraAPIClient
+```
+
+**Issue: "undefined: aura.Store"**
+
+```go
+// Fix: Implement your own storage
+// The Store service has been removed
+// See configuration storage pattern examples
+```
+
+**Issue: "undefined: CreateFromStore"**
+
+```go
+// Fix: Load config and create in two steps
+config := myStorage.Load("label")
+instance, _ := client.Instances.Create(config)
+```
+
+### Need Help?
+
+- Review [CHANGELOG.md](./CHANGELOG.md) for complete list of changes
+- See [PROMETHEUS_MIGRATION.md](./PROMETHEUS_MIGRATION.md) for Prometheus-specific details
+- Open an issue on [GitHub](https://github.com/LackOfMorals/aura-client/issues)
 
 ---
 

@@ -283,12 +283,12 @@ func (i *instanceService) Overwrite(instanceID string, sourceInstanceID string, 
 		return nil, err
 	}
 
-	if instanceID != "" {
-		if err := utils.ValidateInstanceID(instanceID); err != nil {
-			return nil, fmt.Errorf("invalid source instance ID: %w", err)
-		}
+	// Validate target instance ID
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		return nil, fmt.Errorf("invalid instance ID: %w", err)
 	}
 
+	// Validate source instance ID if provided
 	if sourceInstanceID != "" {
 		if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
 			return nil, fmt.Errorf("invalid source instance ID: %w", err)

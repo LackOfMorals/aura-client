@@ -27,7 +27,7 @@ import (
 )
 
 // Version is the semantic version of this client library
-const Version = "1.6.0"
+const Version = "2.0.0"
 
 // AuraAPIClient is the main client for interacting with the Neo4j Aura API
 type APIClient struct {

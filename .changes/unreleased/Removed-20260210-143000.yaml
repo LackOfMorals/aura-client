@@ -1,5 +1,0 @@
-kind: Removed
-body: |
-  Store service removed from core client as this should be an application responsibility.
-  This change keeps the API client lightweight and focused on a single domain.
-time: 2026-02-10T14:30:00Z
