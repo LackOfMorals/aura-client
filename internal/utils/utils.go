@@ -78,3 +78,29 @@ func ValidateInstanceID(InstanceID string) error {
 	}
 	return nil
 }
+
+// Takes a string, s, and returns n bytes of it.
+// If s is of n bytes or less, then s is returned back
+func TruncateString(s string, n int) string {
+	var truncatedString string
+
+	// Get the length of the string in bytes
+	l := len(s)
+
+	// n has to be smaller than the length of the string
+	// If it is not, return the original string
+	// If it is, then return
+	if n >= l {
+		truncatedString = s
+		return truncatedString
+	}
+
+	// convert s into a byte slice array
+	t := []byte(s)
+
+	// Now grab the bytes we want from the slice
+	// and convert back to a string
+	truncatedString = string(t[0:n])
+
+	return truncatedString
+}

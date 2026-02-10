@@ -30,7 +30,7 @@ func TestSnapshotService_List_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
@@ -68,7 +68,7 @@ func TestSnapshotService_Get_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
@@ -104,7 +104,7 @@ func TestSnapshotService_List_WithDate(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
@@ -160,7 +160,7 @@ func TestSnapshotService_List_ValidDateFormats(t *testing.T) {
 
 	responseBody, _ := json.Marshal(GetSnapshotsResponse{Data: []GetSnapshotData{}})
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 	service := createTestSnapshotService(mock)
 
@@ -183,7 +183,7 @@ func TestSnapshotService_Create_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
@@ -206,7 +206,7 @@ func TestSnapshotService_Create_Success(t *testing.T) {
 // TestSnapshotService_Create_InstanceNotFound verifies error when instance doesn't exist
 func TestSnapshotService_Create_InstanceNotFound(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{StatusCode: http.StatusNotFound, Message: "Instance not found"},
+		err: &api.Error{StatusCode: http.StatusNotFound, Message: "Instance not found"},
 	}
 
 	service := createTestSnapshotService(mock)
@@ -219,9 +219,9 @@ func TestSnapshotService_Create_InstanceNotFound(t *testing.T) {
 		t.Error("expected result to be nil on error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsNotFound() {
 		t.Error("expected IsNotFound() to be true")
@@ -234,7 +234,7 @@ func TestSnapshotService_List_EmptyResult(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
@@ -251,7 +251,7 @@ func TestSnapshotService_List_EmptyResult(t *testing.T) {
 // TestSnapshotService_AuthenticationError verifies auth error handling
 func TestSnapshotService_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
+		err: &api.Error{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
 	}
 
 	service := createTestSnapshotService(mock)
@@ -261,9 +261,9 @@ func TestSnapshotService_AuthenticationError(t *testing.T) {
 		t.Fatal("expected authentication error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsUnauthorized() {
 		t.Error("expected IsUnauthorized() to be true")

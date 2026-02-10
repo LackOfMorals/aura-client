@@ -51,7 +51,7 @@ type GetTenantMetricsURLData struct {
 
 // tenantService handles tenant operations
 type tenantService struct {
-	api    api.APIRequestService
+	api    api.RequestService
 	ctx    context.Context
 	logger *slog.Logger
 }

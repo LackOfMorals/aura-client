@@ -25,7 +25,7 @@ type GetCmeksData struct {
 
 // cmekService handles customer managed encryption key operations
 type cmekService struct {
-	api    api.APIRequestService
+	api    api.RequestService
 	ctx    context.Context
 	logger *slog.Logger
 }
@@ -48,7 +48,7 @@ func (c *cmekService) List(tenantId string) (*GetCmeksResponse, error) {
 		}
 		endpoint = endpoint + "?tenantid=" + tenantId
 	default:
-		return nil, fmt.Errorf("Tenant Id must be in the format of hex 8-4-4-12 pattern")
+		return nil, fmt.Errorf("tenant Id must be in the format of hex 8-4-4-12 pattern")
 	}
 
 	resp, err := c.api.Get(c.ctx, endpoint)

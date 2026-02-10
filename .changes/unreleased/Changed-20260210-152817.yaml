@@ -1,0 +1,3 @@
+kind: Changed
+body: 'api.APIResponse,api.APIError, api.APIErrorDetail and api.RequestService all have API removed to prevent stutters ( message from linting ) '
+time: 2026-02-10T15:28:17.03404Z

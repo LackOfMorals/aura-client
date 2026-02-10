@@ -47,7 +47,7 @@ type RestoreSnapshotResponse struct {
 
 // snapshotService handles snapshot operations
 type snapshotService struct {
-	api    api.APIRequestService
+	api    api.RequestService
 	ctx    context.Context
 	logger *slog.Logger
 }

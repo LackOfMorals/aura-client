@@ -39,7 +39,7 @@ func TestTenantService_List_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -79,7 +79,7 @@ func TestTenantService_List_EmptyResult(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -128,7 +128,7 @@ func TestTenantService_Get_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -180,7 +180,7 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -212,7 +212,7 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 // TestTenantService_Get_NotFound verifies 404 handling
 func TestTenantService_Get_NotFound(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{
+		err: &api.Error{
 			StatusCode: http.StatusNotFound,
 			Message:    "Tenant not found",
 		},
@@ -228,9 +228,9 @@ func TestTenantService_Get_NotFound(t *testing.T) {
 		t.Error("expected result to be nil on error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsNotFound() {
 		t.Error("expected IsNotFound() to be true")
@@ -240,7 +240,7 @@ func TestTenantService_Get_NotFound(t *testing.T) {
 // TestTenantService_AuthenticationError verifies auth error handling
 func TestTenantService_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{
+		err: &api.Error{
 			StatusCode: http.StatusUnauthorized,
 			Message:    "Invalid credentials",
 		},
@@ -253,9 +253,9 @@ func TestTenantService_AuthenticationError(t *testing.T) {
 		t.Fatal("expected authentication error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsUnauthorized() {
 		t.Error("expected IsUnauthorized() to be true")
@@ -275,7 +275,7 @@ func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -305,7 +305,7 @@ func TestTenantService_SingleTenant(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},

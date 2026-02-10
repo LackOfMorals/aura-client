@@ -1,0 +1,3 @@
+kind: Fixed
+body: Potential race condition: Auth token could expire between RUnlock and Lock
+time: 2026-02-10T09:12:17.567758Z

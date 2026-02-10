@@ -19,8 +19,6 @@ type InstanceService interface {
 	Get(instanceID string) (*GetInstanceResponse, error)
 	// Create provisions a new database instance
 	Create(instanceRequest *CreateInstanceConfigData) (*CreateInstanceResponse, error)
-	// CreateFromStore provisions a new database instance using a stored configuration
-	CreateFromStore(label string) (*CreateInstanceResponse, error)
 	// Delete removes an instance by ID
 	Delete(instanceID string) (*GetInstanceResponse, error)
 	// Pause suspends an instance by ID
@@ -75,20 +73,6 @@ type PrometheusService interface {
 	GetInstanceHealth(instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error)
 }
 
-// StoreService defines operations for managing instance configuration storage
-type StoreService interface {
-	// Create stores a new instance configuration with the given label
-	Create(label string, config *CreateInstanceConfigData) error
-	// Read retrieves an instance configuration by label
-	Read(label string) (*CreateInstanceConfigData, error)
-	// Update modifies an existing instance configuration
-	Update(label string, config *CreateInstanceConfigData) error
-	// Delete removes an instance configuration by label
-	Delete(label string) error
-	// List returns all stored configuration labels
-	List() ([]string, error)
-}
-
 // Compile-time interface compliance checks
 var (
 	_ TenantService     = (*tenantService)(nil)
@@ -97,5 +81,4 @@ var (
 	_ CmekService       = (*cmekService)(nil)
 	_ GDSSessionService = (*gDSSessionService)(nil)
 	_ PrometheusService = (*prometheusService)(nil)
-	_ StoreService      = (*storeService)(nil)
 )

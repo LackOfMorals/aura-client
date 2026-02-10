@@ -77,7 +77,7 @@ type DeleteGDSSession struct {
 
 // gDSSessionService handles GDS Session operations
 type gDSSessionService struct {
-	api    api.APIRequestService
+	api    api.RequestService
 	ctx    context.Context
 	logger *slog.Logger
 }

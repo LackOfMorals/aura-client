@@ -68,7 +68,7 @@ resp, err := p.httpClient.Get(p.ctx, fullURL, nil)  // ❌ No auth
 To:
 ```go
 type prometheusService struct {
-    api    api.APIRequestService  // ✅ Uses API service
+    api    api.RequestService  // ✅ Uses API service
     ctx    context.Context
     logger *slog.Logger
 }

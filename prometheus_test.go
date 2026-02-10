@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
-	"time"
 )
 
 func TestPrometheusService_FetchRawMetrics(t *testing.T) {
@@ -18,13 +18,13 @@ func TestPrometheusService_FetchRawMetrics(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", "", 30*time.Second, 3, logger)
-	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+	apiSvc := api.NewRequestService(httpSvc, api.Config{
 		ClientID:     "test-client-id",
 		ClientSecret: "test-client-secret",
 		APIVersion:   "v1",
 		Timeout:      30 * time.Second,
 	}, logger)
-	
+
 	promSvc := &prometheusService{
 		api:    apiSvc,
 		ctx:    context.Background(),
@@ -43,19 +43,19 @@ func TestPrometheusService_FetchRawMetrics(t *testing.T) {
 	// and valid credentials, which is typically done in integration tests
 }
 
-func TestPrometheusService_ParseMetricLine(t *testing.T) {
+func TestPrometheusService_ParsePrometheusMetrics(t *testing.T) {
 	opts := &slog.HandlerOptions{Level: slog.LevelWarn}
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", "", 30*time.Second, 3, logger)
-	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+	apiSvc := api.NewRequestService(httpSvc, api.Config{
 		ClientID:     "test",
 		ClientSecret: "test",
 		APIVersion:   "v1",
 		Timeout:      30 * time.Second,
 	}, logger)
-	
+
 	promSvc := &prometheusService{
 		api:    apiSvc,
 		ctx:    context.Background(),
@@ -64,58 +64,77 @@ func TestPrometheusService_ParseMetricLine(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		line          string
+		input         string
 		expectedName  string
 		expectedValue float64
 		expectError   bool
 	}{
 		{
-			name:          "Valid metric with labels",
-			line:          `neo4j_aura_cpu_usage{aggregation="MAX",availability_zone="europe-west2-c",instance_mode="PRIMARY",instance_id="c9f0d13a"} 0.023206 1769766720469`,
+			name: "Valid gauge metric",
+			input: `# HELP neo4j_aura_cpu_usage CPU usage
+# TYPE neo4j_aura_cpu_usage gauge
+neo4j_aura_cpu_usage{aggregation="MAX",availability_zone="europe-west2-c",instance_mode="PRIMARY",instance_id="c9f0d13a"} 0.023206 1769766720469
+`,
 			expectedName:  "neo4j_aura_cpu_usage",
 			expectedValue: 0.023206,
 			expectError:   false,
 		},
 		{
-			name:          "Valid metric simple",
-			line:          `neo4j_database_count_node{database="neo4j",instance_id="c9f0d13a"} 171.000000 1769766720469`,
+			name: "Valid counter metric",
+			input: `# HELP neo4j_database_count_node Node count
+# TYPE neo4j_database_count_node counter
+neo4j_database_count_node{database="neo4j",instance_id="c9f0d13a"} 171.000000 1769766720469
+`,
 			expectedName:  "neo4j_database_count_node",
 			expectedValue: 171.0,
 			expectError:   false,
 		},
 		{
-			name:        "Invalid metric no labels",
-			line:        `neo4j_metric_value 123`,
-			expectError: true,
+			name: "Multiple metrics",
+			input: `# HELP test_metric Test metric
+# TYPE test_metric gauge
+test_metric{label="a"} 10.0
+test_metric{label="b"} 20.0
+`,
+			expectedName:  "test_metric",
+			expectedValue: 10.0, // Will get first metric
+			expectError:   false,
 		},
 		{
-			name:        "Invalid metric no value",
-			line:        `neo4j_metric{label="value"}`,
-			expectError: true,
+			name:        "Empty input",
+			input:       "",
+			expectError: false, // Empty is valid, just returns no metrics
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metric, err := promSvc.parseMetricLine(tt.line)
-			
+			result, err := promSvc.parsePrometheusMetrics([]byte(tt.input))
+
 			if tt.expectError {
 				if err == nil {
 					t.Error("Expected error, got nil")
 				}
 				return
 			}
-			
+
 			if err != nil {
 				t.Fatalf("Expected no error, got %v", err)
 			}
-			
-			if metric.Name != tt.expectedName {
-				t.Errorf("Expected name %s, got %s", tt.expectedName, metric.Name)
-			}
-			
-			if metric.Value != tt.expectedValue {
-				t.Errorf("Expected value %f, got %f", tt.expectedValue, metric.Value)
+
+			if tt.expectedName != "" {
+				metrics, ok := result.Metrics[tt.expectedName]
+				if !ok {
+					t.Fatalf("Expected metric %s not found", tt.expectedName)
+				}
+
+				if len(metrics) == 0 {
+					t.Fatal("Expected at least one metric value")
+				}
+
+				if metrics[0].Value != tt.expectedValue {
+					t.Errorf("Expected value %f, got %f", tt.expectedValue, metrics[0].Value)
+				}
 			}
 		})
 	}
@@ -127,13 +146,13 @@ func TestPrometheusService_GetInstanceHealth(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", "", 30*time.Second, 3, logger)
-	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+	apiSvc := api.NewRequestService(httpSvc, api.Config{
 		ClientID:     "test-client-id",
 		ClientSecret: "test-client-secret",
 		APIVersion:   "v1",
 		Timeout:      30 * time.Second,
 	}, logger)
-	
+
 	promSvc := &prometheusService{
 		api:    apiSvc,
 		ctx:    context.Background(),
@@ -148,7 +167,7 @@ func TestPrometheusService_GetInstanceHealth(t *testing.T) {
 	})
 
 	t.Run("EmptyPrometheusURL", func(t *testing.T) {
-		_, err := promSvc.GetInstanceHealth("abc123", "")
+		_, err := promSvc.GetInstanceHealth("c9f0d13a", "")
 		if err == nil {
 			t.Error("Expected error for empty Prometheus URL, got nil")
 		}
@@ -161,13 +180,13 @@ func TestPrometheusService_GetMetricValue(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", "", 30*time.Second, 3, logger)
-	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+	apiSvc := api.NewRequestService(httpSvc, api.Config{
 		ClientID:     "test",
 		ClientSecret: "test",
 		APIVersion:   "v1",
 		Timeout:      30 * time.Second,
 	}, logger)
-	
+
 	promSvc := &prometheusService{
 		api:    apiSvc,
 		ctx:    context.Background(),
@@ -259,13 +278,13 @@ func TestAssessHealth(t *testing.T) {
 	logger := slog.New(handler)
 
 	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", "", 30*time.Second, 3, logger)
-	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+	apiSvc := api.NewRequestService(httpSvc, api.Config{
 		ClientID:     "test-client-id",
 		ClientSecret: "test-client-secret",
 		APIVersion:   "v1",
 		Timeout:      30 * time.Second,
 	}, logger)
-	
+
 	promSvc := &prometheusService{
 		api:    apiSvc,
 		ctx:    context.Background(),
@@ -360,17 +379,17 @@ func TestAssessHealth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.metrics.Issues = []string{}
 			tt.metrics.Recommendations = []string{}
-			
+
 			status := promSvc.assessHealth(tt.metrics)
-			
+
 			if status != tt.expectedStatus {
 				t.Errorf("Expected status %s, got %s", tt.expectedStatus, status)
 			}
-			
+
 			if tt.expectIssues && len(tt.metrics.Issues) == 0 {
 				t.Error("Expected issues to be reported, but none were found")
 			}
-			
+
 			if !tt.expectIssues && len(tt.metrics.Issues) > 0 {
 				t.Errorf("Expected no issues, but found: %v", tt.metrics.Issues)
 			}

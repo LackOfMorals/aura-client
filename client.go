@@ -8,12 +8,11 @@
 //	client, err := aura.NewClient(
 //	    aura.WithCredentials("client-id", "client-secret"),
 //	)
-
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //
-// instances, err := client.Instances.List()
+//	instances, err := client.Instances.List()
 package aura
 
 import (
@@ -21,18 +20,20 @@ import (
 	"errors"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
-// Core service configuration
-type AuraAPIClient struct {
-	api    api.APIRequestService // Handles authenticated API requests
-	ctx    context.Context       // Context for API operations
-	logger *slog.Logger          // Structured logger
+// Version is the semantic version of this client library
+const Version = "1.6.0"
+
+// AuraAPIClient is the main client for interacting with the Neo4j Aura API
+type APIClient struct {
+	api    api.RequestService // Handles authenticated API requests
+	ctx    context.Context    // Context for API operations
+	logger *slog.Logger       // Structured logger
 
 	// Grouped services - using interface types for testability
 	Tenants        TenantService
@@ -41,7 +42,6 @@ type AuraAPIClient struct {
 	Cmek           CmekService
 	GraphAnalytics GDSSessionService
 	Prometheus     PrometheusService
-	Store          StoreService
 }
 
 // config holds internal configuration (unexported)
@@ -53,7 +53,6 @@ type config struct {
 	clientID     string          // client id to obtain a token to use the aura api
 	clientSecret string          // client secret to obtain a token to use the aura api
 	ctx          context.Context // context for the client
-	storePath    string          // path to the SQLite database for configuration storage
 }
 
 // Option is a functional option for configuring the AuraAPIClient
@@ -67,16 +66,9 @@ type options struct {
 
 // defaultOptions returns options with sensible defaults
 func defaultOptions() *options {
-	// Enable debug-level logging to stderr
+	// Enable warning-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelWarn}
 	handler := slog.NewTextHandler(os.Stderr, opts)
-
-	// Default store path in user's home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	defaultStorePath := filepath.Join(homeDir, ".aura-client", "store.db")
 
 	return &options{
 		config: config{
@@ -85,7 +77,6 @@ func defaultOptions() *options {
 			apiTimeout:  120 * time.Second,
 			apiRetryMax: 3,
 			ctx:         context.Background(),
-			storePath:   defaultStorePath,
 		},
 		logger: slog.New(handler),
 	}
@@ -123,7 +114,7 @@ func WithTimeout(timeout time.Duration) Option {
 func WithMaxRetry(maxRetry int) Option {
 	return func(o *options) error {
 		if maxRetry <= 0 {
-			return errors.New("Max retries must be greater than zero")
+			return errors.New("max retries must be greater than zero")
 		}
 		o.config.apiRetryMax = maxRetry
 		return nil
@@ -141,21 +132,9 @@ func WithLogger(logger *slog.Logger) Option {
 	}
 }
 
-// WithStorePath sets a custom path for the SQLite configuration store (optional)
-func WithStorePath(path string) Option {
-	return func(o *options) error {
-		if path == "" {
-			return errors.New("store path cannot be empty")
-		}
-		o.config.storePath = path
-		return nil
-	}
-}
-
-// NewAuraAPIClient creates a new Aura API client with functional options
-func NewClient(opts ...Option) (*AuraAPIClient, error) {
+// NewClient creates a new Aura API client with functional options
+func NewClient(opts ...Option) (*APIClient, error) {
 	// Start with defaults
-
 	o := defaultOptions()
 
 	// Apply all options
@@ -198,7 +177,7 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 	httpSvc := httpClient.NewHTTPService(o.config.baseURL, o.config.version, o.config.apiTimeout, o.config.apiRetryMax, o.logger)
 
 	// Create the API request service (middle layer - handles auth)
-	apiSvc := api.NewAPIRequestService(httpSvc, api.Config{
+	apiSvc := api.NewRequestService(httpSvc, api.Config{
 		ClientID:     o.config.clientID,
 		ClientSecret: o.config.clientSecret,
 		BaseURL:      o.config.baseURL,
@@ -206,7 +185,7 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		Timeout:      o.config.apiTimeout,
 	}, o.logger)
 
-	service := &AuraAPIClient{
+	service := &APIClient{
 		api:    apiSvc,
 		ctx:    o.config.ctx,
 		logger: o.logger.With(slog.String("component", "AuraAPIClient")),
@@ -244,25 +223,9 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		logger: service.logger.With(slog.String("service", "prometheusService")),
 	}
 
-	// Initialize store service
-	storeSvc, err := newStoreService(
-		o.config.ctx,
-		o.config.storePath,
-		service.logger.With(slog.String("service", "storeService")),
-	)
-	if err != nil {
-		o.logger.Error("failed to initialize store service", slog.String("error", err.Error()))
-		return nil, err
-	}
-	service.Store = storeSvc
-
-	// Set store reference in instance service for CreateFromStore
-	if instSvc, ok := service.Instances.(*instanceService); ok {
-		instSvc.store = storeSvc
-	}
-
-	service.logger.Info("Aura API service initialized successfully",
-		slog.Int("subServices", 7),
+	service.logger.Info("Aura API client initialized successfully",
+		slog.Int("services", 6),
+		slog.String("client version", Version),
 	)
 
 	return service, nil

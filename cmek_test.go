@@ -30,7 +30,7 @@ func TestCmekService_List_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestCmekService(mock)
@@ -61,7 +61,7 @@ func TestCmekService_List_WithTenantFilter(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestCmekService(mock)
@@ -107,7 +107,7 @@ func TestCmekService_List_EmptyResult(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestCmekService(mock)
@@ -124,7 +124,7 @@ func TestCmekService_List_EmptyResult(t *testing.T) {
 // TestCmekService_List_AuthenticationError verifies auth error handling
 func TestCmekService_List_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
+		err: &api.Error{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
 	}
 
 	service := createTestCmekService(mock)
@@ -134,9 +134,9 @@ func TestCmekService_List_AuthenticationError(t *testing.T) {
 		t.Fatal("expected authentication error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsUnauthorized() {
 		t.Error("expected IsUnauthorized() to be true")

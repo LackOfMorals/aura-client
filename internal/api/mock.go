@@ -4,22 +4,22 @@ import (
 	"context"
 )
 
-// MockAPIRequestService is a mock implementation of APIRequestService for testing
-type MockAPIRequestService struct {
+// MockRequestService is a mock implementation of RequestService for testing
+type MockRequestService struct {
 	// Default response for all requests
-	Response *APIResponse
+	Response *Response
 	Error    error
 
 	// Method-specific responses
-	GetResponse    *APIResponse
+	GetResponse    *Response
 	GetError       error
-	PostResponse   *APIResponse
+	PostResponse   *Response
 	PostError      error
-	PutResponse    *APIResponse
+	PutResponse    *Response
 	PutError       error
-	PatchResponse  *APIResponse
+	PatchResponse  *Response
 	PatchError     error
-	DeleteResponse *APIResponse
+	DeleteResponse *Response
 	DeleteError    error
 
 	// Capture the last request for assertions
@@ -37,15 +37,15 @@ type MockAPICall struct {
 	Body     string
 }
 
-// NewMockAPIRequestService creates a new mock API request service
-func NewMockAPIRequestService() *MockAPIRequestService {
-	return &MockAPIRequestService{
+// NewMockRequestService creates a new mock API request service
+func NewMockRequestService() *MockRequestService {
+	return &MockRequestService{
 		CallHistory: make([]MockAPICall, 0),
 	}
 }
 
-// Get implements APIRequestService.Get
-func (m *MockAPIRequestService) Get(ctx context.Context, endpoint string) (*APIResponse, error) {
+// Get implements RequestService.Get
+func (m *MockRequestService) Get(ctx context.Context, endpoint string) (*Response, error) {
 	m.recordCall("GET", endpoint, "")
 	if m.GetResponse != nil || m.GetError != nil {
 		return m.GetResponse, m.GetError
@@ -53,8 +53,8 @@ func (m *MockAPIRequestService) Get(ctx context.Context, endpoint string) (*APIR
 	return m.Response, m.Error
 }
 
-// Post implements APIRequestService.Post
-func (m *MockAPIRequestService) Post(ctx context.Context, endpoint string, body string) (*APIResponse, error) {
+// Post implements RequestService.Post
+func (m *MockRequestService) Post(ctx context.Context, endpoint string, body string) (*Response, error) {
 	m.recordCall("POST", endpoint, body)
 	if m.PostResponse != nil || m.PostError != nil {
 		return m.PostResponse, m.PostError
@@ -62,8 +62,8 @@ func (m *MockAPIRequestService) Post(ctx context.Context, endpoint string, body 
 	return m.Response, m.Error
 }
 
-// Put implements APIRequestService.Put
-func (m *MockAPIRequestService) Put(ctx context.Context, endpoint string, body string) (*APIResponse, error) {
+// Put implements RequestService.Put
+func (m *MockRequestService) Put(ctx context.Context, endpoint string, body string) (*Response, error) {
 	m.recordCall("PUT", endpoint, body)
 	if m.PutResponse != nil || m.PutError != nil {
 		return m.PutResponse, m.PutError
@@ -71,8 +71,8 @@ func (m *MockAPIRequestService) Put(ctx context.Context, endpoint string, body s
 	return m.Response, m.Error
 }
 
-// Patch implements APIRequestService.Patch
-func (m *MockAPIRequestService) Patch(ctx context.Context, endpoint string, body string) (*APIResponse, error) {
+// Patch implements RequestService.Patch
+func (m *MockRequestService) Patch(ctx context.Context, endpoint string, body string) (*Response, error) {
 	m.recordCall("PATCH", endpoint, body)
 	if m.PatchResponse != nil || m.PatchError != nil {
 		return m.PatchResponse, m.PatchError
@@ -80,8 +80,8 @@ func (m *MockAPIRequestService) Patch(ctx context.Context, endpoint string, body
 	return m.Response, m.Error
 }
 
-// Delete implements APIRequestService.Delete
-func (m *MockAPIRequestService) Delete(ctx context.Context, endpoint string) (*APIResponse, error) {
+// Delete implements RequestService.Delete
+func (m *MockRequestService) Delete(ctx context.Context, endpoint string) (*Response, error) {
 	m.recordCall("DELETE", endpoint, "")
 	if m.DeleteResponse != nil || m.DeleteError != nil {
 		return m.DeleteResponse, m.DeleteError
@@ -90,7 +90,7 @@ func (m *MockAPIRequestService) Delete(ctx context.Context, endpoint string) (*A
 }
 
 // recordCall records the call details for later assertions
-func (m *MockAPIRequestService) recordCall(method, endpoint, body string) {
+func (m *MockRequestService) recordCall(method, endpoint, body string) {
 	m.LastMethod = method
 	m.LastEndpoint = endpoint
 	m.LastBody = body
@@ -103,7 +103,7 @@ func (m *MockAPIRequestService) recordCall(method, endpoint, body string) {
 }
 
 // Reset clears all recorded calls and responses
-func (m *MockAPIRequestService) Reset() {
+func (m *MockRequestService) Reset() {
 	m.Response = nil
 	m.Error = nil
 	m.GetResponse = nil
@@ -124,8 +124,8 @@ func (m *MockAPIRequestService) Reset() {
 }
 
 // WithResponse sets the default response for all methods
-func (m *MockAPIRequestService) WithResponse(statusCode int, body string) *MockAPIRequestService {
-	m.Response = &APIResponse{
+func (m *MockRequestService) WithResponse(statusCode int, body string) *MockRequestService {
+	m.Response = &Response{
 		StatusCode: statusCode,
 		Body:       []byte(body),
 	}
@@ -133,14 +133,14 @@ func (m *MockAPIRequestService) WithResponse(statusCode int, body string) *MockA
 }
 
 // WithError sets the default error for all methods
-func (m *MockAPIRequestService) WithError(err error) *MockAPIRequestService {
+func (m *MockRequestService) WithError(err error) *MockRequestService {
 	m.Error = err
 	return m
 }
 
 // WithGetResponse sets a specific response for GET requests
-func (m *MockAPIRequestService) WithGetResponse(statusCode int, body string) *MockAPIRequestService {
-	m.GetResponse = &APIResponse{
+func (m *MockRequestService) WithGetResponse(statusCode int, body string) *MockRequestService {
+	m.GetResponse = &Response{
 		StatusCode: statusCode,
 		Body:       []byte(body),
 	}
@@ -148,17 +148,17 @@ func (m *MockAPIRequestService) WithGetResponse(statusCode int, body string) *Mo
 }
 
 // WithPostResponse sets a specific response for POST requests
-func (m *MockAPIRequestService) WithPostResponse(statusCode int, body string) *MockAPIRequestService {
-	m.PostResponse = &APIResponse{
+func (m *MockRequestService) WithPostResponse(statusCode int, body string) *MockRequestService {
+	m.PostResponse = &Response{
 		StatusCode: statusCode,
 		Body:       []byte(body),
 	}
 	return m
 }
 
-// WithAPIError sets an API error response
-func (m *MockAPIRequestService) WithAPIError(statusCode int, message string) *MockAPIRequestService {
-	m.Error = &APIError{
+// WithError sets an API error response
+func (m *MockRequestService) WithAPIError(statusCode int, message string) *MockRequestService {
+	m.Error = &Error{
 		StatusCode: statusCode,
 		Message:    message,
 	}

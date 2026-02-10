@@ -52,7 +52,7 @@ func TestGDSSessionService_List_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -84,7 +84,7 @@ func TestGDSSessionService_List_EmptyResult(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -115,7 +115,7 @@ func TestGDSSessionService_List_SingleSession(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -145,7 +145,7 @@ func TestGDSSessionService_List_MultipleStatuses(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -193,7 +193,7 @@ func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 
 	responseBody, _ := json.Marshal(GetGDSSessionResponse{Data: []GetGDSSessionData{expectedSession}})
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -231,7 +231,7 @@ func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 // TestGDSSessionService_List_AuthenticationError verifies auth error handling
 func TestGDSSessionService_List_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
+		err: &api.Error{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -241,9 +241,9 @@ func TestGDSSessionService_List_AuthenticationError(t *testing.T) {
 		t.Fatal("expected authentication error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsUnauthorized() {
 		t.Error("expected IsUnauthorized() to be true")
@@ -253,7 +253,7 @@ func TestGDSSessionService_List_AuthenticationError(t *testing.T) {
 // TestGDSSessionService_List_ServerError verifies server error handling
 func TestGDSSessionService_List_ServerError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{StatusCode: http.StatusBadRequest, Message: "Bad request error"},
+		err: &api.Error{StatusCode: http.StatusBadRequest, Message: "Bad request error"},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -266,9 +266,9 @@ func TestGDSSessionService_List_ServerError(t *testing.T) {
 		t.Error("expected result to be nil on error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if apiErr.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected status 400, got %d", apiErr.StatusCode)

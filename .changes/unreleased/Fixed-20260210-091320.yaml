@@ -1,0 +1,3 @@
+kind: Fixed
+body: Moved away from home grown Prometheus metrics client to use the Prometheus Client Go package
+time: 2026-02-10T09:13:20.346849Z

@@ -3,7 +3,7 @@ package aura
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
@@ -89,8 +89,7 @@ type OverwriteInstanceResponse struct {
 
 // instanceService handles instance operations
 type instanceService struct {
-	api    api.APIRequestService
-	store  StoreService
+	api    api.RequestService
 	ctx    context.Context
 	logger *slog.Logger
 }
@@ -163,28 +162,6 @@ func (i *instanceService) Create(instanceRequest *CreateInstanceConfigData) (*Cr
 
 	i.logger.InfoContext(i.ctx, "instance created successfully", slog.String("instanceID", result.Data.Id), slog.String("name", result.Data.Name))
 	return &result, nil
-}
-
-// CreateFromStore provisions a new database instance using a stored configuration
-func (i *instanceService) CreateFromStore(label string) (*CreateInstanceResponse, error) {
-	i.logger.DebugContext(i.ctx, "creating instance from store", slog.String("label", label))
-
-	if i.store == nil {
-		i.logger.ErrorContext(i.ctx, "store service not initialized")
-		return nil, errors.New("store service not initialized")
-	}
-
-	// Read configuration from store
-	config, err := i.store.Read(label)
-	if err != nil {
-		i.logger.ErrorContext(i.ctx, "failed to read configuration from store", slog.String("label", label), slog.String("error", err.Error()))
-		return nil, err
-	}
-
-	i.logger.DebugContext(i.ctx, "configuration loaded from store", slog.String("label", label), slog.String("name", config.Name))
-
-	// Create instance using the stored configuration
-	return i.Create(config)
 }
 
 // Delete removes an instance by ID
@@ -289,16 +266,33 @@ func (i *instanceService) Update(instanceID string, instanceRequest *UpdateInsta
 	return &result, nil
 }
 
-// Overwrite replaces instance data from another instance or snapshot
+// Overwrite instance from another instance or snapshot
 func (i *instanceService) Overwrite(instanceID string, sourceInstanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
 	i.logger.DebugContext(i.ctx, "overwriting instance", slog.String("instanceID", instanceID))
 
-	if err := utils.ValidateInstanceID(instanceID); err != nil {
+	// Validation checks
+	if sourceInstanceID == "" && sourceSnapshotID == "" {
+		err := fmt.Errorf("must provide either sourceInstanceID or sourceSnapshotID")
+		i.logger.ErrorContext(i.ctx, "", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
+	if sourceInstanceID != "" && sourceSnapshotID != "" {
+		err := fmt.Errorf("cannot provide both sourceInstanceID and sourceSnapshotID")
+		i.logger.ErrorContext(i.ctx, "", slog.String("error", err.Error()))
 		return nil, err
+	}
+
+	if instanceID != "" {
+		if err := utils.ValidateInstanceID(instanceID); err != nil {
+			return nil, fmt.Errorf("invalid source instance ID: %w", err)
+		}
+	}
+
+	if sourceInstanceID != "" {
+		if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
+			return nil, fmt.Errorf("invalid source instance ID: %w", err)
+		}
 	}
 
 	requestBody := overwriteInstanceRequest{

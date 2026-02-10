@@ -8,43 +8,43 @@ import (
 	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
-// mockAPIService is a mock implementation of api.APIRequestService for testing
+// mockAPIService is a mock implementation of api.RequestService for testing
 type mockAPIService struct {
-	response   *api.APIResponse
+	response   *api.Response
 	err        error
 	lastMethod string
 	lastPath   string
 	lastBody   string
 }
 
-func (m *mockAPIService) Get(ctx context.Context, endpoint string) (*api.APIResponse, error) {
+func (m *mockAPIService) Get(ctx context.Context, endpoint string) (*api.Response, error) {
 	m.lastMethod = "GET"
 	m.lastPath = endpoint
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Post(ctx context.Context, endpoint string, body string) (*api.APIResponse, error) {
+func (m *mockAPIService) Post(ctx context.Context, endpoint string, body string) (*api.Response, error) {
 	m.lastMethod = "POST"
 	m.lastPath = endpoint
 	m.lastBody = body
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Put(ctx context.Context, endpoint string, body string) (*api.APIResponse, error) {
+func (m *mockAPIService) Put(ctx context.Context, endpoint string, body string) (*api.Response, error) {
 	m.lastMethod = "PUT"
 	m.lastPath = endpoint
 	m.lastBody = body
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Patch(ctx context.Context, endpoint string, body string) (*api.APIResponse, error) {
+func (m *mockAPIService) Patch(ctx context.Context, endpoint string, body string) (*api.Response, error) {
 	m.lastMethod = "PATCH"
 	m.lastPath = endpoint
 	m.lastBody = body
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Delete(ctx context.Context, endpoint string) (*api.APIResponse, error) {
+func (m *mockAPIService) Delete(ctx context.Context, endpoint string) (*api.Response, error) {
 	m.lastMethod = "DELETE"
 	m.lastPath = endpoint
 	return m.response, m.err
@@ -82,7 +82,7 @@ func TestInstanceService_List_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -130,7 +130,7 @@ func TestInstanceService_Get_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -184,7 +184,7 @@ func TestInstanceService_Get_InvalidID(t *testing.T) {
 func TestInstanceService_Get_NotFound(t *testing.T) {
 	instanceID := "aaaaaaaa"
 	mock := &mockAPIService{
-		err: &api.APIError{
+		err: &api.Error{
 			StatusCode: 404,
 			Message:    "Instance not found",
 		},
@@ -200,9 +200,9 @@ func TestInstanceService_Get_NotFound(t *testing.T) {
 		t.Error("expected result to be nil on error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatalf("expected APIError type, got %T: %v", err, err)
+		t.Fatalf("expected Error type, got %T: %v", err, err)
 	}
 	if !apiErr.IsNotFound() {
 		t.Error("expected IsNotFound() to be true")
@@ -237,7 +237,7 @@ func TestInstanceService_Create_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -286,7 +286,7 @@ func TestInstanceService_Delete_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -322,7 +322,7 @@ func TestInstanceService_Pause_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -358,7 +358,7 @@ func TestInstanceService_Resume_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -397,7 +397,7 @@ func TestInstanceService_Update_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -434,7 +434,7 @@ func TestInstanceService_Overwrite_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -476,7 +476,7 @@ func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -508,7 +508,7 @@ func TestInstanceService_List_EmptyResult(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{
+		response: &api.Response{
 			StatusCode: 200,
 			Body:       responseBody,
 		},
@@ -528,7 +528,7 @@ func TestInstanceService_List_EmptyResult(t *testing.T) {
 // TestInstanceService_AuthenticationError verifies auth error handling
 func TestInstanceService_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{
+		err: &api.Error{
 			StatusCode: 401,
 			Message:    "Invalid credentials",
 		},
@@ -541,9 +541,9 @@ func TestInstanceService_AuthenticationError(t *testing.T) {
 		t.Fatal("expected authentication error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsUnauthorized() {
 		t.Error("expected IsUnauthorized() to be true")

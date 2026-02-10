@@ -7,16 +7,16 @@ import (
 	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
-// TestAPIError_Error verifies error message formatting
-func TestAPIError_Error(t *testing.T) {
+// TestError_Error verifies error message formatting
+func TestError_Error(t *testing.T) {
 	tests := []struct {
 		name        string
-		apiErr      *api.APIError
+		apiErr      *api.Error
 		expectedMsg string
 	}{
 		{
 			name: "error without details",
-			apiErr: &api.APIError{
+			apiErr: &api.Error{
 				StatusCode: 404,
 				Message:    "Not Found",
 				Details:    nil,
@@ -25,10 +25,10 @@ func TestAPIError_Error(t *testing.T) {
 		},
 		{
 			name: "error with single detail",
-			apiErr: &api.APIError{
+			apiErr: &api.Error{
 				StatusCode: 400,
 				Message:    "Bad Request",
-				Details: []api.APIErrorDetail{
+				Details: []api.ErrorDetail{
 					{Message: "Invalid parameter"},
 				},
 			},
@@ -36,10 +36,10 @@ func TestAPIError_Error(t *testing.T) {
 		},
 		{
 			name: "error with multiple details",
-			apiErr: &api.APIError{
+			apiErr: &api.Error{
 				StatusCode: 422,
 				Message:    "Validation Error",
-				Details: []api.APIErrorDetail{
+				Details: []api.ErrorDetail{
 					{Message: "Field 'name' is required"},
 					{Message: "Field 'region' is invalid"},
 					{Message: "Field 'memory' must be positive"},
@@ -58,12 +58,12 @@ func TestAPIError_Error(t *testing.T) {
 	}
 }
 
-// TestAPIError_AllErrors verifies getting all error messages
-func TestAPIError_AllErrors(t *testing.T) {
-	apiErr := &api.APIError{
+// TestError_AllErrors verifies getting all error messages
+func TestError_AllErrors(t *testing.T) {
+	apiErr := &api.Error{
 		StatusCode: 400,
 		Message:    "Multiple errors occurred",
-		Details: []api.APIErrorDetail{
+		Details: []api.ErrorDetail{
 			{Message: "Error 1"},
 			{Message: "Error 2"},
 			{Message: "Error 3"},
@@ -84,16 +84,16 @@ func TestAPIError_AllErrors(t *testing.T) {
 	}
 }
 
-// TestAPIError_HasMultipleErrors verifies multiple error detection
-func TestAPIError_HasMultipleErrors(t *testing.T) {
+// TestError_HasMultipleErrors verifies multiple error detection
+func TestError_HasMultipleErrors(t *testing.T) {
 	tests := []struct {
 		name     string
-		apiErr   *api.APIError
+		apiErr   *api.Error
 		expected bool
 	}{
 		{
 			name: "no details",
-			apiErr: &api.APIError{
+			apiErr: &api.Error{
 				StatusCode: 404,
 				Message:    "Not Found",
 				Details:    nil,
@@ -102,10 +102,10 @@ func TestAPIError_HasMultipleErrors(t *testing.T) {
 		},
 		{
 			name: "single detail",
-			apiErr: &api.APIError{
+			apiErr: &api.Error{
 				StatusCode: 400,
 				Message:    "Error",
-				Details: []api.APIErrorDetail{
+				Details: []api.ErrorDetail{
 					{Message: "Single error"},
 				},
 			},
@@ -113,10 +113,10 @@ func TestAPIError_HasMultipleErrors(t *testing.T) {
 		},
 		{
 			name: "multiple details",
-			apiErr: &api.APIError{
+			apiErr: &api.Error{
 				StatusCode: 422,
 				Message:    "Error",
-				Details: []api.APIErrorDetail{
+				Details: []api.ErrorDetail{
 					{Message: "Error 1"},
 					{Message: "Error 2"},
 				},
@@ -134,8 +134,8 @@ func TestAPIError_HasMultipleErrors(t *testing.T) {
 	}
 }
 
-// TestAPIError_IsNotFound verifies 404 detection
-func TestAPIError_IsNotFound(t *testing.T) {
+// TestError_IsNotFound verifies 404 detection
+func TestError_IsNotFound(t *testing.T) {
 	tests := []struct {
 		statusCode int
 		expected   bool
@@ -148,7 +148,7 @@ func TestAPIError_IsNotFound(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiErr := &api.APIError{StatusCode: tt.statusCode}
+		apiErr := &api.Error{StatusCode: tt.statusCode}
 		if apiErr.IsNotFound() != tt.expected {
 			t.Errorf("statusCode %d: expected IsNotFound() = %v, got %v",
 				tt.statusCode, tt.expected, apiErr.IsNotFound())
@@ -156,8 +156,8 @@ func TestAPIError_IsNotFound(t *testing.T) {
 	}
 }
 
-// TestAPIError_IsUnauthorized verifies 401 detection
-func TestAPIError_IsUnauthorized(t *testing.T) {
+// TestError_IsUnauthorized verifies 401 detection
+func TestError_IsUnauthorized(t *testing.T) {
 	tests := []struct {
 		statusCode int
 		expected   bool
@@ -170,7 +170,7 @@ func TestAPIError_IsUnauthorized(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiErr := &api.APIError{StatusCode: tt.statusCode}
+		apiErr := &api.Error{StatusCode: tt.statusCode}
 		if apiErr.IsUnauthorized() != tt.expected {
 			t.Errorf("statusCode %d: expected IsUnauthorized() = %v, got %v",
 				tt.statusCode, tt.expected, apiErr.IsUnauthorized())
@@ -178,8 +178,8 @@ func TestAPIError_IsUnauthorized(t *testing.T) {
 	}
 }
 
-// TestAPIError_IsBadRequest verifies 400 detection
-func TestAPIError_IsBadRequest(t *testing.T) {
+// TestError_IsBadRequest verifies 400 detection
+func TestError_IsBadRequest(t *testing.T) {
 	tests := []struct {
 		statusCode int
 		expected   bool
@@ -192,7 +192,7 @@ func TestAPIError_IsBadRequest(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		apiErr := &api.APIError{StatusCode: tt.statusCode}
+		apiErr := &api.Error{StatusCode: tt.statusCode}
 		if apiErr.IsBadRequest() != tt.expected {
 			t.Errorf("statusCode %d: expected IsBadRequest() = %v, got %v",
 				tt.statusCode, tt.expected, apiErr.IsBadRequest())
@@ -200,16 +200,16 @@ func TestAPIError_IsBadRequest(t *testing.T) {
 	}
 }
 
-// TestAPIError_TypeAssertion verifies error can be type asserted
-func TestAPIError_TypeAssertion(t *testing.T) {
-	var err error = &api.APIError{
+// TestError_TypeAssertion verifies error can be type asserted
+func TestError_TypeAssertion(t *testing.T) {
+	var err error = &api.Error{
 		StatusCode: 404,
 		Message:    "Not Found",
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("failed to type assert error to *APIError")
+		t.Fatal("failed to type assert error to *Error")
 	}
 
 	if !apiErr.IsNotFound() {
@@ -217,12 +217,12 @@ func TestAPIError_TypeAssertion(t *testing.T) {
 	}
 }
 
-// TestAPIError_JSONMarshaling verifies APIError can be marshaled to JSON
-func TestAPIError_JSONMarshaling(t *testing.T) {
-	apiErr := &api.APIError{
+// TestError_JSONMarshaling verifies Error can be marshaled to JSON
+func TestError_JSONMarshaling(t *testing.T) {
+	apiErr := &api.Error{
 		StatusCode: 400,
 		Message:    "Test error",
-		Details: []api.APIErrorDetail{
+		Details: []api.ErrorDetail{
 			{
 				Message: "Detail message",
 				Reason:  "test_reason",
@@ -233,12 +233,12 @@ func TestAPIError_JSONMarshaling(t *testing.T) {
 
 	data, err := json.Marshal(apiErr)
 	if err != nil {
-		t.Fatalf("failed to marshal APIError: %v", err)
+		t.Fatalf("failed to marshal Error: %v", err)
 	}
 
-	var unmarshaled api.APIError
+	var unmarshaled api.Error
 	if err := json.Unmarshal(data, &unmarshaled); err != nil {
-		t.Fatalf("failed to unmarshal APIError: %v", err)
+		t.Fatalf("failed to unmarshal Error: %v", err)
 	}
 
 	if unmarshaled.StatusCode != apiErr.StatusCode {
@@ -249,10 +249,10 @@ func TestAPIError_JSONMarshaling(t *testing.T) {
 	}
 }
 
-// TestAPIErrorAlias verifies the type alias works correctly
-func TestAPIErrorAlias(t *testing.T) {
+// TestErrorAlias verifies the type alias works correctly
+func TestErrorAlias(t *testing.T) {
 	// Test that the type alias works
-	var err APIError = api.APIError{
+	var err Error = api.Error{
 		StatusCode: 404,
 		Message:    "Test",
 	}
