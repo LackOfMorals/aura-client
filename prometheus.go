@@ -19,15 +19,15 @@ import (
 
 // PrometheusHealthMetrics contains parsed health metrics for an instance
 type PrometheusHealthMetrics struct {
-	InstanceID      string            `json:"instance_id"`
-	Timestamp       time.Time         `json:"timestamp"`
-	Resources       ResourceMetrics   `json:"resources"`
-	Query           QueryMetrics      `json:"query"`
-	Connections     ConnectionMetrics `json:"connections"`
-	Storage         StorageMetrics    `json:"storage"`
-	OverallStatus   string            `json:"overall_status"`
-	Issues          []string          `json:"issues"`
-	Recommendations []string          `json:"recommendations"`
+	InstanceID      string                 `json:"instance_id"`
+	Timestamp       time.Time              `json:"timestamp"`
+	Resources       ResourceMetrics        `json:"resources"`
+	Query           QueryMetrics           `json:"query"`
+	Connections     ConnectionMetrics      `json:"connections"`
+	Storage         StorageMetrics         `json:"storage"`
+	OverallStatus   string                 `json:"overall_status"`
+	Issues          []string               `json:"issues"`
+	Recommendations []string               `json:"recommendations"`
 }
 
 // ResourceMetrics contains CPU and memory usage
@@ -69,29 +69,34 @@ type PrometheusMetricsResponse struct {
 
 // prometheusService handles Prometheus metrics operations
 type prometheusService struct {
-	api    api.RequestService
-	ctx    context.Context
-	logger *slog.Logger
+	api     api.RequestService
+	ctx     context.Context
+	timeout time.Duration
+	logger  *slog.Logger
 }
 
 // FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint
 // using the official Prometheus client library for robust parsing
 func (p *prometheusService) FetchRawMetrics(prometheusURL string) (*PrometheusMetricsResponse, error) {
-	p.logger.DebugContext(p.ctx, "fetching raw Prometheus metrics", slog.String("url", prometheusURL))
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(p.ctx, p.timeout)
+	defer cancel()
+
+	p.logger.DebugContext(ctx, "fetching raw Prometheus metrics", slog.String("url", prometheusURL))
 
 	if prometheusURL == "" {
 		return nil, fmt.Errorf("prometheus URL cannot be empty")
 	}
 
 	// Fetch the raw metrics
-	resp, err := p.api.Get(p.ctx, prometheusURL)
+	resp, err := p.api.Get(ctx, prometheusURL)
 	if err != nil {
-		p.logger.ErrorContext(p.ctx, "failed to fetch raw metrics", slog.String("error", err.Error()))
+		p.logger.ErrorContext(ctx, "failed to fetch raw metrics", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		p.logger.ErrorContext(p.ctx, "metrics endpoint returned non-200 status",
+		p.logger.ErrorContext(ctx, "metrics endpoint returned non-200 status",
 			slog.Int("statusCode", resp.StatusCode))
 		return nil, fmt.Errorf("metrics endpoint failed with status %d", resp.StatusCode)
 	}
@@ -99,11 +104,11 @@ func (p *prometheusService) FetchRawMetrics(prometheusURL string) (*PrometheusMe
 	// Parse using official Prometheus library
 	metrics, err := p.parsePrometheusMetrics(resp.Body)
 	if err != nil {
-		p.logger.ErrorContext(p.ctx, "failed to parse metrics", slog.String("error", err.Error()))
+		p.logger.ErrorContext(ctx, "failed to parse metrics", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	p.logger.DebugContext(p.ctx, "raw metrics fetched successfully",
+	p.logger.DebugContext(ctx, "raw metrics fetched successfully",
 		slog.Int("metricCount", len(metrics.Metrics)))
 
 	return metrics, nil
@@ -178,7 +183,11 @@ func (p *prometheusService) parsePrometheusMetrics(data []byte) (*PrometheusMetr
 
 // GetInstanceHealth retrieves comprehensive health metrics for an instance
 func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error) {
-	p.logger.DebugContext(p.ctx, "getting instance health metrics", slog.String("instanceID", instanceID))
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(p.ctx, p.timeout)
+	defer cancel()
+
+	p.logger.DebugContext(ctx, "getting instance health metrics", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
@@ -209,14 +218,14 @@ func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL s
 			metrics.Resources.CPUUsagePercent = (cpuUsage / cpuLimit) * 100
 		}
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get CPU usage", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get CPU usage", slog.String("error", err.Error()))
 	}
 
 	// Memory Usage - from neo4j_dbms_vm_heap_used_ratio (already a ratio 0-1)
 	if heapRatio, err := p.GetMetricValue(rawMetrics, "neo4j_dbms_vm_heap_used_ratio", nil); err == nil {
 		metrics.Resources.MemoryUsagePercent = heapRatio * 100
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get memory usage", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get memory usage", slog.String("error", err.Error()))
 	}
 
 	// Query metrics - from neo4j_db_query_execution_success_total
@@ -224,14 +233,14 @@ func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL s
 		// This is a counter total, not a rate
 		metrics.Query.QueriesPerSecond = successCount
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get query count", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get query count", slog.String("error", err.Error()))
 	}
 
 	// Query Latency - from neo4j_db_query_execution_internal_latency_q50
 	if latency, err := p.GetMetricValue(rawMetrics, "neo4j_db_query_execution_internal_latency_q50", nil); err == nil {
 		metrics.Query.AvgLatencyMS = latency
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get query latency", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get query latency", slog.String("error", err.Error()))
 	}
 
 	// Connection Pool Metrics - from neo4j_dbms_bolt_connections_*
@@ -251,13 +260,13 @@ func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL s
 	if hitRate, err := p.GetMetricValue(rawMetrics, "neo4j_dbms_page_cache_hit_ratio_per_minute", nil); err == nil {
 		metrics.Storage.PageCacheHitRate = hitRate * 100
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get page cache hit rate", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get page cache hit rate", slog.String("error", err.Error()))
 	}
 
 	// Assess overall health and generate recommendations
 	metrics.OverallStatus = p.assessHealth(metrics)
 
-	p.logger.InfoContext(p.ctx, "instance health metrics retrieved",
+	p.logger.InfoContext(ctx, "instance health metrics retrieved",
 		slog.String("instanceID", instanceID),
 		slog.String("status", metrics.OverallStatus))
 

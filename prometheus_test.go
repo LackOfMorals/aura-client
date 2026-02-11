@@ -11,6 +11,8 @@ import (
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
+// mockAPIService is defined in instance tests
+
 func TestPrometheusService_FetchRawMetrics(t *testing.T) {
 	// Create a prometheus service
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}

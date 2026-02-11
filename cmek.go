@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
@@ -25,14 +26,19 @@ type GetCmeksData struct {
 
 // cmekService handles customer managed encryption key operations
 type cmekService struct {
-	api    api.RequestService
-	ctx    context.Context
-	logger *slog.Logger
+	api     api.RequestService
+	ctx     context.Context
+	timeout time.Duration
+	logger  *slog.Logger
 }
 
 // List returns all customer-managed encryption keys, optionally filtered by tenant
 func (c *cmekService) List(tenantId string) (*GetCmeksResponse, error) {
-	c.logger.DebugContext(c.ctx, "listing customer managed keys")
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(c.ctx, c.timeout)
+	defer cancel()
+
+	c.logger.DebugContext(ctx, "listing customer managed keys")
 
 	endpoint := "customer-managed-keys"
 
@@ -48,21 +54,21 @@ func (c *cmekService) List(tenantId string) (*GetCmeksResponse, error) {
 		}
 		endpoint = endpoint + "?tenantid=" + tenantId
 	default:
-		return nil, fmt.Errorf("tenant Id must be in the format of hex 8-4-4-12 pattern")
+		return nil, fmt.Errorf("tenant ID must be in the format of hex 8-4-4-12 pattern")
 	}
 
-	resp, err := c.api.Get(c.ctx, endpoint)
+	resp, err := c.api.Get(ctx, endpoint)
 	if err != nil {
-		c.logger.ErrorContext(c.ctx, "failed to obtain customer managed keys", slog.String("error", err.Error()))
+		c.logger.ErrorContext(ctx, "failed to obtain customer managed keys", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result GetCmeksResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		c.logger.ErrorContext(c.ctx, "failed to unmarshal cmek response", slog.String("error", err.Error()))
+		c.logger.ErrorContext(ctx, "failed to unmarshal cmek response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	c.logger.DebugContext(c.ctx, "obtained customer managed keys", slog.Int("count", len(result.Data)))
+	c.logger.DebugContext(ctx, "obtained customer managed keys", slog.Int("count", len(result.Data)))
 	return &result, nil
 }

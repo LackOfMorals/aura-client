@@ -3,8 +3,9 @@ package aura
 import (
 	"context"
 	"encoding/json"
-	"net/http"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 )
@@ -12,9 +13,21 @@ import (
 // createTestTenantService creates a tenantService with a mock API service for testing
 func createTestTenantService(mock *mockAPIService) *tenantService {
 	return &tenantService{
-		api:    mock,
-		ctx:    context.Background(),
-		logger: testLogger(),
+		api:     mock,
+		ctx:     context.Background(),
+		timeout: 30 * time.Second,
+		logger:  testLogger(),
+	}
+}
+
+// createTestTenantServiceWithContext creates a tenantService with custom context
+// Accepts any mock that implements api.RequestService interface
+func createTestTenantServiceWithContext(mock api.RequestService, ctx context.Context, timeout time.Duration) *tenantService {
+	return &tenantService{
+		api:     mock,
+		ctx:     ctx,
+		timeout: timeout,
+		logger:  testLogger(),
 	}
 }
 
@@ -98,7 +111,7 @@ func TestTenantService_List_EmptyResult(t *testing.T) {
 
 // TestTenantService_Get_Success verifies retrieving a specific tenant
 func TestTenantService_Get_Success(t *testing.T) {
-	tenantID := "tenant-123"
+	tenantID := "00000000-0000-0000-0000-000000000001"
 	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
 			Id:   tenantID,
@@ -159,7 +172,7 @@ func TestTenantService_Get_Success(t *testing.T) {
 
 // TestTenantService_Get_InstanceConfigurations verifies instance configuration details
 func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
-	tenantID := "tenant-123"
+	tenantID := "00000000-0000-0000-0000-000000000001"
 	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
 			Id:   tenantID,
@@ -213,13 +226,13 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 func TestTenantService_Get_NotFound(t *testing.T) {
 	mock := &mockAPIService{
 		err: &api.Error{
-			StatusCode: http.StatusNotFound,
+			StatusCode: 404,
 			Message:    "Tenant not found",
 		},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.Get("nonexistent-tenant")
+	result, err := service.Get("00000000-0000-0000-0000-000000000000")
 
 	if err == nil {
 		t.Fatal("expected error for non-existent tenant")
@@ -241,7 +254,7 @@ func TestTenantService_Get_NotFound(t *testing.T) {
 func TestTenantService_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
 		err: &api.Error{
-			StatusCode: http.StatusUnauthorized,
+			StatusCode: 401,
 			Message:    "Invalid credentials",
 		},
 	}
@@ -264,7 +277,7 @@ func TestTenantService_AuthenticationError(t *testing.T) {
 
 // TestTenantService_Get_NoInstanceConfigurations verifies tenant without configurations
 func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
-	tenantID := "tenant-empty"
+	tenantID := "00000000-0000-0000-0000-000000000001"
 	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
 			Id:                     tenantID,
@@ -322,5 +335,121 @@ func TestTenantService_SingleTenant(t *testing.T) {
 	}
 	if result.Data[0].Id != "tenant-single" {
 		t.Errorf("expected tenant ID 'tenant-single', got '%s'", result.Data[0].Id)
+	}
+}
+
+// ============================================================================
+// Context-Specific Tests for TenantService
+// ============================================================================
+
+// TestTenantService_List_ContextCancelled verifies cancellation handling
+func TestTenantService_List_ContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	responseBody, _ := json.Marshal(ListTenantsResponse{Data: []TenantsResponseData{}})
+	mock := &mockAPIServiceWithDelay{
+		response: &api.Response{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+		delay: 0,
+	}
+
+	service := createTestTenantServiceWithContext(mock, ctx, 30*time.Second)
+
+	start := time.Now()
+	_, err := service.List()
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected context cancelled error")
+	}
+
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got: %v", err)
+	}
+
+	if elapsed > 100*time.Millisecond {
+		t.Errorf("cancellation took too long: %v", elapsed)
+	}
+}
+
+// TestTenantService_Get_ContextTimeout verifies timeout enforcement
+func TestTenantService_Get_ContextTimeout(t *testing.T) {
+	tenantID := "00000000-0000-0000-0000-000000000001"
+
+	responseBody, _ := json.Marshal(GetTenantResponse{
+		Data: TenantResponseData{Id: tenantID, Name: "Test"},
+	})
+	mock := &mockAPIServiceWithDelay{
+		response: &api.Response{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+		delay: 2 * time.Second,
+	}
+
+	service := createTestTenantServiceWithContext(
+		mock,
+		context.Background(),
+		100*time.Millisecond,
+	)
+
+	start := time.Now()
+	_, err := service.Get(tenantID)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
+	}
+
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("timeout took too long: %v", elapsed)
+	}
+}
+
+// TestTenantService_GetMetrics_ContextCancellation verifies metrics endpoint cancellation
+func TestTenantService_GetMetrics_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	tenantID := "00000000-0000-0000-0000-000000000001"
+	responseBody, _ := json.Marshal(GetTenantMetricsURLResponse{
+		Data: GetTenantMetricsURLData{Endpoint: "https://metrics.example.com"},
+	})
+	mock := &mockAPIServiceWithDelay{
+		response: &api.Response{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+		delay: 1 * time.Second,
+	}
+
+	service := createTestTenantServiceWithContext(mock, ctx, 30*time.Second)
+
+	// Cancel after 100ms
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	_, err := service.GetMetrics(tenantID)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected cancellation error")
+	}
+
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got: %v", err)
+	}
+
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("cancellation took too long: %v", elapsed)
 	}
 }
