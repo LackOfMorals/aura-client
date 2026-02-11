@@ -2,18 +2,15 @@
 
 ## Overview
 
-A Go package that enables the use of Neo4j Aura API in a friendly way e.g `instances.list()` to return a list of instances in Aura. 
+A Go package that enables the use of Neo4j Aura API in a friendly way e.g `instances.List()` to return a list of instances in Aura. 
 
 Client Id and Secret are required and these can be obtained from the [Neo4j Aura Console](https://neo4j.com/docs/aura/api/authentication/).
-
-
 
 ## Table of Contents
 
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
-- [Configuration Store](#configuration-store)
 - [Tenant Operations](#tenant-operations)
 - [Instance Operations](#instance-operations)
 - [Snapshot Operations](#snapshot-operations)
@@ -22,6 +19,7 @@ Client Id and Secret are required and these can be obtained from the [Neo4j Aura
 - [Prometheus Metrics Operations](#prometheus-metrics-operations)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
+- [Migration from v1.x](#migration-from-v1x)
 
 ---
 
@@ -83,6 +81,7 @@ client, err := aura.NewClient(
     aura.WithCredentials("client-id", "client-secret"),
     aura.WithTimeout(60 * time.Second),
     aura.WithContext(context.Background()),
+    aura.WithMaxRetry(5),
 )
 ```
 
@@ -103,91 +102,6 @@ client, err := aura.NewClient(
 ```
 
 ---
-
-## Configuration Store
-
-
-The Store service provides persistent storage for instance configurations, allowing you to save, manage, and reuse configurations across sessions.
-
-### Store a Configuration
-
-```go
-config := &aura.CreateInstanceConfigData{
-    Name:          "production-db",
-    TenantId:      "tenant-123",
-    CloudProvider: "gcp",
-    Region:        "us-central1",
-    Type:          "enterprise-db",
-    Version:       "5",
-    Memory:        "8GB",
-}
-
-err := client.Store.Create("prod-config", config)
-```
-
-### Read a Configuration
-
-```go
-config, err := client.Store.Read("prod-config")
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Config: %s (%s)\n", config.Name, config.CloudProvider)
-```
-
-### Update a Configuration
-
-```go
-config.Memory = "16GB"
-err := client.Store.Update("prod-config", config)
-```
-
-### Delete a Configuration
-
-```go
-err := client.Store.Delete("prod-config")
-```
-
-### List All Configurations
-
-```go
-labels, err := client.Store.List()
-for _, label := range labels {
-    fmt.Println(label)
-}
-```
-
-### Custom Store Path
-
-By default, configurations are stored in `~/.aura-client/store.db`. You can customize this:
-
-```go
-client, err := aura.NewClient(
-    aura.WithCredentials("client-id", "client-secret"),
-    aura.WithStorePath("/custom/path/to/store.db"),
-)
-```
-
-### Store Error Handling
-
-```go
-config, err := client.Store.Read("nonexistent")
-if err != nil {
-    if errors.Is(err, aura.ErrConfigNotFound) {
-        fmt.Println("Configuration not found")
-    }
-}
-```
-
-### Common Store Errors
-
-- `ErrConfigNotFound`: Configuration doesn't exist
-- `ErrConfigAlreadyExists`: Label already in use
-- `ErrInvalidLabel`: Label is empty
-- `ErrInvalidConfig`: Configuration is nil
-
----
-
 
 ## Tenant Operations
 
@@ -292,33 +206,6 @@ fmt.Printf("  Password: %s\n", instance.Data.Password)
 // ⚠️ IMPORTANT: Save these credentials securely!
 // The password is only shown once during creation.
 ```
-
-### Create Instance from Stored Configuration
-
-The most powerful feature - create instances directly from stored configurations:
-
-```go
-// Store configuration once
-config := &aura.CreateInstanceConfigData{
-    Name:          "my-database",
-    TenantId:      "tenant-123",
-    CloudProvider: "gcp",
-    Region:        "us-central1",
-    Type:          "enterprise-db",
-    Version:       "5",
-    Memory:        "8GB",
-}
-client.Store.Create("my-config", config)
-
-// Later, create instance from stored config
-instance, err := client.Instances.CreateFromStore("my-config")
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Created: %s (ID: %s)\n", instance.Data.Name, instance.Data.Id)
-```
-
-
 
 ### Update an Instance
 
@@ -449,6 +336,7 @@ for _, snapshot := range snapshots.Data {
     )
 }
 ```
+
 ### Get the details of a Snapshot
 
 ```go
@@ -465,7 +353,7 @@ fmt.Printf("Snapshot details: \n Instance ID: %s \n Snapshot ID: %s \n Status: %
     snapshot.Data.SnapshotId, 
     snapshot.Data.Status,
     snapshot.Data.Timestamp,
-    )
+)
 ```
 
 ### Create an On-Demand Snapshot
@@ -487,7 +375,7 @@ fmt.Printf("Snapshot ID: %s\n", snapshot.Data.SnapshotId)
 
 ### Restore from a snapshot
 
-```
+```go
 instanceID := "your-instance-id"
 snapshotID := "your-snapshot-id"
 
@@ -499,7 +387,7 @@ if err != nil {
 fmt.Printf("Snapshot details: \n Instance ID: %s \n Status: %s", 
     result.Data.InstanceId, 
     result.Data.Status,
-    )
+)
 ```
 
 ---
@@ -547,9 +435,7 @@ for _, cmek := range cmeks.Data {
 ### List Graph Data Science Sessions
 
 ```go
-ctx := context.Background()
-
-sessions, err := client.GraphAnalytics.List(ctx)
+sessions, err := client.GraphAnalytics.List()
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -586,44 +472,6 @@ prometheusURL := instance.Data.MetricsURL
 // e.g., "https://c9f0d13a.metrics.neo4j.io/prometheus"
 ```
 
-### Execute Instant Queries
-
-```go
-// Query current CPU usage
-resp, err := client.Prometheus.Query(prometheusURL, "up")
-if err != nil {
-    log.Fatalf("Error: %v", err)
-}
-
-for _, result := range resp.Data.Result {
-    fmt.Printf("Metric: %v, Value: %v\n", result.Metric, result.Value)
-}
-```
-
-### Execute Range Queries
-
-```go
-// Query metrics over the last hour
-end := time.Now()
-start := end.Add(-1 * time.Hour)
-
-resp, err := client.Prometheus.QueryRange(
-    prometheusURL,
-    "rate(process_cpu_seconds_total[5m])",
-    start,
-    end,
-    "5m", // step interval
-)
-if err != nil {
-    log.Fatalf("Error: %v", err)
-}
-
-for _, result := range resp.Data.Result {
-    fmt.Printf("Metric: %v\n", result.Metric)
-    fmt.Printf("Data points: %d\n", len(result.Values))
-}
-```
-
 ### Get Instance Health Metrics
 
 ```go
@@ -657,31 +505,6 @@ if len(health.Recommendations) > 0 {
 }
 ```
 
-### Common Neo4j Metrics
-
-```go
-// Database operations
-queries := map[string]string{
-    "Transaction Rate": "rate(neo4j_transaction_started_total[5m])",
-    "Store Size":       "neo4j_store_size_total",
-    "CPU Usage":        "rate(process_cpu_seconds_total[5m]) * 100",
-    "Memory Usage":     "process_resident_memory_bytes",
-    "Page Cache Hit":   "rate(neo4j_page_cache_hits_total[5m]) / (rate(neo4j_page_cache_hits_total[5m]) + rate(neo4j_page_cache_faults_total[5m])) * 100",
-}
-
-for name, query := range queries {
-    resp, err := client.Prometheus.Query(prometheusURL, query)
-    if err != nil {
-        log.Printf("Query '%s' failed: %v", name, err)
-        continue
-    }
-    
-    if len(resp.Data.Result) > 0 {
-        fmt.Printf("%s: %v\n", name, resp.Data.Result[0].Value[1])
-    }
-}
-```
-
 For more detailed information on Prometheus operations, see the [Prometheus documentation](./docs/prometheus.md).
 
 ---
@@ -703,8 +526,8 @@ if err != nil {
 ```go
 instance, err := client.Instances.Get("non-existent-id")
 if err != nil {
-    // Type assert to APIError for detailed information
-    if apiErr, ok := err.(*aura.APIError); ok {
+    // Type assert to Error for detailed information
+    if apiErr, ok := err.(*aura.Error); ok {
         fmt.Printf("API Error %d: %s\n", 
             apiErr.StatusCode, 
             apiErr.Message,
@@ -867,7 +690,7 @@ func retryOperation(maxRetries int, fn func() error) error {
         }
         
         // Check if error is retryable
-        if apiErr, ok := err.(*aura.APIError); ok {
+        if apiErr, ok := err.(*aura.Error); ok {
             // Don't retry client errors (4xx except 429)
             if apiErr.StatusCode >= 400 && 
                apiErr.StatusCode < 500 && 
@@ -892,47 +715,6 @@ err := retryOperation(3, func() error {
 })
 ```
 
-### 6. Resource Cleanup
-
-```go
-func createTemporaryInstance() error {
-    client, err := aura.NewClient(
-        aura.WithCredentials(clientID, clientSecret),
-    )
-    if err != nil {
-        return err
-    }
-    
-    config := &aura.CreateInstanceConfigData{
-        Name:          "temp-instance",
-        TenantId:      tenantID,
-        CloudProvider: "gcp",
-        Region:        "us-east1",
-        Type:          "enterprise-db",
-        Version:       "5",
-        Memory:        "8GB",
-    }
-    
-    instance, err := client.Instances.Create(config)
-    if err != nil {
-        return err
-    }
-    
-    // Ensure cleanup even if function panics
-    defer func() {
-        fmt.Println("Cleaning up temporary instance...")
-        _, err := client.Instances.Delete(instance.Data.Id)
-        if err != nil {
-            log.Printf("Failed to cleanup: %v", err)
-        }
-    }()
-    
-    // Use the instance...
-    
-    return nil
-}
-```
-
 ---
 
 ## Complete Example Application
@@ -941,7 +723,6 @@ func createTemporaryInstance() error {
 package main
 
 import (
-    "context"
     "fmt"
     "log"
     "os"
@@ -1012,6 +793,169 @@ go run main.go
 
 ---
 
+## Migration from v1.x
+
+### Breaking Changes in v2.0
+
+#### 1. Type Name Changes
+
+**Before (v1.x):**
+```go
+var client *aura.AuraAPIClient
+```
+
+**After (v2.0):**
+```go
+var client *aura.APIClient  // "Aura" prefix removed
+```
+
+#### 2. Error Type Alias
+
+Error types now use cleaner names. Type aliases maintain backward compatibility:
+
+**Before (v1.x):**
+```go
+if apiErr, ok := err.(*aura.APIError); ok {
+    // Error handling
+}
+```
+
+**After (v2.0):**
+```go
+if apiErr, ok := err.(*aura.Error); ok {  // Simpler name
+    // Same error handling methods work
+}
+```
+
+#### 3. Configuration Store Removed
+
+The built-in store service has been removed. Implement your own storage:
+
+**Before (v1.x):**
+```go
+client, _ := aura.NewClient(
+    aura.WithCredentials(id, secret),
+    aura.WithStorePath("./store.db"),  // ❌ Removed
+)
+client.Store.Create("prod", config)     // ❌ Removed
+instance, _ := client.Instances.CreateFromStore("prod")  // ❌ Removed
+```
+
+**After (v2.0):**
+```go
+client, _ := aura.NewClient(
+    aura.WithCredentials(id, secret),
+    // No store-related options
+)
+
+// Implement your own storage pattern
+// See example implementations below
+```
+
+#### 4. Prometheus Parser Enhancement
+
+The Prometheus parsing now uses the official library (internal change, no API impact):
+
+- ✅ More robust parsing
+- ✅ Better error messages
+- ✅ Handles all metric types
+- ✅ No code changes required in your application
+
+### Migration Steps
+
+#### Step 1: Update Import
+```bash
+go get github.com/LackOfMorals/aura-client@v2.0.0
+go mod tidy
+```
+
+#### Step 2: Update Type Names
+
+If you're storing the client in a variable:
+
+```go
+// Find and replace in your codebase:
+// *aura.AuraAPIClient → *aura.APIClient
+```
+
+#### Step 3: Update Error Handling (Optional)
+
+Error type aliases maintain compatibility, but for clarity:
+
+```go
+// Old (still works):
+if apiErr, ok := err.(*aura.APIError); ok { }
+
+// New (recommended):
+if apiErr, ok := err.(*aura.Error); ok { }
+```
+
+#### Step 4: Remove Store Dependencies (If Used)
+
+If you were using the built-in store:
+
+1. Remove `WithStorePath()` from client initialization
+2. Remove calls to `client.Store.*`
+3. Remove calls to `client.Instances.CreateFromStore()`
+4. Implement your own configuration storage
+
+**Simple replacement pattern:**
+
+```go
+// Your storage interface
+type ConfigStorage interface {
+    Save(label string, config *aura.CreateInstanceConfigData) error
+    Load(label string) (*aura.CreateInstanceConfigData, error)
+}
+
+// Use it
+config, _ := storage.Load("production")
+instance, _ := client.Instances.Create(config)
+```
+
+### Quick Migration Checklist
+
+- [ ] Update to v2.0.0: `go get github.com/LackOfMorals/aura-client@v2.0.0`
+- [ ] Run `go mod tidy`
+- [ ] Replace `*aura.AuraAPIClient` with `*aura.APIClient` (if used)
+- [ ] Update error type assertions from `*aura.APIError` to `*aura.Error` (optional)
+- [ ] Remove store service code if used
+- [ ] Run tests: `go test ./...`
+- [ ] Verify build: `go build ./...`
+
+### Common Migration Issues
+
+**Issue: "undefined: aura.AuraAPIClient"**
+
+```go
+// Fix: Update type name
+var client *aura.APIClient  // Changed from AuraAPIClient
+```
+
+**Issue: "undefined: aura.Store"**
+
+```go
+// Fix: Implement your own storage
+// The Store service has been removed
+// See configuration storage pattern examples
+```
+
+**Issue: "undefined: CreateFromStore"**
+
+```go
+// Fix: Load config and create in two steps
+config := myStorage.Load("label")
+instance, _ := client.Instances.Create(config)
+```
+
+### Need Help?
+
+- Review [CHANGELOG.md](./CHANGELOG.md) for complete list of changes
+- See [PROMETHEUS_MIGRATION.md](./PROMETHEUS_MIGRATION.md) for Prometheus-specific details
+- Open an issue on [GitHub](https://github.com/LackOfMorals/aura-client/issues)
+
+---
+
 ## Additional Resources
 
 - [Neo4j Aura API Documentation](https://neo4j.com/docs/aura/platform/api/)
@@ -1027,5 +971,3 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 ## License
 
 See [LICENSE](LICENSE) file for details.
-
-

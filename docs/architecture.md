@@ -13,7 +13,7 @@ The Aura API client follows a clean, layered architecture that separates concern
                     │
                     ▼
 ┌─────────────────────────────────────────────────────┐
-│           API Service (APIRequestService)            │
+│           API Service (RequestService)            │
 │  - Handles OAuth authentication                      │
 │  - Token management and refresh                      │
 │  - Request/response handling                         │
@@ -137,7 +137,7 @@ To add a new service (e.g., for a third-party API):
 
 ```go
 type MyService struct {
-    api    api.APIRequestService  // Use the API service
+    api    api.RequestService  // Use the API service
     ctx    context.Context
     logger *slog.Logger
 }

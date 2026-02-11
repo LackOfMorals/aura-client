@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 )
@@ -51,67 +52,80 @@ type GetTenantMetricsURLData struct {
 
 // tenantService handles tenant operations
 type tenantService struct {
-	api    api.APIRequestService
-	ctx    context.Context
-	logger *slog.Logger
+	api     api.RequestService
+	ctx     context.Context
+	timeout time.Duration
+	logger  *slog.Logger
 }
 
 // List returns all tenants accessible to the authenticated user
 func (t *tenantService) List() (*ListTenantsResponse, error) {
-	t.logger.DebugContext(t.ctx, "listing tenants")
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(t.ctx, t.timeout)
+	defer cancel()
 
-	resp, err := t.api.Get(t.ctx, "tenants")
+	t.logger.DebugContext(ctx, "listing tenants")
+
+	resp, err := t.api.Get(ctx, "tenants")
 	if err != nil {
-		t.logger.ErrorContext(t.ctx, "failed to list tenants", slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "failed to list tenants", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result ListTenantsResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		t.logger.ErrorContext(t.ctx, "failed to unmarshal tenants response", slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "failed to unmarshal tenants response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	t.logger.DebugContext(t.ctx, "tenants listed successfully", slog.Int("count", len(result.Data)))
+	t.logger.DebugContext(ctx, "tenants listed successfully", slog.Int("count", len(result.Data)))
 	return &result, nil
 }
 
 // Get retrieves details for a specific tenant by ID
 func (t *tenantService) Get(tenantID string) (*GetTenantResponse, error) {
-	t.logger.DebugContext(t.ctx, "getting tenant details", slog.String("tenantID", tenantID))
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(t.ctx, t.timeout)
+	defer cancel()
 
-	resp, err := t.api.Get(t.ctx, "tenants/"+tenantID)
+	t.logger.DebugContext(ctx, "getting tenant details", slog.String("tenantID", tenantID))
+
+	resp, err := t.api.Get(ctx, "tenants/"+tenantID)
 	if err != nil {
-		t.logger.ErrorContext(t.ctx, "failed to get tenant details", slog.String("tenantID", tenantID), slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "failed to get tenant details", slog.String("tenantID", tenantID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result GetTenantResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		t.logger.ErrorContext(t.ctx, "failed to unmarshal tenant response", slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "failed to unmarshal tenant response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	t.logger.DebugContext(t.ctx, "tenant obtained successfully", slog.String("name", result.Data.Name))
+	t.logger.DebugContext(ctx, "tenant obtained successfully", slog.String("name", result.Data.Name))
 	return &result, nil
 }
 
+// GetMetrics retrieves the Prometheus metrics URL for a specific tenant
 func (t *tenantService) GetMetrics(tenantID string) (*GetTenantMetricsURLResponse, error) {
-	t.logger.DebugContext(t.ctx, "getting tenant prometheus metrics url", slog.String("tenantID", tenantID))
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(t.ctx, t.timeout)
+	defer cancel()
 
-	resp, err := t.api.Get(t.ctx, "tenants/"+tenantID+"/metrics-integration")
+	t.logger.DebugContext(ctx, "getting tenant prometheus metrics url", slog.String("tenantID", tenantID))
+
+	resp, err := t.api.Get(ctx, "tenants/"+tenantID+"/metrics-integration")
 	if err != nil {
-		t.logger.ErrorContext(t.ctx, "failed to get tenant prometheus metrics url", slog.String("tenantID", tenantID), slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "failed to get tenant prometheus metrics url", slog.String("tenantID", tenantID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result GetTenantMetricsURLResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		t.logger.ErrorContext(t.ctx, "failed to unmarshal tenant metrics url response", slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "failed to unmarshal tenant metrics url response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	t.logger.DebugContext(t.ctx, "tenant metrics url obtained successfully", slog.String("name", result.Data.Endpoint))
+	t.logger.DebugContext(ctx, "tenant metrics url obtained successfully", slog.String("endpoint", result.Data.Endpoint))
 	return &result, nil
-
 }

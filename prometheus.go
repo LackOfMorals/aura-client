@@ -1,32 +1,33 @@
 package aura
 
 import (
-	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
 )
 
 // Prometheus Metrics Types
 
 // PrometheusHealthMetrics contains parsed health metrics for an instance
 type PrometheusHealthMetrics struct {
-	InstanceID    string                 `json:"instance_id"`
-	Timestamp     time.Time              `json:"timestamp"`
-	Resources     ResourceMetrics        `json:"resources"`
-	Query         QueryMetrics           `json:"query"`
-	Connections   ConnectionMetrics      `json:"connections"`
-	Storage       StorageMetrics         `json:"storage"`
-	OverallStatus string                 `json:"overall_status"`
-	Issues        []string               `json:"issues"`
-	Recommendations []string             `json:"recommendations"`
+	InstanceID      string                 `json:"instance_id"`
+	Timestamp       time.Time              `json:"timestamp"`
+	Resources       ResourceMetrics        `json:"resources"`
+	Query           QueryMetrics           `json:"query"`
+	Connections     ConnectionMetrics      `json:"connections"`
+	Storage         StorageMetrics         `json:"storage"`
+	OverallStatus   string                 `json:"overall_status"`
+	Issues          []string               `json:"issues"`
+	Recommendations []string               `json:"recommendations"`
 }
 
 // ResourceMetrics contains CPU and memory usage
@@ -68,48 +69,125 @@ type PrometheusMetricsResponse struct {
 
 // prometheusService handles Prometheus metrics operations
 type prometheusService struct {
-	api    api.APIRequestService
-	ctx    context.Context
-	logger *slog.Logger
+	api     api.RequestService
+	ctx     context.Context
+	timeout time.Duration
+	logger  *slog.Logger
 }
 
 // FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint
+// using the official Prometheus client library for robust parsing
 func (p *prometheusService) FetchRawMetrics(prometheusURL string) (*PrometheusMetricsResponse, error) {
-	p.logger.DebugContext(p.ctx, "fetching raw Prometheus metrics", slog.String("url", prometheusURL))
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(p.ctx, p.timeout)
+	defer cancel()
+
+	p.logger.DebugContext(ctx, "fetching raw Prometheus metrics", slog.String("url", prometheusURL))
 
 	if prometheusURL == "" {
 		return nil, fmt.Errorf("prometheus URL cannot be empty")
 	}
 
 	// Fetch the raw metrics
-	resp, err := p.api.Get(p.ctx, prometheusURL)
+	resp, err := p.api.Get(ctx, prometheusURL)
 	if err != nil {
-		p.logger.ErrorContext(p.ctx, "failed to fetch raw metrics", slog.String("error", err.Error()))
+		p.logger.ErrorContext(ctx, "failed to fetch raw metrics", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		p.logger.ErrorContext(p.ctx, "metrics endpoint returned non-200 status",
+		p.logger.ErrorContext(ctx, "metrics endpoint returned non-200 status",
 			slog.Int("statusCode", resp.StatusCode))
 		return nil, fmt.Errorf("metrics endpoint failed with status %d", resp.StatusCode)
 	}
 
-	// Parse the Prometheus exposition format
-	metrics, err := p.parsePrometheusText(string(resp.Body))
+	// Parse using official Prometheus library
+	metrics, err := p.parsePrometheusMetrics(resp.Body)
 	if err != nil {
-		p.logger.ErrorContext(p.ctx, "failed to parse metrics", slog.String("error", err.Error()))
+		p.logger.ErrorContext(ctx, "failed to parse metrics", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	p.logger.DebugContext(p.ctx, "raw metrics fetched successfully",
+	p.logger.DebugContext(ctx, "raw metrics fetched successfully",
 		slog.Int("metricCount", len(metrics.Metrics)))
 
 	return metrics, nil
 }
 
+// parsePrometheusMetrics parses Prometheus metrics using the official client library
+func (p *prometheusService) parsePrometheusMetrics(data []byte) (*PrometheusMetricsResponse, error) {
+	result := &PrometheusMetricsResponse{
+		Metrics: make(map[string][]PrometheusMetric),
+	}
+
+	// Create a text parser using the official Prometheus library
+	reader := strings.NewReader(string(data))
+	var parser expfmt.TextParser
+	metricFamilies, err := parser.TextToMetricFamilies(reader)
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to parse Prometheus metrics: %w", err)
+	}
+
+	// Convert Prometheus metric families to our simplified format
+	for name, mf := range metricFamilies {
+		for _, m := range mf.Metric {
+			metric := PrometheusMetric{
+				Name:   name,
+				Labels: make(map[string]string),
+			}
+
+			// Extract labels
+			for _, label := range m.Label {
+				if label.Name != nil && label.Value != nil {
+					metric.Labels[*label.Name] = *label.Value
+				}
+			}
+
+			// Extract value based on metric type
+			switch mf.GetType() {
+			case dto.MetricType_COUNTER:
+				if m.Counter != nil && m.Counter.Value != nil {
+					metric.Value = *m.Counter.Value
+				}
+			case dto.MetricType_GAUGE:
+				if m.Gauge != nil && m.Gauge.Value != nil {
+					metric.Value = *m.Gauge.Value
+				}
+			case dto.MetricType_UNTYPED:
+				if m.Untyped != nil && m.Untyped.Value != nil {
+					metric.Value = *m.Untyped.Value
+				}
+			case dto.MetricType_SUMMARY:
+				if m.Summary != nil && m.Summary.SampleSum != nil {
+					// For summaries, use the sum
+					metric.Value = *m.Summary.SampleSum
+				}
+			case dto.MetricType_HISTOGRAM:
+				if m.Histogram != nil && m.Histogram.SampleSum != nil {
+					// For histograms, use the sum
+					metric.Value = *m.Histogram.SampleSum
+				}
+			}
+
+			// Extract timestamp if available
+			if m.TimestampMs != nil {
+				metric.Timestamp = *m.TimestampMs
+			}
+
+			result.Metrics[name] = append(result.Metrics[name], metric)
+		}
+	}
+
+	return result, nil
+}
+
 // GetInstanceHealth retrieves comprehensive health metrics for an instance
 func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error) {
-	p.logger.DebugContext(p.ctx, "getting instance health metrics", slog.String("instanceID", instanceID))
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(p.ctx, p.timeout)
+	defer cancel()
+
+	p.logger.DebugContext(ctx, "getting instance health metrics", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		return nil, err
@@ -140,14 +218,14 @@ func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL s
 			metrics.Resources.CPUUsagePercent = (cpuUsage / cpuLimit) * 100
 		}
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get CPU usage", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get CPU usage", slog.String("error", err.Error()))
 	}
 
 	// Memory Usage - from neo4j_dbms_vm_heap_used_ratio (already a ratio 0-1)
 	if heapRatio, err := p.GetMetricValue(rawMetrics, "neo4j_dbms_vm_heap_used_ratio", nil); err == nil {
 		metrics.Resources.MemoryUsagePercent = heapRatio * 100
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get memory usage", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get memory usage", slog.String("error", err.Error()))
 	}
 
 	// Query metrics - from neo4j_db_query_execution_success_total
@@ -155,14 +233,14 @@ func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL s
 		// This is a counter total, not a rate
 		metrics.Query.QueriesPerSecond = successCount
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get query count", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get query count", slog.String("error", err.Error()))
 	}
 
 	// Query Latency - from neo4j_db_query_execution_internal_latency_q50
 	if latency, err := p.GetMetricValue(rawMetrics, "neo4j_db_query_execution_internal_latency_q50", nil); err == nil {
 		metrics.Query.AvgLatencyMS = latency
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get query latency", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get query latency", slog.String("error", err.Error()))
 	}
 
 	// Connection Pool Metrics - from neo4j_dbms_bolt_connections_*
@@ -182,13 +260,13 @@ func (p *prometheusService) GetInstanceHealth(instanceID string, prometheusURL s
 	if hitRate, err := p.GetMetricValue(rawMetrics, "neo4j_dbms_page_cache_hit_ratio_per_minute", nil); err == nil {
 		metrics.Storage.PageCacheHitRate = hitRate * 100
 	} else {
-		p.logger.WarnContext(p.ctx, "failed to get page cache hit rate", slog.String("error", err.Error()))
+		p.logger.WarnContext(ctx, "failed to get page cache hit rate", slog.String("error", err.Error()))
 	}
 
 	// Assess overall health and generate recommendations
 	metrics.OverallStatus = p.assessHealth(metrics)
 
-	p.logger.InfoContext(p.ctx, "instance health metrics retrieved",
+	p.logger.InfoContext(ctx, "instance health metrics retrieved",
 		slog.String("instanceID", instanceID),
 		slog.String("status", metrics.OverallStatus))
 
@@ -280,139 +358,4 @@ func (p *prometheusService) assessHealth(metrics *PrometheusHealthMetrics) strin
 	}
 
 	return status
-}
-
-// parsePrometheusText parses Prometheus exposition format text
-func (p *prometheusService) parsePrometheusText(text string) (*PrometheusMetricsResponse, error) {
-	metrics := &PrometheusMetricsResponse{
-		Metrics: make(map[string][]PrometheusMetric),
-	}
-
-	scanner := bufio.NewScanner(strings.NewReader(text))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		// Skip empty lines and comments (HELP and TYPE)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		// Parse metric line: metric_name{labels} value timestamp
-		metric, err := p.parseMetricLine(line)
-		if err != nil {
-			p.logger.WarnContext(p.ctx, "failed to parse metric line",
-				slog.String("line", line),
-				slog.String("error", err.Error()))
-			continue
-		}
-
-		metrics.Metrics[metric.Name] = append(metrics.Metrics[metric.Name], metric)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error scanning metrics: %w", err)
-	}
-
-	return metrics, nil
-}
-
-// parseMetricLine parses a single metric line in Prometheus format
-// Format: metric_name{label1="value1",label2="value2"} value timestamp
-func (p *prometheusService) parseMetricLine(line string) (PrometheusMetric, error) {
-	metric := PrometheusMetric{
-		Labels: make(map[string]string),
-	}
-
-	// Find the opening brace for labels
-	braceIdx := strings.Index(line, "{")
-	if braceIdx == -1 {
-		return metric, fmt.Errorf("invalid metric line: no labels")
-	}
-
-	metric.Name = strings.TrimSpace(line[:braceIdx])
-
-	// Find the closing brace
-	closeIdx := strings.Index(line, "}")
-	if closeIdx == -1 {
-		return metric, fmt.Errorf("invalid metric line: no closing brace")
-	}
-
-	// Parse labels
-	labelsStr := line[braceIdx+1 : closeIdx]
-	if err := p.parseLabels(labelsStr, metric.Labels); err != nil {
-		return metric, fmt.Errorf("failed to parse labels: %w", err)
-	}
-
-	// Parse value and timestamp
-	rest := strings.TrimSpace(line[closeIdx+1:])
-	parts := strings.Fields(rest)
-	if len(parts) < 1 {
-		return metric, fmt.Errorf("invalid metric line: no value")
-	}
-
-	value, err := strconv.ParseFloat(parts[0], 64)
-	if err != nil {
-		return metric, fmt.Errorf("failed to parse value: %w", err)
-	}
-	metric.Value = value
-
-	if len(parts) >= 2 {
-		timestamp, err := strconv.ParseInt(parts[1], 10, 64)
-		if err != nil {
-			return metric, fmt.Errorf("failed to parse timestamp: %w", err)
-		}
-		metric.Timestamp = timestamp
-	}
-
-	return metric, nil
-}
-
-// parseLabels parses label key-value pairs from the Prometheus format
-// Format: key1="value1",key2="value2"
-func (p *prometheusService) parseLabels(labelsStr string, labels map[string]string) error {
-	if labelsStr == "" {
-		return nil
-	}
-
-	// Split by comma, but respect quoted values
-	var current strings.Builder
-	inQuote := false
-	for i := 0; i < len(labelsStr); i++ {
-		ch := labelsStr[i]
-		if ch == '"' {
-			inQuote = !inQuote
-			current.WriteByte(ch)
-		} else if ch == ',' && !inQuote {
-			if err := p.parseLabel(current.String(), labels); err != nil {
-				return err
-			}
-			current.Reset()
-		} else {
-			current.WriteByte(ch)
-		}
-	}
-
-	// Parse the last label
-	if current.Len() > 0 {
-		if err := p.parseLabel(current.String(), labels); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// parseLabel parses a single label key-value pair
-// Format: key="value"
-func (p *prometheusService) parseLabel(labelStr string, labels map[string]string) error {
-	parts := strings.SplitN(labelStr, "=", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("invalid label format: %s", labelStr)
-	}
-
-	key := strings.TrimSpace(parts[0])
-	value := strings.Trim(strings.TrimSpace(parts[1]), "\"")
-	labels[key] = value
-
-	return nil
 }

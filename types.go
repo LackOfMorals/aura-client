@@ -9,8 +9,8 @@ import (
 // Error Types
 // ============================================================================
 
-// APIError represents an error response from the Aura API
-type APIError = api.APIError
+// Error represents an error response from the Aura API
+type Error = api.Error
 
-// APIErrorDetail represents individual error details
-type APIErrorDetail = api.APIErrorDetail
+// ErrorDetail represents individual error details
+type ErrorDetail = api.ErrorDetail

@@ -3,24 +3,39 @@ package aura
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
+// mockAPIService is defined in instance tests
+
 // createTestGDSSessionService creates a gDSSessionService with a mock API service for testing
 func createTestGDSSessionService(mock *mockAPIService) *gDSSessionService {
 	return &gDSSessionService{
-		api:    mock,
-		ctx:    context.Background(),
-		logger: testLogger(),
+		api:     mock,
+		ctx:     context.Background(),
+		timeout: 30 * time.Second,
+		logger:  testLogger(),
+	}
+}
+
+// createTestGDSSessionServiceWithContext creates a gDSSessionService with custom context
+func createTestGDSSessionServiceWithContext(mock api.RequestService, ctx context.Context, timeout time.Duration) *gDSSessionService {
+	return &gDSSessionService{
+		api:     mock,
+		ctx:     ctx,
+		timeout: timeout,
+		logger:  testLogger(),
 	}
 }
 
 // TestGDSSessionService_List_Success verifies successful GDS session listing
 func TestGDSSessionService_List_Success(t *testing.T) {
-	expectedResponse := GetGDSSessionResponse{
+	expectedResponse := GetGDSSessionListResponse{
 		Data: []GetGDSSessionData{
 			{
 				Id:            "session-1",
@@ -52,7 +67,7 @@ func TestGDSSessionService_List_Success(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -80,11 +95,11 @@ func TestGDSSessionService_List_Success(t *testing.T) {
 
 // TestGDSSessionService_List_EmptyResult verifies empty session list
 func TestGDSSessionService_List_EmptyResult(t *testing.T) {
-	expectedResponse := GetGDSSessionResponse{Data: []GetGDSSessionData{}}
+	expectedResponse := GetGDSSessionListResponse{Data: []GetGDSSessionData{}}
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -100,7 +115,7 @@ func TestGDSSessionService_List_EmptyResult(t *testing.T) {
 
 // TestGDSSessionService_List_SingleSession verifies listing with single session
 func TestGDSSessionService_List_SingleSession(t *testing.T) {
-	expectedResponse := GetGDSSessionResponse{
+	expectedResponse := GetGDSSessionListResponse{
 		Data: []GetGDSSessionData{
 			{
 				Id:            "session-single",
@@ -115,7 +130,7 @@ func TestGDSSessionService_List_SingleSession(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -134,7 +149,7 @@ func TestGDSSessionService_List_SingleSession(t *testing.T) {
 
 // TestGDSSessionService_List_MultipleStatuses verifies sessions with different statuses
 func TestGDSSessionService_List_MultipleStatuses(t *testing.T) {
-	expectedResponse := GetGDSSessionResponse{
+	expectedResponse := GetGDSSessionListResponse{
 		Data: []GetGDSSessionData{
 			{Id: "session-1", Status: "running"},
 			{Id: "session-2", Status: "stopped"},
@@ -145,7 +160,7 @@ func TestGDSSessionService_List_MultipleStatuses(t *testing.T) {
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -191,9 +206,9 @@ func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 		Region:        "europe-west2",
 	}
 
-	responseBody, _ := json.Marshal(GetGDSSessionResponse{Data: []GetGDSSessionData{expectedSession}})
+	responseBody, _ := json.Marshal(GetGDSSessionListResponse{Data: []GetGDSSessionData{expectedSession}})
 	mock := &mockAPIService{
-		response: &api.APIResponse{StatusCode: 200, Body: responseBody},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -231,7 +246,7 @@ func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 // TestGDSSessionService_List_AuthenticationError verifies auth error handling
 func TestGDSSessionService_List_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
+		err: &api.Error{StatusCode: http.StatusUnauthorized, Message: "Invalid credentials"},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -241,9 +256,9 @@ func TestGDSSessionService_List_AuthenticationError(t *testing.T) {
 		t.Fatal("expected authentication error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if !apiErr.IsUnauthorized() {
 		t.Error("expected IsUnauthorized() to be true")
@@ -253,7 +268,7 @@ func TestGDSSessionService_List_AuthenticationError(t *testing.T) {
 // TestGDSSessionService_List_ServerError verifies server error handling
 func TestGDSSessionService_List_ServerError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.APIError{StatusCode: http.StatusBadRequest, Message: "Bad request error"},
+		err: &api.Error{StatusCode: http.StatusBadRequest, Message: "Bad request error"},
 	}
 
 	service := createTestGDSSessionService(mock)
@@ -266,11 +281,82 @@ func TestGDSSessionService_List_ServerError(t *testing.T) {
 		t.Error("expected result to be nil on error")
 	}
 
-	apiErr, ok := err.(*api.APIError)
+	apiErr, ok := err.(*api.Error)
 	if !ok {
-		t.Fatal("expected APIError type")
+		t.Fatal("expected Error type")
 	}
 	if apiErr.StatusCode != http.StatusBadRequest {
 		t.Errorf("expected status 400, got %d", apiErr.StatusCode)
+	}
+}
+
+// ============================================================================
+// Context-Specific Tests for GDSSessionService
+// ============================================================================
+
+// TestGDSSessionService_List_ContextCancelled verifies cancellation handling
+func TestGDSSessionService_List_ContextCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	responseBody, _ := json.Marshal(GetGDSSessionListResponse{Data: []GetGDSSessionData{}})
+	mock := &mockAPIServiceWithDelay{
+		response: &api.Response{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+		delay: 0,
+	}
+
+	service := createTestGDSSessionServiceWithContext(mock, ctx, 30*time.Second)
+
+	start := time.Now()
+	_, err := service.List()
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected context cancelled error")
+	}
+
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got: %v", err)
+	}
+
+	if elapsed > 100*time.Millisecond {
+		t.Errorf("cancellation took too long: %v", elapsed)
+	}
+}
+
+// TestGDSSessionService_List_ContextTimeout verifies timeout enforcement
+func TestGDSSessionService_List_ContextTimeout(t *testing.T) {
+	responseBody, _ := json.Marshal(GetGDSSessionListResponse{Data: []GetGDSSessionData{}})
+	mock := &mockAPIServiceWithDelay{
+		response: &api.Response{
+			StatusCode: 200,
+			Body:       responseBody,
+		},
+		delay: 2 * time.Second,
+	}
+
+	service := createTestGDSSessionServiceWithContext(
+		mock,
+		context.Background(),
+		100*time.Millisecond,
+	)
+
+	start := time.Now()
+	_, err := service.List()
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
+	}
+
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("timeout took too long: %v", elapsed)
 	}
 }

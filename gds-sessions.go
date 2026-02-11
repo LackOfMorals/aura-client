@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
@@ -77,117 +78,140 @@ type DeleteGDSSession struct {
 
 // gDSSessionService handles GDS Session operations
 type gDSSessionService struct {
-	api    api.APIRequestService
-	ctx    context.Context
-	logger *slog.Logger
+	api     api.RequestService
+	ctx     context.Context
+	timeout time.Duration
+	logger  *slog.Logger
 }
 
 // List returns all GDS sessions accessible to the authenticated user
 func (g *gDSSessionService) List() (*GetGDSSessionListResponse, error) {
-	g.logger.DebugContext(g.ctx, "listing GDS sessions")
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(g.ctx, g.timeout)
+	defer cancel()
 
-	resp, err := g.api.Get(g.ctx, "graph-analytics/sessions")
+	g.logger.DebugContext(ctx, "listing GDS sessions")
+
+	resp, err := g.api.Get(ctx, "graph-analytics/sessions")
 	if err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to list GDS sessions", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result GetGDSSessionListResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to unmarshal GDS sessions response", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to unmarshal GDS sessions response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	g.logger.DebugContext(g.ctx, "GDS sessions listed successfully", slog.Int("count", len(result.Data)))
+	g.logger.DebugContext(ctx, "GDS sessions listed successfully", slog.Int("count", len(result.Data)))
 	return &result, nil
 }
 
 // Get information on a GDS session accessible to the authenticated user
 func (g *gDSSessionService) Get(GDSSessionID string) (*GetGDSSessionResponse, error) {
-	g.logger.DebugContext(g.ctx, "listing GDS sessions")
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(g.ctx, g.timeout)
+	defer cancel()
 
-	resp, err := g.api.Get(g.ctx, "graph-analytics/sessions/"+GDSSessionID)
+	g.logger.DebugContext(ctx, "getting GDS session", slog.String("sessionID", GDSSessionID))
+
+	resp, err := g.api.Get(ctx, "graph-analytics/sessions/"+GDSSessionID)
 	if err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to get GDS session", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to get GDS session", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result GetGDSSessionResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to unmarshal GDS session response", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to unmarshal GDS session response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	g.logger.DebugContext(g.ctx, "GDS session obtained successfully", slog.Int("count", len(result.Data)))
+	g.logger.DebugContext(ctx, "GDS session obtained successfully", slog.Int("count", len(result.Data)))
 	return &result, nil
 }
 
 // Create a new GDS session
 func (g *gDSSessionService) Create(GDSSessionConfigRequest *CreateGDSSessionConfigData) (*GetGDSSessionResponse, error) {
-	g.logger.DebugContext(g.ctx, "creating GDS sessions")
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(g.ctx, g.timeout)
+	defer cancel()
+
+	g.logger.DebugContext(ctx, "creating GDS session")
 
 	body, err := utils.Marshall(GDSSessionConfigRequest)
 	if err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to marshal create gds session request", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to marshal create gds session request", slog.String("error", err.Error()))
 		return nil, err
 	}
-	resp, err := g.api.Post(g.ctx, "graph-analytics/sessions", string(body))
+	
+	resp, err := g.api.Post(ctx, "graph-analytics/sessions", string(body))
 	if err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to create GDS session", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to create GDS session", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result GetGDSSessionResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to unmarshal create GDS sessions response", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to unmarshal create GDS sessions response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	g.logger.DebugContext(g.ctx, "GDS session created successfully")
+	g.logger.DebugContext(ctx, "GDS session created successfully")
 	return &result, nil
 }
 
 // Estimate the size of a new GDS session
 func (g *gDSSessionService) Estimate(GDSSessionSizeEstimateRequest *GetGDSSessionSizeEstimation) (*GDSSessionSizeEstimationResponse, error) {
-	g.logger.DebugContext(g.ctx, "estimating GDS sessions")
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(g.ctx, g.timeout)
+	defer cancel()
+
+	g.logger.DebugContext(ctx, "estimating GDS session")
 
 	body, err := utils.Marshall(GDSSessionSizeEstimateRequest)
 	if err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to marshal estimate gds session request", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to marshal estimate gds session request", slog.String("error", err.Error()))
 		return nil, err
 	}
-	resp, err := g.api.Post(g.ctx, "graph-analytics/sessions/sizing", string(body))
+	
+	resp, err := g.api.Post(ctx, "graph-analytics/sessions/sizing", string(body))
 	if err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to estimate GDS session", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to estimate GDS session", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result GDSSessionSizeEstimationResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to unmarshal estimate GDS sessions response", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to unmarshal estimate GDS sessions response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	g.logger.DebugContext(g.ctx, "GDS session estimated successfully")
+	g.logger.DebugContext(ctx, "GDS session estimated successfully")
 	return &result, nil
 }
 
-// Deletes a GDS Session
+// Delete deletes a GDS Session
 func (g *gDSSessionService) Delete(GDSSessionID string) (*DeleteGDSSessionResponse, error) {
-	g.logger.DebugContext(g.ctx, "deleting a GDS session")
+	// Create child context with timeout for this operation
+	ctx, cancel := context.WithTimeout(g.ctx, g.timeout)
+	defer cancel()
 
-	resp, err := g.api.Delete(g.ctx, "graph-analytics/sessions/"+GDSSessionID)
+	g.logger.DebugContext(ctx, "deleting a GDS session", slog.String("sessionID", GDSSessionID))
+
+	resp, err := g.api.Delete(ctx, "graph-analytics/sessions/"+GDSSessionID)
 	if err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to delete a GDS session", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to delete a GDS session", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result DeleteGDSSessionResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		g.logger.ErrorContext(g.ctx, "failed to unmarshal GDS session delete response", slog.String("error", err.Error()))
+		g.logger.ErrorContext(ctx, "failed to unmarshal GDS session delete response", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	g.logger.DebugContext(g.ctx, "GDS session deleted successfully")
+	g.logger.DebugContext(ctx, "GDS session deleted successfully")
 	return &result, nil
 }

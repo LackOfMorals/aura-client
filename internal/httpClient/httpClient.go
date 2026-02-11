@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/utils"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
@@ -155,11 +156,13 @@ func (s *httpService) doRequest(ctx context.Context, method, endpoint string, he
 		Headers:    resp.Header,
 	}
 
+	// Log response from request.  body is limited to 200 bytes to avoid flooding the log.
 	s.logger.DebugContext(ctx, "HTTP request completed",
 		slog.String("method", method),
 		slog.String("url", fullURL),
 		slog.Int("statusCode", resp.StatusCode),
-		slog.String("body", string(respBody)),
+		slog.Int("bodySize", len(respBody)),
+		slog.String("bodyPreview", utils.TruncateString(string(respBody), 200)),
 	)
 
 	return httpResp, nil

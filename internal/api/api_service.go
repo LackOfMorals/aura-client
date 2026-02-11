@@ -14,28 +14,28 @@ import (
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
-// APIResponse represents a response from the Aura API
-type APIResponse struct {
+// Response represents a response from the Aura API
+type Response struct {
 	StatusCode int
 	Body       []byte
 }
 
-// APIError represents an error response from the Aura API
-type APIError struct {
-	StatusCode int              `json:"status_code"`
-	Message    string           `json:"message"`
-	Details    []APIErrorDetail `json:"details,omitempty"`
+// Error represents an error response from the Aura API
+type Error struct {
+	StatusCode int           `json:"status_code"`
+	Message    string        `json:"message"`
+	Details    []ErrorDetail `json:"details,omitempty"`
 }
 
-// APIErrorDetail represents individual error details
-type APIErrorDetail struct {
+// ErrorDetail represents individual error details
+type ErrorDetail struct {
 	Message string `json:"message"`
 	Reason  string `json:"reason,omitempty"`
 	Field   string `json:"field,omitempty"`
 }
 
 // Error implements the error interface
-func (e *APIError) Error() string {
+func (e *Error) Error() string {
 	if len(e.Details) == 0 {
 		return fmt.Sprintf("API error (status %d): %s", e.StatusCode, e.Message)
 	}
@@ -49,7 +49,7 @@ func (e *APIError) Error() string {
 }
 
 // AllErrors returns all error messages as a slice
-func (e *APIError) AllErrors() []string {
+func (e *Error) AllErrors() []string {
 	errors := []string{e.Message}
 	for _, detail := range e.Details {
 		errors = append(errors, detail.Message)
@@ -58,33 +58,33 @@ func (e *APIError) AllErrors() []string {
 }
 
 // HasMultipleErrors returns true if there are multiple error details
-func (e *APIError) HasMultipleErrors() bool {
+func (e *Error) HasMultipleErrors() bool {
 	return len(e.Details) > 1
 }
 
 // IsNotFound returns true if the error is a 404
-func (e *APIError) IsNotFound() bool {
+func (e *Error) IsNotFound() bool {
 	return e.StatusCode == http.StatusNotFound
 }
 
 // IsUnauthorized returns true if the error is a 401
-func (e *APIError) IsUnauthorized() bool {
+func (e *Error) IsUnauthorized() bool {
 	return e.StatusCode == http.StatusUnauthorized
 }
 
 // IsBadRequest returns true if the error is a 400
-func (e *APIError) IsBadRequest() bool {
+func (e *Error) IsBadRequest() bool {
 	return e.StatusCode == http.StatusBadRequest
 }
 
 // APIRequestService defines the interface for making authenticated API requests.
 // This is the middle layer that handles authentication and common API patterns.
-type APIRequestService interface {
-	Get(ctx context.Context, endpoint string) (*APIResponse, error)
-	Post(ctx context.Context, endpoint string, body string) (*APIResponse, error)
-	Put(ctx context.Context, endpoint string, body string) (*APIResponse, error)
-	Patch(ctx context.Context, endpoint string, body string) (*APIResponse, error)
-	Delete(ctx context.Context, endpoint string) (*APIResponse, error)
+type RequestService interface {
+	Get(ctx context.Context, endpoint string) (*Response, error)
+	Post(ctx context.Context, endpoint string, body string) (*Response, error)
+	Put(ctx context.Context, endpoint string, body string) (*Response, error)
+	Patch(ctx context.Context, endpoint string, body string) (*Response, error)
+	Delete(ctx context.Context, endpoint string) (*Response, error)
 }
 
 // Config holds configuration for the API service
@@ -96,7 +96,7 @@ type Config struct {
 	Timeout      time.Duration
 }
 
-// apiRequestService is the concrete implementation of APIRequestService
+// apiRequestService is the concrete implementation of RequestService
 type apiRequestService struct {
 	httpClient httpClient.HTTPService
 	authMgr    *authManager
@@ -126,7 +126,7 @@ type tokenResponse struct {
 }
 
 // NewAPIRequestService creates a new APIRequestService
-func NewAPIRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *slog.Logger) APIRequestService {
+func NewRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *slog.Logger) RequestService {
 	return &apiRequestService{
 		httpClient: httpSvc,
 		authMgr: &authManager{
@@ -142,27 +142,27 @@ func NewAPIRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *sl
 }
 
 // Get performs an authenticated GET request
-func (s *apiRequestService) Get(ctx context.Context, endpoint string) (*APIResponse, error) {
+func (s *apiRequestService) Get(ctx context.Context, endpoint string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodGet, endpoint, "")
 }
 
 // Post performs an authenticated POST request
-func (s *apiRequestService) Post(ctx context.Context, endpoint string, body string) (*APIResponse, error) {
+func (s *apiRequestService) Post(ctx context.Context, endpoint string, body string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodPost, endpoint, body)
 }
 
 // Put performs an authenticated PUT request
-func (s *apiRequestService) Put(ctx context.Context, endpoint string, body string) (*APIResponse, error) {
+func (s *apiRequestService) Put(ctx context.Context, endpoint string, body string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodPut, endpoint, body)
 }
 
 // Patch performs an authenticated PATCH request
-func (s *apiRequestService) Patch(ctx context.Context, endpoint string, body string) (*APIResponse, error) {
+func (s *apiRequestService) Patch(ctx context.Context, endpoint string, body string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodPatch, endpoint, body)
 }
 
 // Delete performs an authenticated DELETE request
-func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*APIResponse, error) {
+func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodDelete, endpoint, "")
 }
 
@@ -170,7 +170,7 @@ func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*APIRe
 // It supports both relative endpoints (which will be prefixed with the API version)
 // and full URLs (which will be used as-is). Full URLs are detected automatically by
 // checking for http:// or https:// prefix in httpClient.
-func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*APIResponse, error) {
+func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*Response, error) {
 	// Check if context is already cancelled
 	if err := ctx.Err(); err != nil {
 		s.logger.ErrorContext(ctx, "context already cancelled before request", slog.String("error", err.Error()))
@@ -233,7 +233,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 
 	// Check for API errors (non-2xx status codes)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		apiErr := parseAPIError(resp.Body, resp.StatusCode)
+		apiErr := parseError(resp.Body, resp.StatusCode)
 		s.logger.DebugContext(ctx, "API returned error",
 			slog.String("method", method),
 			slog.String("endpoint", fullEndpoint),
@@ -249,7 +249,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 		slog.Int("statusCode", resp.StatusCode),
 	)
 
-	return &APIResponse{
+	return &Response{
 		StatusCode: resp.StatusCode,
 		Body:       resp.Body,
 	}, nil
@@ -258,13 +258,12 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 // ensureValidToken gets or refreshes the authentication token
 func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, httpSvc httpClient.HTTPService) error {
 	am.mu.RLock()
-	// Check if we have a valid token
-	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
-		am.logger.DebugContext(ctx, "token is still valid")
-		am.mu.RUnlock()
+	stillValid := len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60
+	am.mu.RUnlock()
+
+	if stillValid {
 		return nil
 	}
-	am.mu.RUnlock()
 
 	am.mu.Lock()
 	defer am.mu.Unlock()
@@ -273,7 +272,6 @@ func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, htt
 	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
 		return nil
 	}
-
 	am.logger.DebugContext(ctx, "obtaining new authentication token")
 
 	// Build Basic Auth header
@@ -295,7 +293,7 @@ func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, htt
 
 	// Check for error response
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		apiErr := parseAPIError(resp.Body, resp.StatusCode)
+		apiErr := parseError(resp.Body, resp.StatusCode)
 		am.logger.DebugContext(ctx, "token request failed",
 			slog.Int("statusCode", resp.StatusCode),
 			slog.String("error", apiErr.Message),
@@ -322,9 +320,9 @@ func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, htt
 	return nil
 }
 
-// parseAPIError attempts to parse the error response from the API
-func parseAPIError(responseBody []byte, statusCode int) *APIError {
-	apiErr := &APIError{
+// parseError attempts to parse the error response from the API
+func parseError(responseBody []byte, statusCode int) *Error {
+	apiErr := &Error{
 		StatusCode: statusCode,
 		Message:    http.StatusText(statusCode),
 	}
@@ -334,9 +332,9 @@ func parseAPIError(responseBody []byte, statusCode int) *APIError {
 	}
 
 	var errResponse struct {
-		Message string           `json:"message"`
-		Errors  []APIErrorDetail `json:"errors"`
-		Details []APIErrorDetail `json:"details"`
+		Message string        `json:"message"`
+		Errors  []ErrorDetail `json:"errors"`
+		Details []ErrorDetail `json:"details"`
 	}
 
 	if err := json.Unmarshal(responseBody, &errResponse); err == nil {
