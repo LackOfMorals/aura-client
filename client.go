@@ -26,6 +26,8 @@ import (
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
+const AuraAPIClientVersion = "v1.6.0"
+
 // AuraAPIClient is the main client for interacting with the Neo4j Aura API
 type AuraAPIClient struct {
 	api    api.RequestService // Handles authenticated API requests
@@ -228,6 +230,7 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 
 	service.logger.Info("Aura API client initialized successfully",
 		slog.Int("services", 6),
+		slog.String("Version", AuraAPIClientVersion),
 	)
 
 	return service, nil
