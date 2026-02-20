@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -12,27 +11,8 @@ import (
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
+	"github.com/LackOfMorals/aura-client/internal/utils"
 )
-
-// Response represents a response from the Aura API
-type Response struct {
-	StatusCode int
-	Body       []byte
-}
-
-// Error represents an error response from the Aura API
-type Error struct {
-	StatusCode int           `json:"status_code"`
-	Message    string        `json:"message"`
-	Details    []ErrorDetail `json:"details,omitempty"`
-}
-
-// ErrorDetail represents individual error details
-type ErrorDetail struct {
-	Message string `json:"message"`
-	Reason  string `json:"reason,omitempty"`
-	Field   string `json:"field,omitempty"`
-}
 
 // Error implements the error interface
 func (e *Error) Error() string {
@@ -77,7 +57,7 @@ func (e *Error) IsBadRequest() bool {
 	return e.StatusCode == http.StatusBadRequest
 }
 
-// APIRequestService defines the interface for making authenticated API requests.
+// RequestService defines the interface for making authenticated API requests.
 // This is the middle layer that handles authentication and common API patterns.
 type RequestService interface {
 	Get(ctx context.Context, endpoint string) (*Response, error)
@@ -93,7 +73,6 @@ type Config struct {
 	ClientSecret string
 	BaseURL      string
 	APIVersion   string
-	Timeout      time.Duration
 }
 
 // apiRequestService is the concrete implementation of RequestService
@@ -102,7 +81,6 @@ type apiRequestService struct {
 	authMgr    *authManager
 	baseURL    string
 	apiVersion string
-	timeout    time.Duration
 	logger     *slog.Logger
 }
 
@@ -125,7 +103,7 @@ type tokenResponse struct {
 	ExpiresIn   int64  `json:"expires_in"`
 }
 
-// NewAPIRequestService creates a new APIRequestService
+// NewRequestService creates a new RequestService
 func NewRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *slog.Logger) RequestService {
 	return &apiRequestService{
 		httpClient: httpSvc,
@@ -136,7 +114,6 @@ func NewRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *slog.
 		},
 		baseURL:    cfg.BaseURL,
 		apiVersion: cfg.APIVersion,
-		timeout:    cfg.Timeout,
 		logger:     logger,
 	}
 }
@@ -167,57 +144,45 @@ func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*Respo
 }
 
 // doAuthenticatedRequest handles the common pattern of making an authenticated API request.
-// It supports both relative endpoints (which will be prefixed with the API version)
-// and full URLs (which will be used as-is). Full URLs are detected automatically by
-// checking for http:// or https:// prefix in httpClient.
+// It trusts the deadline already set on ctx by the calling service layer — no additional
+// timeout is applied here. Full URLs (http:// or https://) are used as-is; relative
+// paths are resolved by the httpClient layer against the configured base URL.
 func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*Response, error) {
-	// Check if context is already cancelled
 	if err := ctx.Err(); err != nil {
 		s.logger.ErrorContext(ctx, "context already cancelled before request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	// Add timeout
-	ctx, cancel := context.WithTimeout(ctx, s.timeout)
-	defer cancel()
-
-	// Get or refresh token
-	if err := s.authMgr.ensureValidToken(ctx, s.baseURL, s.httpClient); err != nil {
+	tokenType, token, err := s.authMgr.ensureValidToken(ctx, s.baseURL, s.httpClient)
+	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to obtain authentication token", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	// Build full endpoint with API version
-
-	fullEndpoint := endpoint
-
-	// Set up headers
 	headers := map[string]string{
 		"Content-Type":  "application/json",
 		"User-Agent":    "aura-go-client",
-		"Authorization": s.authMgr.tokenType + " " + s.authMgr.token,
+		"Authorization": tokenType + " " + token,
 	}
 
 	s.logger.DebugContext(ctx, "making authenticated API request",
 		slog.String("method", method),
-		slog.String("endpoint", fullEndpoint),
+		slog.String("endpoint", endpoint),
 	)
 
-	// Make the request using the appropriate HTTP method
 	var resp *httpClient.HTTPResponse
-	var err error
 
 	switch method {
 	case http.MethodGet:
-		resp, err = s.httpClient.Get(ctx, fullEndpoint, headers)
+		resp, err = s.httpClient.Get(ctx, endpoint, headers)
 	case http.MethodPost:
-		resp, err = s.httpClient.Post(ctx, fullEndpoint, headers, body)
+		resp, err = s.httpClient.Post(ctx, endpoint, headers, body)
 	case http.MethodPut:
-		resp, err = s.httpClient.Put(ctx, fullEndpoint, headers, body)
+		resp, err = s.httpClient.Put(ctx, endpoint, headers, body)
 	case http.MethodPatch:
-		resp, err = s.httpClient.Patch(ctx, fullEndpoint, headers, body)
+		resp, err = s.httpClient.Patch(ctx, endpoint, headers, body)
 	case http.MethodDelete:
-		resp, err = s.httpClient.Delete(ctx, fullEndpoint, headers)
+		resp, err = s.httpClient.Delete(ctx, endpoint, headers)
 	default:
 		return nil, fmt.Errorf("unsupported HTTP method: %s", method)
 	}
@@ -225,18 +190,17 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 	if err != nil {
 		s.logger.ErrorContext(ctx, "HTTP request failed",
 			slog.String("method", method),
-			slog.String("endpoint", fullEndpoint),
+			slog.String("endpoint", endpoint),
 			slog.String("error", err.Error()),
 		)
 		return nil, err
 	}
 
-	// Check for API errors (non-2xx status codes)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		apiErr := parseError(resp.Body, resp.StatusCode)
 		s.logger.DebugContext(ctx, "API returned error",
 			slog.String("method", method),
-			slog.String("endpoint", fullEndpoint),
+			slog.String("endpoint", endpoint),
 			slog.Int("statusCode", resp.StatusCode),
 			slog.String("message", apiErr.Message),
 		)
@@ -245,7 +209,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 
 	s.logger.DebugContext(ctx, "API request successful",
 		slog.String("method", method),
-		slog.String("endpoint", fullEndpoint),
+		slog.String("endpoint", endpoint),
 		slog.Int("statusCode", resp.StatusCode),
 	)
 
@@ -255,27 +219,29 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 	}, nil
 }
 
-// ensureValidToken gets or refreshes the authentication token
-func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, httpSvc httpClient.HTTPService) error {
+// ensureValidToken gets or refreshes the authentication token and returns it to the caller.
+// Token fields are always read while the mutex is held to prevent data races.
+func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, httpSvc httpClient.HTTPService) (tokenType, token string, err error) {
 	am.mu.RLock()
-	stillValid := len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60
-	am.mu.RUnlock()
-
-	if stillValid {
-		return nil
+	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
+		t, tt := am.token, am.tokenType
+		am.mu.RUnlock()
+		return tt, t, nil
 	}
+	am.mu.RUnlock()
 
 	am.mu.Lock()
 	defer am.mu.Unlock()
 
-	// Double-check after acquiring write lock
+	// Double-check after acquiring the write lock — another goroutine may have
+	// refreshed the token while we were waiting.
 	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
-		return nil
+		return am.tokenType, am.token, nil
 	}
+
 	am.logger.DebugContext(ctx, "obtaining new authentication token")
 
-	// Build Basic Auth header
-	auth := "Basic " + base64Encode(am.clientID, am.clientSecret)
+	auth := "Basic " + utils.Base64Encode(am.clientID, am.clientSecret)
 
 	headers := map[string]string{
 		"Content-Type":  "application/x-www-form-urlencoded",
@@ -288,26 +254,24 @@ func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, htt
 	resp, err := httpSvc.Post(ctx, baseURL+"/oauth/token", headers, body.Encode())
 	if err != nil {
 		am.logger.DebugContext(ctx, "failed to obtain token", slog.String("error", err.Error()))
-		return err
+		return "", "", err
 	}
 
-	// Check for error response
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		apiErr := parseError(resp.Body, resp.StatusCode)
 		am.logger.DebugContext(ctx, "token request failed",
 			slog.Int("statusCode", resp.StatusCode),
 			slog.String("error", apiErr.Message),
 		)
-		return apiErr
+		return "", "", apiErr
 	}
 
 	var tokenResp tokenResponse
 	if err := json.Unmarshal(resp.Body, &tokenResp); err != nil {
 		am.logger.DebugContext(ctx, "failed to parse token response", slog.String("error", err.Error()))
-		return fmt.Errorf("failed to parse token response: %w", err)
+		return "", "", fmt.Errorf("failed to parse token response: %w", err)
 	}
 
-	// Update token details
 	am.obtainedAt = time.Now().Unix()
 	am.token = tokenResp.AccessToken
 	am.tokenType = tokenResp.TokenType
@@ -317,10 +281,10 @@ func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, htt
 		slog.Int64("expiresIn", tokenResp.ExpiresIn),
 	)
 
-	return nil
+	return am.tokenType, am.token, nil
 }
 
-// parseError attempts to parse the error response from the API
+// parseError attempts to parse an error response body from the API
 func parseError(responseBody []byte, statusCode int) *Error {
 	apiErr := &Error{
 		StatusCode: statusCode,
@@ -349,10 +313,4 @@ func parseError(responseBody []byte, statusCode int) *Error {
 	}
 
 	return apiErr
-}
-
-// base64Encode encodes two strings for Basic Auth
-func base64Encode(s1, s2 string) string {
-	auth := s1 + ":" + s2
-	return base64.StdEncoding.EncodeToString([]byte(auth))
 }

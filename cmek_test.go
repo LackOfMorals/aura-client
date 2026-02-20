@@ -15,17 +15,16 @@ import (
 func createTestCmekService(mock *mockAPIService) *cmekService {
 	return &cmekService{
 		api:     mock,
-		ctx:     context.Background(),
 		timeout: 30 * time.Second,
 		logger:  testLogger(),
 	}
 }
 
-// createTestCmekServiceWithContext creates a cmekService with custom context
-func createTestCmekServiceWithContext(mock api.RequestService, ctx context.Context, timeout time.Duration) *cmekService {
+// createTestCmekServiceWithTimeout creates a cmekService with a specific timeout.
+// Pass the desired context directly to each method call.
+func createTestCmekServiceWithTimeout(mock api.RequestService, timeout time.Duration) *cmekService {
 	return &cmekService{
 		api:     mock,
-		ctx:     ctx,
 		timeout: timeout,
 		logger:  testLogger(),
 	}
@@ -47,7 +46,7 @@ func TestCmekService_List_Success(t *testing.T) {
 	}
 
 	service := createTestCmekService(mock)
-	result, err := service.List("")
+	result, err := service.List(context.Background(), "")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -66,19 +65,17 @@ func TestCmekService_List_Success(t *testing.T) {
 // TestCmekService_List_WithTenantFilter verifies tenant ID filtering
 func TestCmekService_List_WithTenantFilter(t *testing.T) {
 	tenantID := "c1e2c556-a924-5fac-b7f8-bb624ad9761d"
-	expectedResponse := GetCmeksResponse{
+	responseBody, _ := json.Marshal(GetCmeksResponse{
 		Data: []GetCmeksData{
 			{Id: "cmek-filtered-1", Name: "Filtered Key 1", TenantId: tenantID},
 		},
-	}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestCmekService(mock)
-	result, err := service.List(tenantID)
+	result, err := service.List(context.Background(), tenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -106,7 +103,7 @@ func TestCmekService_List_InvalidTenantID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.List(tt.tenantID)
+			_, err := service.List(context.Background(), tt.tenantID)
 			if err == nil {
 				t.Error("expected validation error")
 			}
@@ -116,15 +113,13 @@ func TestCmekService_List_InvalidTenantID(t *testing.T) {
 
 // TestCmekService_List_EmptyResult verifies empty CMEK list
 func TestCmekService_List_EmptyResult(t *testing.T) {
-	expectedResponse := GetCmeksResponse{Data: []GetCmeksData{}}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	responseBody, _ := json.Marshal(GetCmeksResponse{Data: []GetCmeksData{}})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestCmekService(mock)
-	result, err := service.List("")
+	result, err := service.List(context.Background(), "")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -141,7 +136,7 @@ func TestCmekService_List_AuthenticationError(t *testing.T) {
 	}
 
 	service := createTestCmekService(mock)
-	_, err := service.List("")
+	_, err := service.List(context.Background(), "")
 
 	if err == nil {
 		t.Fatal("expected authentication error")
@@ -166,28 +161,22 @@ func TestCmekService_List_ContextCancelled(t *testing.T) {
 	cancel()
 
 	responseBody, _ := json.Marshal(GetCmeksResponse{Data: []GetCmeksData{}})
-	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 0,
+	mock := &mockAPIService{
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
-	service := createTestCmekServiceWithContext(mock, ctx, 30*time.Second)
+	service := createTestCmekService(mock)
 
 	start := time.Now()
-	_, err := service.List("")
+	_, err := service.List(ctx, "")
 	elapsed := time.Since(start)
 
 	if err == nil {
 		t.Fatal("expected context cancelled error")
 	}
-
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected context.Canceled, got: %v", err)
 	}
-
 	if elapsed > 100*time.Millisecond {
 		t.Errorf("cancellation took too long: %v", elapsed)
 	}
@@ -197,31 +186,22 @@ func TestCmekService_List_ContextCancelled(t *testing.T) {
 func TestCmekService_List_ContextTimeout(t *testing.T) {
 	responseBody, _ := json.Marshal(GetCmeksResponse{Data: []GetCmeksData{}})
 	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 2 * time.Second,
+		response: &api.Response{StatusCode: 200, Body: responseBody},
+		delay:    2 * time.Second,
 	}
 
-	service := createTestCmekServiceWithContext(
-		mock,
-		context.Background(),
-		100*time.Millisecond,
-	)
+	service := createTestCmekServiceWithTimeout(mock, 100*time.Millisecond)
 
 	start := time.Now()
-	_, err := service.List("")
+	_, err := service.List(context.Background(), "")
 	elapsed := time.Since(start)
 
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
-
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
 	}
-
 	if elapsed > 500*time.Millisecond {
 		t.Errorf("timeout took too long: %v", elapsed)
 	}

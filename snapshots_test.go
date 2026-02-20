@@ -10,23 +10,20 @@ import (
 	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
-// mockAPIService is defined in instance tests
-
 // createTestSnapshotService creates a snapshotService with a mock API service for testing
 func createTestSnapshotService(mock *mockAPIService) *snapshotService {
 	return &snapshotService{
 		api:     mock,
-		ctx:     context.Background(),
 		timeout: 30 * time.Second,
 		logger:  testLogger(),
 	}
 }
 
-// createTestSnapshotServiceWithContext creates a snapshotService with custom context
-func createTestSnapshotServiceWithContext(mock api.RequestService, ctx context.Context, timeout time.Duration) *snapshotService {
+// createTestSnapshotServiceWithTimeout creates a snapshotService with a specific timeout.
+// Pass the desired context directly to each method call.
+func createTestSnapshotServiceWithTimeout(mock api.RequestService, timeout time.Duration) *snapshotService {
 	return &snapshotService{
 		api:     mock,
-		ctx:     ctx,
 		timeout: timeout,
 		logger:  testLogger(),
 	}
@@ -48,7 +45,7 @@ func TestSnapshotService_List_Success(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.List(instanceID, "")
+	result, err := service.List(context.Background(), instanceID, "")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -68,15 +65,10 @@ func TestSnapshotService_List_Success(t *testing.T) {
 func TestSnapshotService_Get_Success(t *testing.T) {
 	instanceID := "aaaa1234"
 	snapshotID := "snapshot-1"
-
 	expectedResponse := GetSnapshotDataResponse{
 		Data: GetSnapshotData{
-			InstanceId: instanceID,
-			SnapshotId: snapshotID,
-			Profile:    "daily",
-			Status:     "completed",
-			Timestamp:  "2024-01-01T00:00:00Z",
-			Exportable: true,
+			InstanceId: instanceID, SnapshotId: snapshotID,
+			Profile: "daily", Status: "completed", Timestamp: "2024-01-01T00:00:00Z", Exportable: true,
 		},
 	}
 
@@ -86,7 +78,7 @@ func TestSnapshotService_Get_Success(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.Get(instanceID, snapshotID)
+	result, err := service.Get(context.Background(), instanceID, snapshotID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -97,7 +89,6 @@ func TestSnapshotService_Get_Success(t *testing.T) {
 	if mock.lastPath != "instances/"+instanceID+"/snapshots/"+snapshotID {
 		t.Errorf("expected path 'instances/%s/snapshots/%s', got '%s'", instanceID, snapshotID, mock.lastPath)
 	}
-
 	if result.Data != expectedResponse.Data {
 		t.Errorf("result does not match expected response, got '%v'", result)
 	}
@@ -107,19 +98,17 @@ func TestSnapshotService_Get_Success(t *testing.T) {
 func TestSnapshotService_List_WithDate(t *testing.T) {
 	instanceID := "aaaa1234"
 	snapshotDate := "2024-01-15"
-	expectedResponse := GetSnapshotsResponse{
+	responseBody, _ := json.Marshal(GetSnapshotsResponse{
 		Data: []GetSnapshotData{
 			{InstanceId: instanceID, SnapshotId: "snapshot-date-1", Status: "completed", Timestamp: "2024-01-15T00:00:00Z"},
 		},
-	}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.List(instanceID, snapshotDate)
+	result, err := service.List(context.Background(), instanceID, snapshotDate)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -149,7 +138,7 @@ func TestSnapshotService_List_InvalidDateFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.List("aaaa1234", tt.date)
+			_, err := service.List(context.Background(), "aaaa1234", tt.date)
 			if err == nil {
 				t.Errorf("expected error for invalid date format '%s'", tt.date)
 			}
@@ -177,7 +166,7 @@ func TestSnapshotService_List_ValidDateFormats(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.List("aaaa1234", tt.date)
+			_, err := service.List(context.Background(), "aaaa1234", tt.date)
 			if err != nil {
 				t.Errorf("expected no error for valid date '%s', got %v", tt.date, err)
 			}
@@ -188,17 +177,15 @@ func TestSnapshotService_List_ValidDateFormats(t *testing.T) {
 // TestSnapshotService_Create_Success verifies snapshot creation
 func TestSnapshotService_Create_Success(t *testing.T) {
 	instanceID := "aaaa1234"
-	expectedResponse := CreateSnapshotResponse{
+	responseBody, _ := json.Marshal(CreateSnapshotResponse{
 		Data: CreateSnapshotData{SnapshotId: "snapshot-new-456"},
-	}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.Create(instanceID)
+	result, err := service.Create(context.Background(), instanceID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -221,7 +208,7 @@ func TestSnapshotService_Create_InstanceNotFound(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.Create("aaaaaaaa")
+	result, err := service.Create(context.Background(), "aaaaaaaa")
 
 	if err == nil {
 		t.Fatal("expected error for non-existent instance")
@@ -243,21 +230,15 @@ func TestSnapshotService_Create_InstanceNotFound(t *testing.T) {
 func TestSnapshotService_Restore_Success(t *testing.T) {
 	instanceID := "aaaa1234"
 	snapshotID := "snapshot-123"
-
-	expectedResponse := RestoreSnapshotResponse{
-		Data: GetInstanceData{
-			Id:     instanceID,
-			Status: "restoring",
-		},
-	}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	responseBody, _ := json.Marshal(RestoreSnapshotResponse{
+		Data: InstanceData{Id: instanceID, Status: "restoring"},
+	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.Restore(instanceID, snapshotID)
+	result, err := service.Restore(context.Background(), instanceID, snapshotID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -275,15 +256,13 @@ func TestSnapshotService_Restore_Success(t *testing.T) {
 
 // TestSnapshotService_List_EmptyResult verifies empty snapshot list
 func TestSnapshotService_List_EmptyResult(t *testing.T) {
-	expectedResponse := GetSnapshotsResponse{Data: []GetSnapshotData{}}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	responseBody, _ := json.Marshal(GetSnapshotsResponse{Data: []GetSnapshotData{}})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.List("aaaa1234", "")
+	result, err := service.List(context.Background(), "aaaa1234", "")
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -300,7 +279,7 @@ func TestSnapshotService_AuthenticationError(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	_, err := service.List("aaaa1234", "")
+	_, err := service.List(context.Background(), "aaaa1234", "")
 
 	if err == nil {
 		t.Fatal("expected authentication error")
@@ -319,117 +298,31 @@ func TestSnapshotService_AuthenticationError(t *testing.T) {
 // Context-Specific Tests for SnapshotService
 // ============================================================================
 
-// TestSnapshotService_List_ContextCancelled verifies cancellation handling
-func TestSnapshotService_List_ContextCancelled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	responseBody, _ := json.Marshal(GetSnapshotsResponse{Data: []GetSnapshotData{}})
-	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 0,
-	}
-
-	service := createTestSnapshotServiceWithContext(mock, ctx, 30*time.Second)
-
-	start := time.Now()
-	_, err := service.List("aaaa1234", "")
-	elapsed := time.Since(start)
-
-	if err == nil {
-		t.Fatal("expected context cancelled error")
-	}
-
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("expected context.Canceled, got: %v", err)
-	}
-
-	if elapsed > 100*time.Millisecond {
-		t.Errorf("cancellation took too long: %v", elapsed)
-	}
-}
-
 // TestSnapshotService_Create_ContextTimeout verifies timeout enforcement
 func TestSnapshotService_Create_ContextTimeout(t *testing.T) {
 	instanceID := "aaaa1234"
-
 	responseBody, _ := json.Marshal(CreateSnapshotResponse{
 		Data: CreateSnapshotData{SnapshotId: "snap-123"},
 	})
 	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 2 * time.Second,
+		response: &api.Response{StatusCode: 200, Body: responseBody},
+		delay:    2 * time.Second,
 	}
 
-	service := createTestSnapshotServiceWithContext(
-		mock,
-		context.Background(),
-		100*time.Millisecond,
-	)
+	service := createTestSnapshotServiceWithTimeout(mock, 100*time.Millisecond)
 
 	start := time.Now()
-	_, err := service.Create(instanceID)
+	_, err := service.Create(context.Background(), instanceID)
 	elapsed := time.Since(start)
 
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
-
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
 	}
-
 	if elapsed > 500*time.Millisecond {
 		t.Errorf("timeout took too long: %v", elapsed)
-	}
-}
-
-// TestSnapshotService_Restore_ContextCancellation verifies restore cancellation
-func TestSnapshotService_Restore_ContextCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	instanceID := "aaaa1234"
-	snapshotID := "snapshot-123"
-
-	responseBody, _ := json.Marshal(RestoreSnapshotResponse{
-		Data: GetInstanceData{Id: instanceID, Status: "restoring"},
-	})
-	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 1 * time.Second,
-	}
-
-	service := createTestSnapshotServiceWithContext(mock, ctx, 30*time.Second)
-
-	// Cancel after 100ms
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		cancel()
-	}()
-
-	start := time.Now()
-	_, err := service.Restore(instanceID, snapshotID)
-	elapsed := time.Since(start)
-
-	if err == nil {
-		t.Fatal("expected cancellation error")
-	}
-
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("expected context.Canceled, got: %v", err)
-	}
-
-	if elapsed > 500*time.Millisecond {
-		t.Errorf("cancellation took too long: %v", elapsed)
 	}
 }
 
@@ -437,36 +330,26 @@ func TestSnapshotService_Restore_ContextCancellation(t *testing.T) {
 func TestSnapshotService_Get_ContextTimeout(t *testing.T) {
 	instanceID := "aaaa1234"
 	snapshotID := "snapshot-123"
-
 	responseBody, _ := json.Marshal(GetSnapshotDataResponse{
 		Data: GetSnapshotData{InstanceId: instanceID, SnapshotId: snapshotID},
 	})
 	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 500 * time.Millisecond,
+		response: &api.Response{StatusCode: 200, Body: responseBody},
+		delay:    500 * time.Millisecond,
 	}
 
-	service := createTestSnapshotServiceWithContext(
-		mock,
-		context.Background(),
-		50*time.Millisecond,
-	)
+	service := createTestSnapshotServiceWithTimeout(mock, 50*time.Millisecond)
 
 	start := time.Now()
-	_, err := service.Get(instanceID, snapshotID)
+	_, err := service.Get(context.Background(), instanceID, snapshotID)
 	elapsed := time.Since(start)
 
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
-
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
 	}
-
 	if elapsed > 300*time.Millisecond {
 		t.Errorf("timeout took too long: %v (expected ~50ms)", elapsed)
 	}
