@@ -5,59 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"time"
 
-	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Snapshots
 
-// GetSnapshotsResponse contains a list of snapshots for an instance
-type GetSnapshotsResponse struct {
-	Data []GetSnapshotData `json:"data"`
-}
-
-type GetSnapshotDataResponse struct {
-	Data GetSnapshotData `json:"data"`
-}
-
-type GetSnapshotData struct {
-	InstanceId string `json:"instance_id"`
-	SnapshotId string `json:"snapshot_id"`
-	Profile    string `json:"profile"`
-	Status     string `json:"status"`
-	Timestamp  string `json:"timestamp"`
-	Exportable bool   `json:"exportable"`
-}
-
-// CreateSnapshotResponse contains the result of creating a snapshot
-type CreateSnapshotResponse struct {
-	Data CreateSnapshotData `json:"data"`
-}
-
-type CreateSnapshotData struct {
-	SnapshotId string `json:"snapshot_id"`
-}
-
-// RestoreSnapshotResponse stores the response from initiating restoration of an instance using a snapshot
-// The response is the same as for getting instance configuration details
-type RestoreSnapshotResponse struct {
-	Data GetInstanceData `json:"data"`
-}
-
-// snapshotService handles snapshot operations
-type snapshotService struct {
-	api     api.RequestService
-	ctx     context.Context
-	timeout time.Duration
-	logger  *slog.Logger
-}
-
 // List returns snapshots for an instance, optionally filtered by date (YYYY-MM-DD)
-func (s *snapshotService) List(instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {
-	// Create child context with timeout for this operation
-	ctx, cancel := context.WithTimeout(s.ctx, s.timeout)
+func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	s.logger.DebugContext(ctx, "listing snapshots", slog.String("instanceID", instanceID))
@@ -69,7 +25,6 @@ func (s *snapshotService) List(instanceID string, snapshotDate string) (*GetSnap
 		// empty string, no date filter
 		break
 	case 10:
-		// Check if date is in correct format
 		if err := utils.CheckDate(snapshotDate); err != nil {
 			return nil, err
 		}
@@ -94,17 +49,14 @@ func (s *snapshotService) List(instanceID string, snapshotDate string) (*GetSnap
 	return &result, nil
 }
 
-// Get returns the details for a snapshot of an instance, identified by a snapshot Id and instance Id
-func (s *snapshotService) Get(instanceID string, snapshotID string) (*GetSnapshotDataResponse, error) {
-	// Create child context with timeout for this operation
-	ctx, cancel := context.WithTimeout(s.ctx, s.timeout)
+// Get returns the details for a snapshot of an instance
+func (s *snapshotService) Get(ctx context.Context, instanceID string, snapshotID string) (*GetSnapshotDataResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	s.logger.DebugContext(ctx, "get snapshot details", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	endpoint := "instances/" + instanceID + "/snapshots/" + snapshotID
-
-	resp, err := s.api.Get(ctx, endpoint)
+	resp, err := s.api.Get(ctx, "instances/"+instanceID+"/snapshots/"+snapshotID)
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to get snapshot", slog.String("error", err.Error()))
 		return nil, err
@@ -121,16 +73,13 @@ func (s *snapshotService) Get(instanceID string, snapshotID string) (*GetSnapsho
 }
 
 // Create triggers an on-demand snapshot for an instance
-func (s *snapshotService) Create(instanceID string) (*CreateSnapshotResponse, error) {
-	// Create child context with timeout for this operation
-	ctx, cancel := context.WithTimeout(s.ctx, s.timeout)
+func (s *snapshotService) Create(ctx context.Context, instanceID string) (*CreateSnapshotResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	s.logger.DebugContext(ctx, "creating snapshot", slog.String("instanceID", instanceID))
 
-	endpoint := "instances/" + instanceID + "/snapshots"
-
-	resp, err := s.api.Post(ctx, endpoint, "")
+	resp, err := s.api.Post(ctx, "instances/"+instanceID+"/snapshots", "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to create snapshot", slog.String("error", err.Error()))
 		return nil, err
@@ -146,17 +95,14 @@ func (s *snapshotService) Create(instanceID string) (*CreateSnapshotResponse, er
 	return &result, nil
 }
 
-// Restore an instance with a snapshot.
-func (s *snapshotService) Restore(instanceID string, snapshotID string) (*RestoreSnapshotResponse, error) {
-	// Create child context with timeout for this operation
-	ctx, cancel := context.WithTimeout(s.ctx, s.timeout)
+// Restore restores an instance from a snapshot
+func (s *snapshotService) Restore(ctx context.Context, instanceID string, snapshotID string) (*RestoreSnapshotResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
 	s.logger.DebugContext(ctx, "restore instance with a snapshot", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	endpoint := "instances/" + instanceID + "/snapshots/" + snapshotID + "/restore"
-
-	resp, err := s.api.Post(ctx, endpoint, "")
+	resp, err := s.api.Post(ctx, "instances/"+instanceID+"/snapshots/"+snapshotID+"/restore", "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to restore using snapshot", slog.String("error", err.Error()))
 		return nil, err

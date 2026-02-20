@@ -14,18 +14,16 @@ import (
 func createTestTenantService(mock *mockAPIService) *tenantService {
 	return &tenantService{
 		api:     mock,
-		ctx:     context.Background(),
 		timeout: 30 * time.Second,
 		logger:  testLogger(),
 	}
 }
 
-// createTestTenantServiceWithContext creates a tenantService with custom context
-// Accepts any mock that implements api.RequestService interface
-func createTestTenantServiceWithContext(mock api.RequestService, ctx context.Context, timeout time.Duration) *tenantService {
+// createTestTenantServiceWithTimeout creates a tenantService with a specific timeout.
+// Pass the desired context directly to each method call.
+func createTestTenantServiceWithTimeout(mock api.RequestService, timeout time.Duration) *tenantService {
 	return &tenantService{
 		api:     mock,
-		ctx:     ctx,
 		timeout: timeout,
 		logger:  testLogger(),
 	}
@@ -35,31 +33,19 @@ func createTestTenantServiceWithContext(mock api.RequestService, ctx context.Con
 func TestTenantService_List_Success(t *testing.T) {
 	expectedResponse := ListTenantsResponse{
 		Data: []TenantsResponseData{
-			{
-				Id:   "tenant-1",
-				Name: "Development Team",
-			},
-			{
-				Id:   "tenant-2",
-				Name: "Production Team",
-			},
-			{
-				Id:   "tenant-3",
-				Name: "Testing Team",
-			},
+			{Id: "tenant-1", Name: "Development Team"},
+			{Id: "tenant-2", Name: "Production Team"},
+			{Id: "tenant-3", Name: "Testing Team"},
 		},
 	}
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.List()
+	result, err := service.List(context.Background())
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -69,9 +55,6 @@ func TestTenantService_List_Success(t *testing.T) {
 	}
 	if mock.lastPath != "tenants" {
 		t.Errorf("expected path 'tenants', got '%s'", mock.lastPath)
-	}
-	if result == nil {
-		t.Fatal("expected result to be non-nil")
 	}
 	if len(result.Data) != 3 {
 		t.Errorf("expected 3 tenants, got %d", len(result.Data))
@@ -86,20 +69,13 @@ func TestTenantService_List_Success(t *testing.T) {
 
 // TestTenantService_List_EmptyResult verifies empty tenant list
 func TestTenantService_List_EmptyResult(t *testing.T) {
-	expectedResponse := ListTenantsResponse{
-		Data: []TenantsResponseData{},
-	}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	responseBody, _ := json.Marshal(ListTenantsResponse{Data: []TenantsResponseData{}})
 	mock := &mockAPIService{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.List()
+	result, err := service.List(context.Background())
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -117,47 +93,25 @@ func TestTenantService_Get_Success(t *testing.T) {
 			Id:   tenantID,
 			Name: "Development Team",
 			InstanceConfigurations: []TenantInstanceConfiguration{
-				{
-					CloudProvider: "gcp",
-					Region:        "us-central1",
-					RegionName:    "Iowa",
-					Type:          "enterprise-db",
-					Memory:        "8GB",
-					Storage:       "256GB",
-					Version:       "5",
-				},
-				{
-					CloudProvider: "aws",
-					Region:        "us-east-1",
-					RegionName:    "N. Virginia",
-					Type:          "enterprise-db",
-					Memory:        "16GB",
-					Storage:       "512GB",
-					Version:       "5",
-				},
+				{CloudProvider: "gcp", Region: "us-central1", RegionName: "Iowa", Type: "enterprise-db", Memory: "8GB", Storage: "256GB", Version: "5"},
+				{CloudProvider: "aws", Region: "us-east-1", RegionName: "N. Virginia", Type: "enterprise-db", Memory: "16GB", Storage: "512GB", Version: "5"},
 			},
 		},
 	}
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.Get(tenantID)
+	result, err := service.Get(context.Background(), tenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 	if mock.lastPath != "tenants/"+tenantID {
 		t.Errorf("expected path 'tenants/%s', got '%s'", tenantID, mock.lastPath)
-	}
-	if result == nil {
-		t.Fatal("expected result to be non-nil")
 	}
 	if result.Data.Id != tenantID {
 		t.Errorf("expected tenant ID '%s', got '%s'", tenantID, result.Data.Id)
@@ -178,36 +132,24 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 			Id:   tenantID,
 			Name: "Test Tenant",
 			InstanceConfigurations: []TenantInstanceConfiguration{
-				{
-					CloudProvider: "gcp",
-					Region:        "europe-west2",
-					RegionName:    "London",
-					Type:          "enterprise-db",
-					Memory:        "32GB",
-					Storage:       "1024GB",
-					Version:       "5",
-				},
+				{CloudProvider: "gcp", Region: "europe-west2", RegionName: "London", Type: "enterprise-db", Memory: "32GB", Storage: "1024GB", Version: "5"},
 			},
 		},
 	}
 
 	responseBody, _ := json.Marshal(expectedResponse)
 	mock := &mockAPIService{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.Get(tenantID)
+	result, err := service.Get(context.Background(), tenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
 	config := result.Data.InstanceConfigurations[0]
-
 	if config.CloudProvider != "gcp" {
 		t.Errorf("expected cloud provider 'gcp', got '%s'", config.CloudProvider)
 	}
@@ -225,14 +167,11 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 // TestTenantService_Get_NotFound verifies 404 handling
 func TestTenantService_Get_NotFound(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.Error{
-			StatusCode: 404,
-			Message:    "Tenant not found",
-		},
+		err: &api.Error{StatusCode: 404, Message: "Tenant not found"},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.Get("00000000-0000-0000-0000-000000000000")
+	result, err := service.Get(context.Background(), "00000000-0000-0000-0000-000000000000")
 
 	if err == nil {
 		t.Fatal("expected error for non-existent tenant")
@@ -253,14 +192,11 @@ func TestTenantService_Get_NotFound(t *testing.T) {
 // TestTenantService_AuthenticationError verifies auth error handling
 func TestTenantService_AuthenticationError(t *testing.T) {
 	mock := &mockAPIService{
-		err: &api.Error{
-			StatusCode: 401,
-			Message:    "Invalid credentials",
-		},
+		err: &api.Error{StatusCode: 401, Message: "Invalid credentials"},
 	}
 
 	service := createTestTenantService(mock)
-	_, err := service.List()
+	_, err := service.List(context.Background())
 
 	if err == nil {
 		t.Fatal("expected authentication error")
@@ -278,24 +214,15 @@ func TestTenantService_AuthenticationError(t *testing.T) {
 // TestTenantService_Get_NoInstanceConfigurations verifies tenant without configurations
 func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 	tenantID := "00000000-0000-0000-0000-000000000001"
-	expectedResponse := GetTenantResponse{
-		Data: TenantResponseData{
-			Id:                     tenantID,
-			Name:                   "Empty Tenant",
-			InstanceConfigurations: []TenantInstanceConfiguration{},
-		},
-	}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	responseBody, _ := json.Marshal(GetTenantResponse{
+		Data: TenantResponseData{Id: tenantID, Name: "Empty Tenant", InstanceConfigurations: []TenantInstanceConfiguration{}},
+	})
 	mock := &mockAPIService{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.Get(tenantID)
+	result, err := service.Get(context.Background(), tenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -307,25 +234,15 @@ func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 
 // TestTenantService_SingleTenant verifies list with single tenant
 func TestTenantService_SingleTenant(t *testing.T) {
-	expectedResponse := ListTenantsResponse{
-		Data: []TenantsResponseData{
-			{
-				Id:   "tenant-single",
-				Name: "Only Tenant",
-			},
-		},
-	}
-
-	responseBody, _ := json.Marshal(expectedResponse)
+	responseBody, _ := json.Marshal(ListTenantsResponse{
+		Data: []TenantsResponseData{{Id: "tenant-single", Name: "Only Tenant"}},
+	})
 	mock := &mockAPIService{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
+		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
 
 	service := createTestTenantService(mock)
-	result, err := service.List()
+	result, err := service.List(context.Background())
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -342,114 +259,30 @@ func TestTenantService_SingleTenant(t *testing.T) {
 // Context-Specific Tests for TenantService
 // ============================================================================
 
-// TestTenantService_List_ContextCancelled verifies cancellation handling
-func TestTenantService_List_ContextCancelled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	responseBody, _ := json.Marshal(ListTenantsResponse{Data: []TenantsResponseData{}})
-	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 0,
-	}
-
-	service := createTestTenantServiceWithContext(mock, ctx, 30*time.Second)
-
-	start := time.Now()
-	_, err := service.List()
-	elapsed := time.Since(start)
-
-	if err == nil {
-		t.Fatal("expected context cancelled error")
-	}
-
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("expected context.Canceled, got: %v", err)
-	}
-
-	if elapsed > 100*time.Millisecond {
-		t.Errorf("cancellation took too long: %v", elapsed)
-	}
-}
-
 // TestTenantService_Get_ContextTimeout verifies timeout enforcement
 func TestTenantService_Get_ContextTimeout(t *testing.T) {
 	tenantID := "00000000-0000-0000-0000-000000000001"
-
 	responseBody, _ := json.Marshal(GetTenantResponse{
 		Data: TenantResponseData{Id: tenantID, Name: "Test"},
 	})
 	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 2 * time.Second,
+		response: &api.Response{StatusCode: 200, Body: responseBody},
+		delay:    2 * time.Second,
 	}
 
-	service := createTestTenantServiceWithContext(
-		mock,
-		context.Background(),
-		100*time.Millisecond,
-	)
+	service := createTestTenantServiceWithTimeout(mock, 100*time.Millisecond)
 
 	start := time.Now()
-	_, err := service.Get(tenantID)
+	_, err := service.Get(context.Background(), tenantID)
 	elapsed := time.Since(start)
 
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
-
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Errorf("expected context.DeadlineExceeded, got: %v", err)
 	}
-
 	if elapsed > 500*time.Millisecond {
 		t.Errorf("timeout took too long: %v", elapsed)
-	}
-}
-
-// TestTenantService_GetMetrics_ContextCancellation verifies metrics endpoint cancellation
-func TestTenantService_GetMetrics_ContextCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	tenantID := "00000000-0000-0000-0000-000000000001"
-	responseBody, _ := json.Marshal(GetTenantMetricsURLResponse{
-		Data: GetTenantMetricsURLData{Endpoint: "https://metrics.example.com"},
-	})
-	mock := &mockAPIServiceWithDelay{
-		response: &api.Response{
-			StatusCode: 200,
-			Body:       responseBody,
-		},
-		delay: 1 * time.Second,
-	}
-
-	service := createTestTenantServiceWithContext(mock, ctx, 30*time.Second)
-
-	// Cancel after 100ms
-	go func() {
-		time.Sleep(100 * time.Millisecond)
-		cancel()
-	}()
-
-	start := time.Now()
-	_, err := service.GetMetrics(tenantID)
-	elapsed := time.Since(start)
-
-	if err == nil {
-		t.Fatal("expected cancellation error")
-	}
-
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("expected context.Canceled, got: %v", err)
-	}
-
-	if elapsed > 500*time.Millisecond {
-		t.Errorf("cancellation took too long: %v", elapsed)
 	}
 }

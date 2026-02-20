@@ -1,9 +1,7 @@
 package aura
 
 import (
-	"context"
 	"log/slog"
-	"os"
 	"testing"
 	"time"
 )
@@ -22,9 +20,6 @@ func TestNewClient_Success(t *testing.T) {
 	}
 	if client.api == nil {
 		t.Error("expected api service to be initialized")
-	}
-	if client.ctx == nil {
-		t.Error("expected context to be initialized")
 	}
 	if client.logger == nil {
 		t.Error("expected logger to be initialized")
@@ -108,17 +103,14 @@ func TestNewClient_EmptyCredentials(t *testing.T) {
 
 // TestWithTimeout_Valid verifies custom timeout configuration
 func TestWithTimeout_Valid(t *testing.T) {
-	customTimeout := 60 * time.Second
-
 	client, err := NewClient(
 		WithCredentials("test-id", "test-secret"),
-		WithTimeout(customTimeout),
+		WithTimeout(60*time.Second),
 	)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	// Config is now internal to the api service, just verify client created successfully
 	if client == nil {
 		t.Error("expected client to be non-nil")
 	}
@@ -157,29 +149,10 @@ func TestWithTimeout_Negative(t *testing.T) {
 	}
 }
 
-// TestWithContext verifies custom context configuration
-func TestWithContext(t *testing.T) {
-	ctx := context.WithValue(context.Background(), "test-key", "test-value")
-
-	client, err := NewClient(
-		WithCredentials("test-id", "test-secret"),
-		WithContext(ctx),
-	)
-
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	// Verify context is stored
-	if client.ctx != ctx {
-		t.Error("expected custom context to be stored")
-	}
-}
-
 // TestWithLogger_Valid verifies custom logger configuration
 func TestWithLogger_Valid(t *testing.T) {
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
-	handler := slog.NewTextHandler(os.Stderr, opts)
+	handler := slog.NewTextHandler(nil, opts)
 	customLogger := slog.New(handler)
 
 	client, err := NewClient(
@@ -213,6 +186,39 @@ func TestWithLogger_Nil(t *testing.T) {
 	}
 }
 
+// TestWithBaseURL_Valid verifies custom base URL configuration
+func TestWithBaseURL_Valid(t *testing.T) {
+	client, err := NewClient(
+		WithCredentials("test-id", "test-secret"),
+		WithBaseURL("https://api.staging.neo4j.io"),
+	)
+
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if client == nil {
+		t.Error("expected client to be non-nil")
+	}
+}
+
+// TestWithBaseURL_Empty validates error for empty base URL
+func TestWithBaseURL_Empty(t *testing.T) {
+	client, err := NewClient(
+		WithCredentials("test-id", "test-secret"),
+		WithBaseURL(""),
+	)
+
+	if err == nil {
+		t.Error("expected error for empty base URL, got nil")
+	}
+	if err.Error() != "base URL must not be empty" {
+		t.Errorf("expected base URL error, got '%s'", err.Error())
+	}
+	if client != nil {
+		t.Error("expected client to be nil")
+	}
+}
+
 // TestDefaultOptions verifies default configuration values
 func TestDefaultOptions(t *testing.T) {
 	opts := defaultOptions()
@@ -229,33 +235,21 @@ func TestDefaultOptions(t *testing.T) {
 	if opts.logger == nil {
 		t.Error("expected default logger to be initialized")
 	}
-	if opts.config.ctx == nil {
-		t.Error("expected default context to be initialized")
-	}
 }
 
 // TestNewClient_MultipleOptions verifies combining multiple options
 func TestNewClient_MultipleOptions(t *testing.T) {
-	customTimeout := 90 * time.Second
-	ctx := context.Background()
-
 	client, err := NewClient(
 		WithCredentials("test-id", "test-secret"),
-		WithTimeout(customTimeout),
-		WithContext(ctx),
+		WithTimeout(90*time.Second),
+		WithBaseURL("https://api.staging.neo4j.io"),
 	)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-
-	// Config is now internal to the api service
-	// Verify that client and context were properly initialized
 	if client == nil {
 		t.Error("expected client to be non-nil")
-	}
-	if client.ctx != ctx {
-		t.Error("expected custom context")
 	}
 }
 
@@ -268,32 +262,20 @@ func TestNewClient_DefaultValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-
-	// Config is now internal to the api service
-	// Just verify client was created successfully
 	if client == nil {
 		t.Error("expected client to be non-nil")
-	}
-	if client.ctx == nil {
-		t.Error("expected context to be initialized")
 	}
 }
 
 // TestWithCredentials verifies the convenience method
 func TestWithCredentials(t *testing.T) {
-	clientID := "test-id"
-	clientSecret := "test-secret"
-
 	client, err := NewClient(
-		WithCredentials(clientID, clientSecret),
+		WithCredentials("test-id", "test-secret"),
 	)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-
-	// Config is now internal to the api service
-	// Just verify client was created successfully
 	if client == nil {
 		t.Error("expected client to be non-nil")
 	}
@@ -301,17 +283,14 @@ func TestWithCredentials(t *testing.T) {
 
 // TestWithMaxRetry_Valid verifies custom max retry configuration
 func TestWithMaxRetry_Valid(t *testing.T) {
-	customMaxRetry := 5
-
 	client, err := NewClient(
 		WithCredentials("test-id", "test-secret"),
-		WithMaxRetry(customMaxRetry),
+		WithMaxRetry(5),
 	)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	// Config is now internal to the api service, just verify client created successfully
 	if client == nil {
 		t.Error("expected client to be non-nil")
 	}

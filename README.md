@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Go package that enables the use of Neo4j Aura API in a friendly way e.g `instances.List()` to return a list of instances in Aura. 
+A Go package that enables the use of Neo4j Aura API in a friendly way e.g `client.Instances.List(ctx)` to return a list of instances in Aura.
 
 Client Id and Secret are required and these can be obtained from the [Neo4j Aura Console](https://neo4j.com/docs/aura/api/authentication/).
 
@@ -11,6 +11,7 @@ Client Id and Secret are required and these can be obtained from the [Neo4j Aura
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
+- [Context and Timeouts](#context-and-timeouts)
 - [Tenant Operations](#tenant-operations)
 - [Instance Operations](#instance-operations)
 - [Snapshot Operations](#snapshot-operations)
@@ -31,18 +32,16 @@ go get github.com/LackOfMorals/aura-client
 
 ## Quick Start
 
-### Basic Setup
-
 ```go
 package main
 
 import (
+    "context"
     "log"
     aura "github.com/LackOfMorals/aura-client"
 )
 
 func main() {
-    // Create client with credentials
     client, err := aura.NewClient(
         aura.WithCredentials("your-client-id", "your-client-secret"),
     )
@@ -50,8 +49,9 @@ func main() {
         log.Fatalf("Failed to create client: %v", err)
     }
 
-    // List all instances
-    instances, err := client.Instances.List()
+    ctx := context.Background()
+
+    instances, err := client.Instances.List(ctx)
     if err != nil {
         log.Fatalf("Failed to list instances: %v", err)
     }
@@ -80,7 +80,6 @@ client, err := aura.NewClient(
 client, err := aura.NewClient(
     aura.WithCredentials("client-id", "client-secret"),
     aura.WithTimeout(60 * time.Second),
-    aura.WithContext(context.Background()),
     aura.WithMaxRetry(5),
 )
 ```
@@ -90,7 +89,6 @@ client, err := aura.NewClient(
 ```go
 import "log/slog"
 
-// Create custom logger with debug level
 opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 handler := slog.NewTextHandler(os.Stderr, opts)
 logger := slog.New(handler)
@@ -101,6 +99,72 @@ client, err := aura.NewClient(
 )
 ```
 
+### Targeting a Different Base URL
+
+Use `WithBaseURL` to point the client at a staging or sandbox environment:
+
+```go
+client, err := aura.NewClient(
+    aura.WithCredentials("client-id", "client-secret"),
+    aura.WithBaseURL("https://api.staging.neo4j.io"),
+)
+```
+
+---
+
+## Context and Timeouts
+
+Every service method accepts a `context.Context` as its first argument. This is the standard Go pattern and gives you full control over cancellation and deadlines on a per-call basis.
+
+The client is configured with a default timeout (120 seconds, overridable with `WithTimeout`). This timeout is applied as a ceiling on each call — if the context you pass already has a shorter deadline, that shorter deadline wins.
+
+### Basic usage
+
+```go
+ctx := context.Background()
+instances, err := client.Instances.List(ctx)
+```
+
+### Per-call deadline
+
+```go
+// This specific call must complete within 10 seconds
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+defer cancel()
+
+instance, err := client.Instances.Get(ctx, "instance-id")
+```
+
+### Cancellation
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+
+// Cancel all in-flight calls (e.g. on OS signal or user action)
+go func() {
+    <-shutdownSignal
+    cancel()
+}()
+
+instances, err := client.Instances.List(ctx)
+if err != nil {
+    if ctx.Err() == context.Canceled {
+        log.Println("Request was cancelled")
+    }
+}
+```
+
+### Distributed tracing
+
+Because context flows through every call, you can attach trace spans from any OpenTelemetry-compatible library:
+
+```go
+ctx, span := tracer.Start(r.Context(), "list-instances")
+defer span.End()
+
+instances, err := client.Instances.List(ctx)
+```
+
 ---
 
 ## Tenant Operations
@@ -108,7 +172,9 @@ client, err := aura.NewClient(
 ### List All Tenants
 
 ```go
-tenants, err := client.Tenants.List()
+ctx := context.Background()
+
+tenants, err := client.Tenants.List(ctx)
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -121,8 +187,9 @@ for _, tenant := range tenants.Data {
 ### Get Tenant Details
 
 ```go
-tenantID := "your-tenant-id"
-tenant, err := client.Tenants.Get(tenantID)
+ctx := context.Background()
+
+tenant, err := client.Tenants.Get(ctx, "your-tenant-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -147,7 +214,9 @@ for _, config := range tenant.Data.InstanceConfigurations {
 ### List All Instances
 
 ```go
-instances, err := client.Instances.List()
+ctx := context.Background()
+
+instances, err := client.Instances.List(ctx)
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -165,8 +234,9 @@ for _, instance := range instances.Data {
 ### Get Instance Details
 
 ```go
-instanceID := "your-instance-id"
-instance, err := client.Instances.Get(instanceID)
+ctx := context.Background()
+
+instance, err := client.Instances.Get(ctx, "your-instance-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -182,6 +252,8 @@ fmt.Printf("Region: %s\n", instance.Data.Region)
 ### Create a New Instance
 
 ```go
+ctx := context.Background()
+
 config := &aura.CreateInstanceConfigData{
     Name:          "my-neo4j-db",
     TenantId:      "your-tenant-id",
@@ -192,7 +264,7 @@ config := &aura.CreateInstanceConfigData{
     Memory:        "8GB",
 }
 
-instance, err := client.Instances.Create(config)
+instance, err := client.Instances.Create(ctx, config)
 if err != nil {
     log.Fatalf("Error creating instance: %v", err)
 }
@@ -210,18 +282,20 @@ fmt.Printf("  Password: %s\n", instance.Data.Password)
 ### Update an Instance
 
 ```go
+ctx := context.Background()
+
 updateData := &aura.UpdateInstanceData{
     Name:   "my-renamed-instance",
-    Memory: "16GB",  // Scale up memory
+    Memory: "16GB",
 }
 
-instance, err := client.Instances.Update("instance-id", updateData)
+instance, err := client.Instances.Update(ctx, "instance-id", updateData)
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance updated: %s with %s memory\n", 
-    instance.Data.Name, 
+fmt.Printf("Instance updated: %s with %s memory\n",
+    instance.Data.Name,
     instance.Data.Memory,
 )
 ```
@@ -229,7 +303,9 @@ fmt.Printf("Instance updated: %s with %s memory\n",
 ### Pause an Instance
 
 ```go
-instance, err := client.Instances.Pause("instance-id")
+ctx := context.Background()
+
+instance, err := client.Instances.Pause(ctx, "instance-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -240,7 +316,9 @@ fmt.Printf("Instance paused. Status: %s\n", instance.Data.Status)
 ### Resume an Instance
 
 ```go
-instance, err := client.Instances.Resume("instance-id")
+ctx := context.Background()
+
+instance, err := client.Instances.Resume(ctx, "instance-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -251,10 +329,10 @@ fmt.Printf("Instance resumed. Status: %s\n", instance.Data.Status)
 ### Delete an Instance
 
 ```go
-// ⚠️ WARNING: This is irreversible!
-instanceID := "instance-to-delete"
+ctx := context.Background()
 
-instance, err := client.Instances.Delete(instanceID)
+// ⚠️ WARNING: This is irreversible!
+instance, err := client.Instances.Delete(ctx, "instance-to-delete")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -265,11 +343,9 @@ fmt.Printf("Instance %s deleted\n", instance.Data.Id)
 ### Overwrite Instance from Another Instance
 
 ```go
-// Restore targetInstance from sourceInstance
-targetID := "target-instance-id"
-sourceID := "source-instance-id"
+ctx := context.Background()
 
-result, err := client.Instances.Overwrite(targetID, sourceID, "")
+result, err := client.Instances.Overwrite(ctx, "target-instance-id", "source-instance-id", "")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -281,10 +357,9 @@ fmt.Printf("Overwrite initiated: %s\n", result.Data)
 ### Overwrite Instance from Snapshot
 
 ```go
-targetID := "target-instance-id"
-snapshotID := "snapshot-id"
+ctx := context.Background()
 
-result, err := client.Instances.Overwrite(targetID, "", snapshotID)
+result, err := client.Instances.Overwrite(ctx, "target-instance-id", "", "snapshot-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -299,10 +374,10 @@ fmt.Printf("Overwrite from snapshot initiated\n")
 ### List Snapshots
 
 ```go
-instanceID := "your-instance-id"
+ctx := context.Background()
 
 // Empty date string returns today's snapshots
-snapshots, err := client.Snapshots.List(instanceID, "")
+snapshots, err := client.Snapshots.List(ctx, "your-instance-id", "")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -317,40 +392,34 @@ for _, snapshot := range snapshots.Data {
 }
 ```
 
-### List Snapshots for Specific Date
+### List Snapshots for a Specific Date
 
 ```go
-instanceID := "your-instance-id"
-date := "2024-01-15"  // Format: YYYY-MM-DD
+ctx := context.Background()
 
-snapshots, err := client.Snapshots.List(instanceID, date)
+snapshots, err := client.Snapshots.List(ctx, "your-instance-id", "2024-01-15")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Snapshots for %s:\n", date)
 for _, snapshot := range snapshots.Data {
-    fmt.Printf("  - %s at %s\n", 
-        snapshot.SnapshotId, 
-        snapshot.Timestamp,
-    )
+    fmt.Printf("  - %s at %s\n", snapshot.SnapshotId, snapshot.Timestamp)
 }
 ```
 
-### Get the details of a Snapshot
+### Get Snapshot Details
 
 ```go
-instanceID := "your-instance-id"
-snapshotID := "your-snapshot-id"
+ctx := context.Background()
 
-snapshot, err := client.Snapshots.Get(instanceID, snapshotID)
+snapshot, err := client.Snapshots.Get(ctx, "your-instance-id", "your-snapshot-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Snapshot details: \n Instance ID: %s \n Snapshot ID: %s \n Status: %s \n Timestamp: %s ", 
-    snapshot.Data.InstanceId, 
-    snapshot.Data.SnapshotId, 
+fmt.Printf("Instance ID: %s\nSnapshot ID: %s\nStatus: %s\nTimestamp: %s\n",
+    snapshot.Data.InstanceId,
+    snapshot.Data.SnapshotId,
     snapshot.Data.Status,
     snapshot.Data.Timestamp,
 )
@@ -359,35 +428,28 @@ fmt.Printf("Snapshot details: \n Instance ID: %s \n Snapshot ID: %s \n Status: %
 ### Create an On-Demand Snapshot
 
 ```go
-instanceID := "your-instance-id"
+ctx := context.Background()
 
-snapshot, err := client.Snapshots.Create(instanceID)
+snapshot, err := client.Snapshots.Create(ctx, "your-instance-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Snapshot creation initiated!\n")
-fmt.Printf("Snapshot ID: %s\n", snapshot.Data.SnapshotId)
-
-// Note: Snapshot creation is asynchronous
-// Poll with List() to check completion status
+fmt.Printf("Snapshot creation initiated. Snapshot ID: %s\n", snapshot.Data.SnapshotId)
+// Note: Snapshot creation is asynchronous. Poll List() to check completion status.
 ```
 
-### Restore from a snapshot
+### Restore from a Snapshot
 
 ```go
-instanceID := "your-instance-id"
-snapshotID := "your-snapshot-id"
+ctx := context.Background()
 
-result, err := client.Snapshots.Restore(instanceID, snapshotID)
+result, err := client.Snapshots.Restore(ctx, "your-instance-id", "your-snapshot-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Snapshot details: \n Instance ID: %s \n Status: %s", 
-    result.Data.InstanceId, 
-    result.Data.Status,
-)
+fmt.Printf("Instance ID: %s\nStatus: %s\n", result.Data.Id, result.Data.Status)
 ```
 
 ---
@@ -397,32 +459,29 @@ fmt.Printf("Snapshot details: \n Instance ID: %s \n Status: %s",
 ### List Customer Managed Encryption Keys
 
 ```go
-// List all CMEKs
-cmeks, err := client.Cmek.List("")
+ctx := context.Background()
+
+// Pass an empty string to list all CMEKs regardless of tenant
+cmeks, err := client.Cmek.List(ctx, "")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Found %d CMEK(s):\n", len(cmeks.Data))
 for _, cmek := range cmeks.Data {
-    fmt.Printf("  - %s (ID: %s) in tenant %s\n",
-        cmek.Name,
-        cmek.Id,
-        cmek.TenantId,
-    )
+    fmt.Printf("  - %s (ID: %s) in tenant %s\n", cmek.Name, cmek.Id, cmek.TenantId)
 }
 ```
 
 ### Filter CMEKs by Tenant
 
 ```go
-tenantID := "your-tenant-id"
-cmeks, err := client.Cmek.List(tenantID)
+ctx := context.Background()
+
+cmeks, err := client.Cmek.List(ctx, "your-tenant-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("CMEKs in tenant %s:\n", tenantID)
 for _, cmek := range cmeks.Data {
     fmt.Printf("  - %s\n", cmek.Name)
 }
@@ -435,20 +494,17 @@ for _, cmek := range cmeks.Data {
 ### List Graph Data Science Sessions
 
 ```go
-sessions, err := client.GraphAnalytics.List()
+ctx := context.Background()
+
+sessions, err := client.GraphAnalytics.List(ctx)
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Found %d GDS session(s):\n", len(sessions.Data))
 for _, session := range sessions.Data {
     fmt.Printf("  - %s (ID: %s)\n", session.Name, session.Id)
-    fmt.Printf("    Memory: %s, Status: %s\n", 
-        session.Memory, 
-        session.Status,
-    )
-    fmt.Printf("    Instance: %s\n", session.InstanceId)
-    fmt.Printf("    Expires: %s\n", session.Expiry)
+    fmt.Printf("    Memory: %s, Status: %s\n", session.Memory, session.Status)
+    fmt.Printf("    Instance: %s, Expires: %s\n", session.InstanceId, session.Expiry)
 }
 ```
 
@@ -456,39 +512,40 @@ for _, session := range sessions.Data {
 
 ## Prometheus Metrics Operations
 
-### Query Prometheus Metrics
+Each Aura instance exposes Prometheus metrics for monitoring.
 
-Each Aura instance exposes Prometheus metrics for monitoring. The client provides a convenient way to query these metrics.
+### Get the Prometheus URL for an Instance
 
 ```go
-// Get instance details to retrieve the Prometheus URL
-instanceID := "your-instance-id"
-instance, err := client.Instances.Get(instanceID)
+ctx := context.Background()
+
+instance, err := client.Instances.Get(ctx, "your-instance-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
 prometheusURL := instance.Data.MetricsURL
-// e.g., "https://c9f0d13a.metrics.neo4j.io/prometheus"
 ```
 
 ### Get Instance Health Metrics
 
 ```go
-// Get comprehensive health metrics for an instance
-health, err := client.Prometheus.GetInstanceHealth(instanceID, prometheusURL)
+ctx := context.Background()
+
+health, err := client.Prometheus.GetInstanceHealth(ctx, "your-instance-id", prometheusURL)
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance Health Status: %s\n", health.OverallStatus)
+fmt.Printf("Health Status: %s\n", health.OverallStatus)
 fmt.Printf("CPU Usage: %.2f%%\n", health.Resources.CPUUsagePercent)
 fmt.Printf("Memory Usage: %.2f%%\n", health.Resources.MemoryUsagePercent)
 fmt.Printf("Queries/sec: %.2f\n", health.Query.QueriesPerSecond)
 fmt.Printf("Active Connections: %d/%d (%.1f%%)\n",
     health.Connections.ActiveConnections,
     health.Connections.MaxConnections,
-    health.Connections.UsagePercent)
+    health.Connections.UsagePercent,
+)
 
 if len(health.Issues) > 0 {
     fmt.Println("\nIssues detected:")
@@ -514,26 +571,25 @@ For more detailed information on Prometheus operations, see the [Prometheus docu
 ### Basic Error Handling
 
 ```go
-instance, err := client.Instances.Get("instance-id")
+ctx := context.Background()
+
+instance, err := client.Instances.Get(ctx, "instance-id")
 if err != nil {
     log.Printf("Error: %v\n", err)
     return
 }
 ```
 
-### Advanced Error Handling with Custom API Errors
+### Typed API Errors
 
 ```go
-instance, err := client.Instances.Get("non-existent-id")
+ctx := context.Background()
+
+instance, err := client.Instances.Get(ctx, "non-existent-id")
 if err != nil {
-    // Type assert to Error for detailed information
     if apiErr, ok := err.(*aura.Error); ok {
-        fmt.Printf("API Error %d: %s\n", 
-            apiErr.StatusCode, 
-            apiErr.Message,
-        )
-        
-        // Check specific error types
+        fmt.Printf("API Error %d: %s\n", apiErr.StatusCode, apiErr.Message)
+
         switch {
         case apiErr.IsNotFound():
             fmt.Println("Instance not found")
@@ -542,47 +598,35 @@ if err != nil {
         case apiErr.IsBadRequest():
             fmt.Println("Invalid request parameters")
         }
-        
-        // Handle multiple errors
+
         if apiErr.HasMultipleErrors() {
-            fmt.Println("Multiple errors occurred:")
-            for _, errMsg := range apiErr.AllErrors() {
-                fmt.Printf("  - %s\n", errMsg)
+            fmt.Println("All errors:")
+            for _, msg := range apiErr.AllErrors() {
+                fmt.Printf("  - %s\n", msg)
             }
         }
-        
         return
     }
-    
-    // Some other error type
+
     log.Printf("Unexpected error: %v\n", err)
     return
 }
-
-fmt.Printf("Success: %s\n", instance.Data.Name)
 ```
 
-### Context-Based Timeout Handling
+### Context Errors
 
 ```go
-// Create context with timeout
-ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 defer cancel()
 
-// Initialize client with context
-client, err := aura.NewClient(
-    aura.WithCredentials("client-id", "client-secret"),
-    aura.WithContext(ctx),
-)
+instances, err := client.Instances.List(ctx)
 if err != nil {
-    log.Fatal(err)
-}
-
-instances, err := client.Instances.List()
-if err != nil {
-    if ctx.Err() == context.DeadlineExceeded {
-        log.Println("Request timed out after 30 seconds")
-    } else {
+    switch ctx.Err() {
+    case context.DeadlineExceeded:
+        log.Println("Request timed out")
+    case context.Canceled:
+        log.Println("Request was cancelled")
+    default:
         log.Printf("Error: %v\n", err)
     }
     return
@@ -596,9 +640,6 @@ if err != nil {
 ### 1. Secure Credential Management
 
 ```go
-import "os"
-
-// Load credentials from environment variables
 clientID := os.Getenv("AURA_CLIENT_ID")
 clientSecret := os.Getenv("AURA_CLIENT_SECRET")
 
@@ -611,48 +652,44 @@ client, err := aura.NewClient(
 )
 ```
 
-### 2. Save Instance Credentials Securely
+### 2. Save Instance Credentials Immediately After Creation
 
 ```go
-instance, err := client.Instances.Create(config)
+ctx := context.Background()
+
+instance, err := client.Instances.Create(ctx, config)
 if err != nil {
     log.Fatal(err)
 }
 
-// ⚠️ CRITICAL: Save these immediately - they're only shown once!
+// ⚠️ CRITICAL: Save these immediately — they are only shown once!
 credentials := map[string]string{
     "instance_id":    instance.Data.Id,
     "connection_url": instance.Data.ConnectionUrl,
     "username":       instance.Data.Username,
     "password":       instance.Data.Password,
 }
-
-// Save to secure storage (e.g., environment variables, secrets manager)
-// DO NOT log or print passwords in production!
+// Store in a secrets manager. Do NOT log passwords in production.
 ```
 
 ### 3. Polling for Async Operations
 
 ```go
-// After creating an instance, poll for readiness
-instanceID := instance.Data.Id
-maxAttempts := 30
-waitTime := 10 * time.Second
+ctx := context.Background()
 
-for i := 0; i < maxAttempts; i++ {
-    inst, err := client.Instances.Get(instanceID)
+instanceID := newInstance.Data.Id
+
+for range 30 {
+    inst, err := client.Instances.Get(ctx, instanceID)
     if err != nil {
         log.Printf("Error checking status: %v", err)
-        continue
-    }
-    
-    if inst.Data.Status == "running" {
+    } else if inst.Data.Status == aura.StatusRunning {
         fmt.Println("Instance is ready!")
         break
+    } else {
+        fmt.Printf("Status: %s, waiting...\n", inst.Data.Status)
     }
-    
-    fmt.Printf("Status: %s, waiting...\n", inst.Data.Status)
-    time.Sleep(waitTime)
+    time.Sleep(10 * time.Second)
 }
 ```
 
@@ -662,7 +699,6 @@ for i := 0; i < maxAttempts; i++ {
 ctx, cancel := context.WithCancel(context.Background())
 defer cancel()
 
-// Listen for interrupt signals
 sigChan := make(chan os.Signal, 1)
 signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -672,10 +708,8 @@ go func() {
     cancel()
 }()
 
-client, err := aura.NewClient(
-    aura.WithCredentials(clientID, clientSecret),
-    aura.WithContext(ctx),
-)
+// Pass ctx to any in-flight calls — they will be cancelled on signal
+instances, err := client.Instances.List(ctx)
 ```
 
 ### 5. Retry Logic for Transient Failures
@@ -683,34 +717,30 @@ client, err := aura.NewClient(
 ```go
 func retryOperation(maxRetries int, fn func() error) error {
     var err error
-    for i := 0; i < maxRetries; i++ {
+    for i := range maxRetries {
         err = fn()
         if err == nil {
             return nil
         }
-        
-        // Check if error is retryable
+
         if apiErr, ok := err.(*aura.Error); ok {
-            // Don't retry client errors (4xx except 429)
-            if apiErr.StatusCode >= 400 && 
-               apiErr.StatusCode < 500 && 
-               apiErr.StatusCode != 429 {
+            // Don't retry client errors (4xx except 429 Too Many Requests)
+            if apiErr.StatusCode >= 400 && apiErr.StatusCode < 500 && apiErr.StatusCode != 429 {
                 return err
             }
         }
-        
-        // Exponential backoff
-        waitTime := time.Duration(math.Pow(2, float64(i))) * time.Second
-        fmt.Printf("Attempt %d failed, retrying in %v...\n", i+1, waitTime)
-        time.Sleep(waitTime)
+
+        wait := time.Duration(math.Pow(2, float64(i))) * time.Second
+        fmt.Printf("Attempt %d failed, retrying in %v...\n", i+1, wait)
+        time.Sleep(wait)
     }
-    
     return fmt.Errorf("operation failed after %d retries: %w", maxRetries, err)
 }
 
 // Usage
+ctx := context.Background()
 err := retryOperation(3, func() error {
-    _, err := client.Instances.List()
+    _, err := client.Instances.List(ctx)
     return err
 })
 ```
@@ -723,25 +753,24 @@ err := retryOperation(3, func() error {
 package main
 
 import (
+    "context"
     "fmt"
     "log"
     "os"
     "time"
-    
+
     aura "github.com/LackOfMorals/aura-client"
 )
 
 func main() {
-    // Load credentials from environment
     clientID := os.Getenv("AURA_CLIENT_ID")
     clientSecret := os.Getenv("AURA_CLIENT_SECRET")
     tenantID := os.Getenv("AURA_TENANT_ID")
-    
+
     if clientID == "" || clientSecret == "" {
         log.Fatal("Missing required environment variables")
     }
-    
-    // Create client
+
     client, err := aura.NewClient(
         aura.WithCredentials(clientID, clientSecret),
         aura.WithTimeout(120 * time.Second),
@@ -749,36 +778,30 @@ func main() {
     if err != nil {
         log.Fatalf("Failed to create client: %v", err)
     }
-    
-    // List existing instances
+
+    ctx := context.Background()
+
     fmt.Println("=== Current Instances ===")
-    instances, err := client.Instances.List()
+    instances, err := client.Instances.List(ctx)
     if err != nil {
         log.Fatalf("Failed to list instances: %v", err)
     }
-    
+
     for _, inst := range instances.Data {
-        fmt.Printf("- %s: %s (%s)\n", 
-            inst.Name, 
-            inst.Id, 
-            inst.CloudProvider,
-        )
+        fmt.Printf("- %s: %s (%s)\n", inst.Name, inst.Id, inst.CloudProvider)
     }
-    
-    // Get tenant details
+
     if tenantID != "" {
         fmt.Println("\n=== Tenant Configuration ===")
-        tenant, err := client.Tenants.Get(tenantID)
+        tenant, err := client.Tenants.Get(ctx, tenantID)
         if err != nil {
             log.Printf("Warning: Could not get tenant: %v", err)
         } else {
             fmt.Printf("Tenant: %s\n", tenant.Data.Name)
-            fmt.Printf("Available configurations: %d\n", 
-                len(tenant.Data.InstanceConfigurations),
-            )
+            fmt.Printf("Available configurations: %d\n", len(tenant.Data.InstanceConfigurations))
         }
     }
-    
+
     fmt.Println("\n✓ Client is working correctly!")
 }
 ```
@@ -797,162 +820,164 @@ go run main.go
 
 ### Breaking Changes in v2.0
 
-#### 1. Type Name Changes
+#### 1. `context.Context` is now required on every service call
 
-**Before (v1.x):**
-```go
-var client *aura.AuraAPIClient
-```
-
-**After (v2.0):**
-```go
-var client *aura.APIClient  // "Aura" prefix removed
-```
-
-#### 2. Error Type Alias
-
-Error types now use cleaner names. Type aliases maintain backward compatibility:
-
-**Before (v1.x):**
-```go
-if apiErr, ok := err.(*aura.APIError); ok {
-    // Error handling
-}
-```
-
-**After (v2.0):**
-```go
-if apiErr, ok := err.(*aura.Error); ok {  // Simpler name
-    // Same error handling methods work
-}
-```
-
-#### 3. Configuration Store Removed
-
-The built-in store service has been removed. Implement your own storage:
+The most significant change. Contexts are no longer stored inside the client at construction time — they flow through each individual call instead. This follows the standard Go convention and enables per-call cancellation, deadlines, and distributed tracing.
 
 **Before (v1.x):**
 ```go
 client, _ := aura.NewClient(
     aura.WithCredentials(id, secret),
-    aura.WithStorePath("./store.db"),  // ❌ Removed
+    aura.   // ❌ Removed
 )
-client.Store.Create("prod", config)     // ❌ Removed
-instance, _ := client.Instances.CreateFromStore("prod")  // ❌ Removed
+
+instances, err := client.Instances.List()
+tenant, err := client.Tenants.Get(tenantID)
 ```
 
 **After (v2.0):**
 ```go
 client, _ := aura.NewClient(
     aura.WithCredentials(id, secret),
-    // No store-related options
+    // No WithContext — pass ctx to each call instead
 )
 
-// Implement your own storage pattern
-// See example implementations below
+ctx := context.Background()
+
+instances, err := client.Instances.List(ctx)
+tenant, err := client.Tenants.Get(ctx, tenantID)
 ```
 
-#### 4. Prometheus Parser Enhancement
+The quickest way to find all call sites is:
 
-The Prometheus parsing now uses the official library (internal change, no API impact):
+```bash
+grep -rn "client\.\(Instances\|Tenants\|Snapshots\|Cmek\|GraphAnalytics\|Prometheus\)\." ./
+```
 
-- ✅ More robust parsing
-- ✅ Better error messages
-- ✅ Handles all metric types
-- ✅ No code changes required in your application
+#### 2. `WithContext` option removed
+
+`WithContext` has been removed from `NewClient`. Pass a context directly to each service method instead (see above).
+
+#### 3. `WithBaseURL` option added
+
+A new `WithBaseURL` option is available for targeting non-production environments:
+
+```go
+client, _ := aura.NewClient(
+    aura.WithCredentials(id, secret),
+    aura.WithBaseURL("https://api.staging.neo4j.io"),
+)
+```
 
 ### Migration Steps
 
-#### Step 1: Update Import
+#### Step 1: Update the dependency
+
 ```bash
 go get github.com/LackOfMorals/aura-client@v2.0.0
 go mod tidy
 ```
 
-#### Step 2: Update Type Names
-
-If you're storing the client in a variable:
+#### Step 2: Remove `WithContext` from `NewClient`
 
 ```go
-// Find and replace in your codebase:
-// *aura.AuraAPIClient → *aura.APIClient
+// Before
+client, _ := aura.NewClient(
+    aura.WithCredentials(id, secret),
+    aura.  // remove this line
+)
+
+// After
+client, _ := aura.NewClient(
+    aura.WithCredentials(id, secret),
+)
 ```
 
-#### Step 3: Update Error Handling (Optional)
+#### Step 3: Add `ctx` to every service call
 
-Error type aliases maintain compatibility, but for clarity:
+Add `ctx` as the first argument to every method call. If you don't have a specific context, use `context.Background()`:
 
 ```go
-// Old (still works):
-if apiErr, ok := err.(*aura.APIError); ok { }
+ctx := context.Background()
 
-// New (recommended):
-if apiErr, ok := err.(*aura.Error); ok { }
+// Before
+instances, err := client.Instances.List()
+instance, err := client.Instances.Get(id)
+instance, err := client.Instances.Create(config)
+instance, err := client.Instances.Delete(id)
+instance, err := client.Instances.Pause(id)
+instance, err := client.Instances.Resume(id)
+instance, err := client.Instances.Update(id, data)
+result, err  := client.Instances.Overwrite(id, srcID, snapID)
+
+tenants, err := client.Tenants.List()
+tenant, err  := client.Tenants.Get(id)
+metrics, err := client.Tenants.GetMetrics(id)
+
+snapshots, err := client.Snapshots.List(id, date)
+snapshot, err  := client.Snapshots.Get(id, snapID)
+snapshot, err  := client.Snapshots.Create(id)
+result, err    := client.Snapshots.Restore(id, snapID)
+
+cmeks, err := client.Cmek.List(tenantID)
+
+sessions, err := client.GraphAnalytics.List()
+session, err  := client.GraphAnalytics.Get(id)
+session, err  := client.GraphAnalytics.Create(config)
+estimate, err := client.GraphAnalytics.Estimate(req)
+result, err   := client.GraphAnalytics.Delete(id)
+
+raw, err    := client.Prometheus.FetchRawMetrics(url)
+val, err    := client.Prometheus.GetMetricValue(raw, name, filters)
+health, err := client.Prometheus.GetInstanceHealth(id, url)
+
+// After
+instances, err := client.Instances.List(ctx)
+instance, err := client.Instances.Get(ctx, id)
+instance, err := client.Instances.Create(ctx, config)
+instance, err := client.Instances.Delete(ctx, id)
+instance, err := client.Instances.Pause(ctx, id)
+instance, err := client.Instances.Resume(ctx, id)
+instance, err := client.Instances.Update(ctx, id, data)
+result, err  := client.Instances.Overwrite(ctx, id, srcID, snapID)
+
+tenants, err := client.Tenants.List(ctx)
+tenant, err  := client.Tenants.Get(ctx, id)
+metrics, err := client.Tenants.GetMetrics(ctx, id)
+
+snapshots, err := client.Snapshots.List(ctx, id, date)
+snapshot, err  := client.Snapshots.Get(ctx, id, snapID)
+snapshot, err  := client.Snapshots.Create(ctx, id)
+result, err    := client.Snapshots.Restore(ctx, id, snapID)
+
+cmeks, err := client.Cmek.List(ctx, tenantID)
+
+sessions, err := client.GraphAnalytics.List(ctx)
+session, err  := client.GraphAnalytics.Get(ctx, id)
+session, err  := client.GraphAnalytics.Create(ctx, config)
+estimate, err := client.GraphAnalytics.Estimate(ctx, req)
+result, err   := client.GraphAnalytics.Delete(ctx, id)
+
+raw, err    := client.Prometheus.FetchRawMetrics(ctx, url)
+val, err    := client.Prometheus.GetMetricValue(ctx, raw, name, filters)
+health, err := client.Prometheus.GetInstanceHealth(ctx, id, url)
 ```
 
-#### Step 4: Remove Store Dependencies (If Used)
+#### Step 4: Verify
 
-If you were using the built-in store:
-
-1. Remove `WithStorePath()` from client initialization
-2. Remove calls to `client.Store.*`
-3. Remove calls to `client.Instances.CreateFromStore()`
-4. Implement your own configuration storage
-
-**Simple replacement pattern:**
-
-```go
-// Your storage interface
-type ConfigStorage interface {
-    Save(label string, config *aura.CreateInstanceConfigData) error
-    Load(label string) (*aura.CreateInstanceConfigData, error)
-}
-
-// Use it
-config, _ := storage.Load("production")
-instance, _ := client.Instances.Create(config)
+```bash
+go build ./...
+go test ./...
 ```
 
 ### Quick Migration Checklist
 
-- [ ] Update to v2.0.0: `go get github.com/LackOfMorals/aura-client@v2.0.0`
-- [ ] Run `go mod tidy`
-- [ ] Replace `*aura.AuraAPIClient` with `*aura.APIClient` (if used)
-- [ ] Update error type assertions from `*aura.APIError` to `*aura.Error` (optional)
-- [ ] Remove store service code if used
-- [ ] Run tests: `go test ./...`
-- [ ] Verify build: `go build ./...`
-
-### Common Migration Issues
-
-**Issue: "undefined: aura.AuraAPIClient"**
-
-```go
-// Fix: Update type name
-var client *aura.APIClient  // Changed from AuraAPIClient
-```
-
-**Issue: "undefined: aura.Store"**
-
-```go
-// Fix: Implement your own storage
-// The Store service has been removed
-// See configuration storage pattern examples
-```
-
-**Issue: "undefined: CreateFromStore"**
-
-```go
-// Fix: Load config and create in two steps
-config := myStorage.Load("label")
-instance, _ := client.Instances.Create(config)
-```
-
-### Need Help?
-
-- Review [CHANGELOG.md](./CHANGELOG.md) for complete list of changes
-- See [PROMETHEUS_MIGRATION.md](./PROMETHEUS_MIGRATION.md) for Prometheus-specific details
-- Open an issue on [GitHub](https://github.com/LackOfMorals/aura-client/issues)
+- [ ] `go get github.com/LackOfMorals/aura-client@v2.0.0` and `go mod tidy`
+- [ ] Remove `aura.WithContext(...)` from all `NewClient` calls
+- [ ] Add `ctx` as first argument to every service method call
+- [ ] Ensure `context` is imported wherever service calls are made
+- [ ] `go build ./...` — fix any remaining compilation errors
+- [ ] `go test ./...`
 
 ---
 
@@ -961,6 +986,7 @@ instance, _ := client.Instances.Create(config)
 - [Neo4j Aura API Documentation](https://neo4j.com/docs/aura/platform/api/)
 - [GitHub Repository](https://github.com/LackOfMorals/aura-client)
 - [Report Issues](https://github.com/LackOfMorals/aura-client/issues)
+- [Prometheus Metrics Guide](./docs/prometheus.md)
 
 ---
 

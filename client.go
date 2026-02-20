@@ -12,11 +12,10 @@
 //	    log.Fatal(err)
 //	}
 //
-//	instances, err := client.Instances.List()
+//	instances, err := client.Instances.List(ctx)
 package aura
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"os"
@@ -26,12 +25,12 @@ import (
 	httpClient "github.com/LackOfMorals/aura-client/internal/httpClient"
 )
 
-const AuraAPIClientVersion = "v1.6.0"
+// Currently set manually to match changie latest
+const AuraAPIClientVersion = "v1.6.1"
 
 // AuraAPIClient is the main client for interacting with the Neo4j Aura API
 type AuraAPIClient struct {
 	api    api.RequestService // Handles authenticated API requests
-	ctx    context.Context    // Context for API operations
 	logger *slog.Logger       // Structured logger
 
 	// Grouped services - using interface types for testability
@@ -45,13 +44,12 @@ type AuraAPIClient struct {
 
 // config holds internal configuration (unexported)
 type config struct {
-	baseURL      string          // the base url of the aura api
-	version      string          // the version of the aura api to use. Only v1 is supported at this time
-	apiTimeout   time.Duration   // How long to wait for a response from an aura api endpoint
-	apiRetryMax  int             // The number of retries to attempt
-	clientID     string          // client id to obtain a token to use the aura api
-	clientSecret string          // client secret to obtain a token to use the aura api
-	ctx          context.Context // context for the client
+	baseURL      string        // the base url of the aura api
+	version      string        // the version of the aura api to use. Only v1 is supported at this time
+	apiTimeout   time.Duration // How long to wait for a response from an aura api endpoint
+	apiRetryMax  int           // The number of retries to attempt
+	clientID     string        // client id to obtain a token to use the aura api
+	clientSecret string        // client secret to obtain a token to use the aura api
 }
 
 // Option is a functional option for configuring the AuraAPIClient
@@ -75,17 +73,8 @@ func defaultOptions() *options {
 			version:     "v1",
 			apiTimeout:  120 * time.Second,
 			apiRetryMax: 3,
-			ctx:         context.Background(),
 		},
 		logger: slog.New(handler),
-	}
-}
-
-// WithContext sets the context to use
-func WithContext(ctx context.Context) Option {
-	return func(o *options) error {
-		o.config.ctx = ctx
-		return nil
 	}
 }
 
@@ -127,6 +116,17 @@ func WithLogger(logger *slog.Logger) Option {
 			return errors.New("logger cannot be nil")
 		}
 		o.logger = logger
+		return nil
+	}
+}
+
+// WithBaseURL overrides the default API base URL. Useful for staging or sandbox environments.
+func WithBaseURL(baseURL string) Option {
+	return func(o *options) error {
+		if baseURL == "" {
+			return errors.New("base URL must not be empty")
+		}
+		o.config.baseURL = baseURL
 		return nil
 	}
 }
@@ -181,51 +181,45 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		ClientSecret: o.config.clientSecret,
 		BaseURL:      o.config.baseURL,
 		APIVersion:   o.config.version,
-		Timeout:      o.config.apiTimeout,
 	}, o.logger)
+
+	clientLogger := o.logger.With(slog.String("component", "AuraAPIClient"))
 
 	service := &AuraAPIClient{
 		api:    apiSvc,
-		ctx:    o.config.ctx,
-		logger: o.logger.With(slog.String("component", "AuraAPIClient")),
+		logger: clientLogger,
 	}
 
-	// Initialize sub-services with timeout for context propagation
+	// Initialize sub-services
 	service.Tenants = &tenantService{
 		api:     apiSvc,
-		ctx:     service.ctx,
 		timeout: o.config.apiTimeout,
-		logger:  service.logger.With(slog.String("service", "tenantService")),
+		logger:  clientLogger.With(slog.String("service", "tenantService")),
 	}
 	service.Instances = &instanceService{
 		api:     apiSvc,
-		ctx:     service.ctx,
 		timeout: o.config.apiTimeout,
-		logger:  service.logger.With(slog.String("service", "instanceService")),
+		logger:  clientLogger.With(slog.String("service", "instanceService")),
 	}
 	service.Snapshots = &snapshotService{
 		api:     apiSvc,
-		ctx:     service.ctx,
 		timeout: o.config.apiTimeout,
-		logger:  service.logger.With(slog.String("service", "snapshotService")),
+		logger:  clientLogger.With(slog.String("service", "snapshotService")),
 	}
 	service.Cmek = &cmekService{
 		api:     apiSvc,
-		ctx:     service.ctx,
 		timeout: o.config.apiTimeout,
-		logger:  service.logger.With(slog.String("service", "cmekService")),
+		logger:  clientLogger.With(slog.String("service", "cmekService")),
 	}
 	service.GraphAnalytics = &gDSSessionService{
 		api:     apiSvc,
-		ctx:     service.ctx,
 		timeout: o.config.apiTimeout,
-		logger:  service.logger.With(slog.String("service", "gDSSessionService")),
+		logger:  clientLogger.With(slog.String("service", "gDSSessionService")),
 	}
 	service.Prometheus = &prometheusService{
 		api:     apiSvc,
-		ctx:     service.ctx,
 		timeout: o.config.apiTimeout,
-		logger:  service.logger.With(slog.String("service", "prometheusService")),
+		logger:  clientLogger.With(slog.String("service", "prometheusService")),
 	}
 
 	service.logger.Info("Aura API client initialized successfully",
