@@ -7,47 +7,14 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/utils"
 	"github.com/hashicorp/go-retryablehttp"
 )
 
-const (
-	// DefaultMaxResponseSize is the maximum size of response body to read (10MB)
-	DefaultMaxResponseSize = 10 * 1024 * 1024
-)
-
-// HTTPResponse stores the response from a request, including the payload and original response.
-type HTTPResponse struct {
-	StatusCode int
-	Body       []byte
-	Headers    http.Header
-}
-
-// HTTPService defines the interface for HTTP operations.
-// This is the low-level HTTP layer that handles raw HTTP requests.
-type HTTPService interface {
-	Get(ctx context.Context, url string, headers map[string]string) (*HTTPResponse, error)
-	Post(ctx context.Context, url string, headers map[string]string, body string) (*HTTPResponse, error)
-	Put(ctx context.Context, url string, headers map[string]string, body string) (*HTTPResponse, error)
-	Patch(ctx context.Context, url string, headers map[string]string, body string) (*HTTPResponse, error)
-	Delete(ctx context.Context, url string, headers map[string]string) (*HTTPResponse, error)
-}
-
-// httpService is the concrete implementation of HTTPService.
-// It handles HTTP requests with configurable timeouts, retries, and connection pooling.
-type httpService struct {
-	baseURL    string
-	apiVersion string
-	timeout    time.Duration
-	client     *retryablehttp.Client
-	logger     *slog.Logger
-}
-
 // NewHTTPService creates a new HTTPService with the specified configuration.
-func NewHTTPService(baseURL string, apiVersion string, timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
+func NewHTTPService(baseURL string, timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = maxRetry
 	retryClient.RetryWaitMin = 1 * time.Second
@@ -56,11 +23,10 @@ func NewHTTPService(baseURL string, apiVersion string, timeout time.Duration, ma
 	retryClient.Logger = &slogAdapter{logger: logger}
 
 	return &httpService{
-		baseURL:    baseURL,
-		apiVersion: apiVersion,
-		timeout:    timeout,
-		client:     retryClient,
-		logger:     logger,
+		baseURL: baseURL,
+		timeout: timeout,
+		client:  retryClient,
+		logger:  logger,
 	}
 }
 
@@ -90,29 +56,19 @@ func (s *httpService) Delete(ctx context.Context, url string, headers map[string
 }
 
 // doRequest performs the actual HTTP request with the specified parameters.
-// It automatically detects whether the endpoint is a full URL (starting with http:// or https://)
-// or a relative path. Full URLs are used as-is, while relative paths are appended to the base URL.
+// endpoint is the complete path to the endpoint that will be called
 func (s *httpService) doRequest(ctx context.Context, method, endpoint string, headers map[string]string, body string) (*HTTPResponse, error) {
-	// Determine if endpoint is already a full URL
-	var fullURL string
-	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
-		// Endpoint is already a full URL, use it as-is
-		fullURL = endpoint
-	} else {
-		// Endpoint is relative, prepend base URL
-		fullURL = s.baseURL + "/" + s.apiVersion + "/" + endpoint
-	}
 
 	var bodyReader io.Reader
 	if body != "" {
 		bodyReader = bytes.NewReader([]byte(body))
 	}
 
-	req, err := retryablehttp.NewRequestWithContext(ctx, method, fullURL, bodyReader)
+	req, err := retryablehttp.NewRequestWithContext(ctx, method, endpoint, bodyReader)
 	if err != nil {
 		s.logger.DebugContext(ctx, "failed to create request",
 			slog.String("method", method),
-			slog.String("url", fullURL),
+			slog.String("url", endpoint),
 			slog.String("error", err.Error()),
 		)
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -125,14 +81,14 @@ func (s *httpService) doRequest(ctx context.Context, method, endpoint string, he
 
 	s.logger.DebugContext(ctx, "executing HTTP request",
 		slog.String("method", method),
-		slog.String("url", fullURL),
+		slog.String("url", endpoint),
 	)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
 		s.logger.DebugContext(ctx, "request failed",
 			slog.String("method", method),
-			slog.String("url", fullURL),
+			slog.String("url", endpoint),
 			slog.String("error", err.Error()),
 		)
 		return nil, fmt.Errorf("request failed: %w", err)
@@ -144,7 +100,7 @@ func (s *httpService) doRequest(ctx context.Context, method, endpoint string, he
 	if err != nil {
 		s.logger.DebugContext(ctx, "failed to read response body",
 			slog.String("method", method),
-			slog.String("url", fullURL),
+			slog.String("url", endpoint),
 			slog.String("error", err.Error()),
 		)
 		return nil, fmt.Errorf("failed to read response body: %w", err)
@@ -159,7 +115,7 @@ func (s *httpService) doRequest(ctx context.Context, method, endpoint string, he
 	// Log response from request.  body is limited to 200 bytes to avoid flooding the log.
 	s.logger.DebugContext(ctx, "HTTP request completed",
 		slog.String("method", method),
-		slog.String("url", fullURL),
+		slog.String("url", endpoint),
 		slog.Int("statusCode", resp.StatusCode),
 		slog.Int("bodySize", len(respBody)),
 		slog.String("bodyPreview", utils.TruncateString(string(respBody), 200)),

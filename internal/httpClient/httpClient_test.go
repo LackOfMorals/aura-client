@@ -25,12 +25,11 @@ func testLogger() *slog.Logger {
 // TestNewHTTPService verifies service creation with proper configuration
 func TestNewHTTPService(t *testing.T) {
 	baseURL := "https://api.example.com"
-	apiVersion := "v1"
 	timeout := 30 * time.Second
 	maxRetry := 3
 	logger := testLogger()
 
-	service := NewHTTPService(baseURL, apiVersion, timeout, maxRetry, logger)
+	service := NewHTTPService(baseURL, timeout, maxRetry, logger)
 
 	if service == nil {
 		t.Fatal("expected service to be non-nil")
@@ -50,10 +49,11 @@ func TestHTTPService_Get_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	response, err := service.Get(ctx, "test", nil)
+	response, err := service.Get(ctx, testURL, nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -87,10 +87,11 @@ func TestHTTPService_Post_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
-	response, err := service.Post(ctx, "test", nil, expectedBody)
+	response, err := service.Post(ctx, testURL, nil, expectedBody)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -119,10 +120,10 @@ func TestHTTPService_Put_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
-
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 	ctx := context.Background()
-	response, err := service.Put(ctx, "test", nil, expectedBody)
+	response, err := service.Put(ctx, testURL, nil, expectedBody)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -148,10 +149,11 @@ func TestHTTPService_Patch_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
-	response, err := service.Patch(ctx, "test", nil, expectedBody)
+	response, err := service.Patch(ctx, testURL, nil, expectedBody)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -171,10 +173,11 @@ func TestHTTPService_Delete_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
-	response, err := service.Delete(ctx, "test", nil)
+	response, err := service.Delete(ctx, testURL, nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -203,10 +206,11 @@ func TestHTTPService_WithHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
-	_, err := service.Get(ctx, "test", expectedHeaders)
+	_, err := service.Get(ctx, testURL, expectedHeaders)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -224,10 +228,11 @@ func TestHTTPService_EmptyBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
-	_, err := service.Get(ctx, "test", nil)
+	_, err := service.Get(ctx, testURL, nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -266,10 +271,11 @@ func TestHTTPService_NonSuccessStatus(t *testing.T) {
 			}))
 			defer server.Close()
 
-			service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+			service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+			testURL := server.URL + "/test"
 
 			ctx := context.Background()
-			response, err := service.Get(ctx, "test", nil)
+			response, err := service.Get(ctx, testURL, nil)
 
 			// The new implementation doesn't return an error for non-2xx status codes
 			// It just returns the response with the status code
@@ -297,12 +303,13 @@ func TestHTTPService_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := service.Get(ctx, "test", nil)
+	_, err := service.Get(ctx, testURL, nil)
 
 	if err == nil {
 		t.Fatal("expected error for cancelled context")
@@ -320,10 +327,11 @@ func TestHTTPService_Timeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 50*time.Millisecond, 0, testLogger())
+	service := NewHTTPService(server.URL+"/", 50*time.Millisecond, 0, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
-	_, err := service.Get(ctx, "test", nil)
+	_, err := service.Get(ctx, testURL, nil)
 
 	if err == nil {
 		t.Fatal("expected timeout error")
@@ -341,10 +349,11 @@ func TestHTTPService_LargeResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
-	response, err := service.Get(ctx, "test", nil)
+	response, err := service.Get(ctx, testURL, nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -361,7 +370,7 @@ func TestHTTPService_LargeResponse(t *testing.T) {
 
 // TestHTTPService_InvalidURL verifies handling of malformed URLs
 func TestHTTPService_InvalidURL(t *testing.T) {
-	service := NewHTTPService("http://[invalid-url", "", 10*time.Second, 3, testLogger())
+	service := NewHTTPService("http://[invalid-url", 10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	_, err := service.Get(ctx, "test", nil)
@@ -405,7 +414,8 @@ func TestHTTPService_ConcurrentRequests(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", "", 0*time.Second, 3, testLogger())
+	service := NewHTTPService(server.URL+"/", 0*time.Second, 3, testLogger())
+	testURL := server.URL + "/test"
 
 	ctx := context.Background()
 	done := make(chan bool)
@@ -413,7 +423,7 @@ func TestHTTPService_ConcurrentRequests(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		go func() {
-			_, err := service.Get(ctx, "test", nil)
+			_, err := service.Get(ctx, testURL, nil)
 			if err != nil {
 				errs <- err
 			}
@@ -575,7 +585,7 @@ func TestHTTPService_FullURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Use a different base URL to ensure full URLs bypass it
-			service := NewHTTPService("https://wrong-base-url.example.com/", "", 10*time.Second, 3, testLogger())
+			service := NewHTTPService("https://wrong-base-url.example.com/", 10*time.Second, 3, testLogger())
 
 			ctx := context.Background()
 			_, err := service.Get(ctx, tt.endpoint, nil)
