@@ -19,7 +19,7 @@ func newTestPrometheusService() *prometheusService {
 	handler := slog.NewTextHandler(os.Stderr, opts)
 	logger := slog.New(handler)
 
-	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", "", 30*time.Second, 3, logger)
+	httpSvc := httpClient.NewHTTPService("https://api.neo4j.io/", 30*time.Second, 3, logger)
 	apiSvc := api.NewRequestService(httpSvc, api.Config{
 		ClientID:     "test",
 		ClientSecret: "test",

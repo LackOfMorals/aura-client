@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"sync"
+
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
@@ -57,54 +57,10 @@ func (e *Error) IsBadRequest() bool {
 	return e.StatusCode == http.StatusBadRequest
 }
 
-// RequestService defines the interface for making authenticated API requests.
-// This is the middle layer that handles authentication and common API patterns.
-type RequestService interface {
-	Get(ctx context.Context, endpoint string) (*Response, error)
-	Post(ctx context.Context, endpoint string, body string) (*Response, error)
-	Put(ctx context.Context, endpoint string, body string) (*Response, error)
-	Patch(ctx context.Context, endpoint string, body string) (*Response, error)
-	Delete(ctx context.Context, endpoint string) (*Response, error)
-}
-
-// Config holds configuration for the API service
-type Config struct {
-	ClientID     string
-	ClientSecret string
-	BaseURL      string
-	APIVersion   string
-}
-
-// apiRequestService is the concrete implementation of RequestService
-type apiRequestService struct {
-	httpClient httpClient.HTTPService
-	authMgr    *authManager
-	baseURL    string
-	apiVersion string
-	logger     *slog.Logger
-}
-
-// authManager handles token management for the API
-type authManager struct {
-	clientID     string
-	clientSecret string
-	tokenType    string
-	token        string
-	obtainedAt   int64
-	expiresAt    int64
-	logger       *slog.Logger
-	mu           sync.RWMutex
-}
-
-// tokenResponse represents the OAuth token response
-type tokenResponse struct {
-	TokenType   string `json:"token_type"`
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int64  `json:"expires_in"`
-}
-
 // NewRequestService creates a new RequestService
-func NewRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *slog.Logger) RequestService {
+func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
+	httpSvc := httpClient.NewHTTPService(cfg.BaseURL, cfg.Timeout, cfg.MaxRetry, logger)
+
 	return &apiRequestService{
 		httpClient: httpSvc,
 		authMgr: &authManager{
@@ -112,9 +68,9 @@ func NewRequestService(httpSvc httpClient.HTTPService, cfg Config, logger *slog.
 			clientSecret: cfg.ClientSecret,
 			logger:       logger,
 		},
-		baseURL:    cfg.BaseURL,
-		apiVersion: cfg.APIVersion,
-		logger:     logger,
+		baseURL:      cfg.BaseURL,
+		endpointBase: cfg.BaseURL + "/" + cfg.APIVersion,
+		logger:       logger,
 	}
 }
 
@@ -145,13 +101,14 @@ func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*Respo
 
 // doAuthenticatedRequest handles the common pattern of making an authenticated API request.
 // It trusts the deadline already set on ctx by the calling service layer — no additional
-// timeout is applied here. Full URLs (http:// or https://) are used as-is; relative
-// paths are resolved by the httpClient layer against the configured base URL.
+// timeout is applied here. Full URLs (http:// or https://) are expected and used as-is.
 func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*Response, error) {
 	if err := ctx.Err(); err != nil {
 		s.logger.ErrorContext(ctx, "context already cancelled before request", slog.String("error", err.Error()))
 		return nil, err
 	}
+
+	fullURL := s.endpointBase + "/" + endpoint
 
 	tokenType, token, err := s.authMgr.ensureValidToken(ctx, s.baseURL, s.httpClient)
 	if err != nil {
@@ -167,22 +124,22 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 
 	s.logger.DebugContext(ctx, "making authenticated API request",
 		slog.String("method", method),
-		slog.String("endpoint", endpoint),
+		slog.String("endpoint", fullURL),
 	)
 
 	var resp *httpClient.HTTPResponse
 
 	switch method {
 	case http.MethodGet:
-		resp, err = s.httpClient.Get(ctx, endpoint, headers)
+		resp, err = s.httpClient.Get(ctx, fullURL, headers)
 	case http.MethodPost:
-		resp, err = s.httpClient.Post(ctx, endpoint, headers, body)
+		resp, err = s.httpClient.Post(ctx, fullURL, headers, body)
 	case http.MethodPut:
-		resp, err = s.httpClient.Put(ctx, endpoint, headers, body)
+		resp, err = s.httpClient.Put(ctx, fullURL, headers, body)
 	case http.MethodPatch:
-		resp, err = s.httpClient.Patch(ctx, endpoint, headers, body)
+		resp, err = s.httpClient.Patch(ctx, fullURL, headers, body)
 	case http.MethodDelete:
-		resp, err = s.httpClient.Delete(ctx, endpoint, headers)
+		resp, err = s.httpClient.Delete(ctx, fullURL, headers)
 	default:
 		return nil, fmt.Errorf("unsupported HTTP method: %s", method)
 	}
@@ -190,7 +147,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 	if err != nil {
 		s.logger.ErrorContext(ctx, "HTTP request failed",
 			slog.String("method", method),
-			slog.String("endpoint", endpoint),
+			slog.String("endpoint", fullURL),
 			slog.String("error", err.Error()),
 		)
 		return nil, err
@@ -200,7 +157,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 		apiErr := parseError(resp.Body, resp.StatusCode)
 		s.logger.DebugContext(ctx, "API returned error",
 			slog.String("method", method),
-			slog.String("endpoint", endpoint),
+			slog.String("endpoint", fullURL),
 			slog.Int("statusCode", resp.StatusCode),
 			slog.String("message", apiErr.Message),
 		)
@@ -209,7 +166,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 
 	s.logger.DebugContext(ctx, "API request successful",
 		slog.String("method", method),
-		slog.String("endpoint", endpoint),
+		slog.String("endpoint", fullURL),
 		slog.Int("statusCode", resp.StatusCode),
 	)
 
