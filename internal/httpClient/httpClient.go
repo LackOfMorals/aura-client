@@ -14,7 +14,7 @@ import (
 )
 
 // NewHTTPService creates a new HTTPService with the specified configuration.
-func NewHTTPService(baseURL string, timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
+func NewHTTPService(timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = maxRetry
 	retryClient.RetryWaitMin = 1 * time.Second
@@ -23,7 +23,6 @@ func NewHTTPService(baseURL string, timeout time.Duration, maxRetry int, logger 
 	retryClient.Logger = &slogAdapter{logger: logger}
 
 	return &httpService{
-		baseURL: baseURL,
 		timeout: timeout,
 		client:  retryClient,
 		logger:  logger,

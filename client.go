@@ -26,14 +26,12 @@ import (
 
 // defaultOptions returns options with sensible defaults
 func defaultOptions() *options {
-	// Enable warning-level logging to stderr
 	opts := &slog.HandlerOptions{Level: slog.LevelWarn}
 	handler := slog.NewTextHandler(os.Stderr, opts)
 
 	return &options{
 		config: config{
 			baseURL:     "https://api.neo4j.io",
-			version:     "v1",
 			apiTimeout:  120 * time.Second,
 			apiRetryMax: 3,
 		},
@@ -41,7 +39,7 @@ func defaultOptions() *options {
 	}
 }
 
-// WithCredentials sets both client ID and secret
+// WithCredentials sets the client ID and secret used for OAuth authentication.
 func WithCredentials(clientID, clientSecret string) Option {
 	return func(o *options) error {
 		o.config.clientID = clientID
@@ -50,7 +48,7 @@ func WithCredentials(clientID, clientSecret string) Option {
 	}
 }
 
-// WithTimeout sets a custom API timeout (optional)
+// WithTimeout sets a custom API timeout. Defaults to 120 seconds.
 func WithTimeout(timeout time.Duration) Option {
 	return func(o *options) error {
 		if timeout <= 0 {
@@ -61,7 +59,7 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
-// WithMaxRetry sets a custom max number of retries (optional)
+// WithMaxRetry sets the maximum number of retries for failed requests. Defaults to 3.
 func WithMaxRetry(maxRetry int) Option {
 	return func(o *options) error {
 		if maxRetry <= 0 {
@@ -72,7 +70,7 @@ func WithMaxRetry(maxRetry int) Option {
 	}
 }
 
-// WithLogger sets a custom logger (optional)
+// WithLogger sets a custom slog.Logger. Defaults to warn-level logging to stderr.
 func WithLogger(logger *slog.Logger) Option {
 	return func(o *options) error {
 		if logger == nil {
@@ -94,12 +92,10 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
-// NewClient creates a new Aura API client with functional options
+// NewClient creates a new Aura API client with functional options.
 func NewClient(opts ...Option) (*AuraAPIClient, error) {
-	// Start with defaults
 	o := defaultOptions()
 
-	// Apply all options
 	for _, opt := range opts {
 		if err := opt(o); err != nil {
 			o.logger.Error("option application failed", slog.String("error", err.Error()))
@@ -107,7 +103,6 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		}
 	}
 
-	// Validate required fields
 	if o.config.clientID == "" {
 		o.logger.Error("validation failed", slog.String("reason", "client ID must not be empty"))
 		return nil, errors.New("client ID must not be empty")
@@ -120,10 +115,6 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		o.logger.Error("validation failed", slog.String("reason", "base URL must not be empty"))
 		return nil, errors.New("base URL must not be empty")
 	}
-	if o.config.version == "" {
-		o.logger.Error("validation failed", slog.String("reason", "API version must not be empty"))
-		return nil, errors.New("API version must not be empty")
-	}
 	if o.config.apiTimeout <= 0 {
 		o.logger.Error("validation failed", slog.String("reason", "API timeout must be greater than zero"), slog.Duration("timeout", o.config.apiTimeout))
 		return nil, errors.New("API timeout must be greater than zero")
@@ -131,16 +122,15 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 
 	o.logger.Debug("configuration validated",
 		slog.String("baseURL", o.config.baseURL),
-		slog.String("version", o.config.version),
+		slog.String("apiVersion", auraAPIVersion),
 		slog.Duration("apiTimeout", o.config.apiTimeout),
 	)
 
-	// Create the API request service
 	apiSvc := api.NewRequestService(api.Config{
 		ClientID:     o.config.clientID,
 		ClientSecret: o.config.clientSecret,
 		BaseURL:      o.config.baseURL,
-		APIVersion:   o.config.version,
+		APIVersion:   auraAPIVersion,
 		Timeout:      o.config.apiTimeout,
 		MaxRetry:     o.config.apiRetryMax,
 	}, o.logger)
@@ -152,7 +142,6 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		logger: clientLogger,
 	}
 
-	// Initialize sub-services
 	service.Tenants = &tenantService{
 		api:     apiSvc,
 		timeout: o.config.apiTimeout,
@@ -186,7 +175,8 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 
 	service.logger.Info("Aura API client initialized successfully",
 		slog.Int("services", 6),
-		slog.String("Version", AuraAPIClientVersion),
+		slog.String("version", AuraAPIClientVersion),
+		slog.String("apiVersion", auraAPIVersion),
 	)
 
 	return service, nil

@@ -219,21 +219,30 @@ func TestWithBaseURL_Empty(t *testing.T) {
 	}
 }
 
-// TestDefaultOptions verifies default configuration values
+// TestDefaultOptions verifies default configuration values.
+// Note: API version is intentionally not configurable — it is fixed to the
+// version this module targets and is not exposed via defaultOptions.
 func TestDefaultOptions(t *testing.T) {
 	opts := defaultOptions()
 
 	if opts.config.baseURL != "https://api.neo4j.io" {
 		t.Errorf("expected default baseURL 'https://api.neo4j.io', got '%s'", opts.config.baseURL)
 	}
-	if opts.config.version != "v1" {
-		t.Errorf("expected default version 'v1', got '%s'", opts.config.version)
-	}
 	if opts.config.apiTimeout != 120*time.Second {
 		t.Errorf("expected default timeout 120s, got %v", opts.config.apiTimeout)
 	}
+	if opts.config.apiRetryMax != 3 {
+		t.Errorf("expected default apiRetryMax 3, got %d", opts.config.apiRetryMax)
+	}
 	if opts.logger == nil {
 		t.Error("expected default logger to be initialized")
+	}
+}
+
+// TestAuraAPIVersion verifies the API version constant is set correctly
+func TestAuraAPIVersion(t *testing.T) {
+	if auraAPIVersion != "v1" {
+		t.Errorf("expected auraAPIVersion 'v1', got '%s'", auraAPIVersion)
 	}
 }
 
