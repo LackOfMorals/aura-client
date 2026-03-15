@@ -33,8 +33,9 @@ type HTTPService interface {
 
 // httpService is the concrete implementation of HTTPService.
 // It handles HTTP requests with configurable timeouts, retries, and connection pooling.
+// All URLs are passed in fully-formed by the caller — this layer has no knowledge of
+// base URLs, API versions, or any other higher-level routing concerns.
 type httpService struct {
-	baseURL string
 	timeout time.Duration
 	client  *retryablehttp.Client
 	logger  *slog.Logger

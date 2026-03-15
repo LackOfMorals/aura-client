@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
@@ -57,9 +56,10 @@ func (e *Error) IsBadRequest() bool {
 	return e.StatusCode == http.StatusBadRequest
 }
 
-// NewRequestService creates a new RequestService
+// NewRequestService creates a new RequestService. It constructs its own HTTP transport
+// layer internally — callers do not need to know about or create an httpClient.
 func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
-	httpSvc := httpClient.NewHTTPService(cfg.BaseURL, cfg.Timeout, cfg.MaxRetry, logger)
+	httpSvc := httpClient.NewHTTPService(cfg.Timeout, cfg.MaxRetry, logger)
 
 	return &apiRequestService{
 		httpClient: httpSvc,
@@ -101,7 +101,7 @@ func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*Respo
 
 // doAuthenticatedRequest handles the common pattern of making an authenticated API request.
 // It trusts the deadline already set on ctx by the calling service layer — no additional
-// timeout is applied here. Full URLs (http:// or https://) are expected and used as-is.
+// timeout is applied here.
 func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*Response, error) {
 	if err := ctx.Err(); err != nil {
 		s.logger.ErrorContext(ctx, "context already cancelled before request", slog.String("error", err.Error()))

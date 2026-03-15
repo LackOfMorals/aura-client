@@ -24,12 +24,7 @@ func testLogger() *slog.Logger {
 
 // TestNewHTTPService verifies service creation with proper configuration
 func TestNewHTTPService(t *testing.T) {
-	baseURL := "https://api.example.com"
-	timeout := 30 * time.Second
-	maxRetry := 3
-	logger := testLogger()
-
-	service := NewHTTPService(baseURL, timeout, maxRetry, logger)
+	service := NewHTTPService(30*time.Second, 3, testLogger())
 
 	if service == nil {
 		t.Fatal("expected service to be non-nil")
@@ -49,11 +44,10 @@ func TestHTTPService_Get_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	testURL := server.URL + "/test"
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	response, err := service.Get(ctx, testURL, nil)
+	response, err := service.Get(ctx, server.URL+"/test", nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -87,11 +81,10 @@ func TestHTTPService_Post_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	response, err := service.Post(ctx, testURL, nil, expectedBody)
+	response, err := service.Post(ctx, server.URL+"/test", nil, expectedBody)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -120,10 +113,10 @@ func TestHTTPService_Put_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
+
 	ctx := context.Background()
-	response, err := service.Put(ctx, testURL, nil, expectedBody)
+	response, err := service.Put(ctx, server.URL+"/test", nil, expectedBody)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -149,11 +142,10 @@ func TestHTTPService_Patch_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	response, err := service.Patch(ctx, testURL, nil, expectedBody)
+	response, err := service.Patch(ctx, server.URL+"/test", nil, expectedBody)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -173,11 +165,10 @@ func TestHTTPService_Delete_Success(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	response, err := service.Delete(ctx, testURL, nil)
+	response, err := service.Delete(ctx, server.URL+"/test", nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -206,11 +197,10 @@ func TestHTTPService_WithHeaders(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	_, err := service.Get(ctx, testURL, expectedHeaders)
+	_, err := service.Get(ctx, server.URL+"/test", expectedHeaders)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -228,18 +218,18 @@ func TestHTTPService_EmptyBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	_, err := service.Get(ctx, testURL, nil)
+	_, err := service.Get(ctx, server.URL+"/test", nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
 }
 
-// TestHTTPService_NonSuccessStatus verifies handling of non-2xx status codes
+// TestHTTPService_NonSuccessStatus verifies that non-2xx responses are returned
+// without error — status code interpretation is the responsibility of the api layer.
 func TestHTTPService_NonSuccessStatus(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -271,14 +261,11 @@ func TestHTTPService_NonSuccessStatus(t *testing.T) {
 			}))
 			defer server.Close()
 
-			service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-			testURL := server.URL + "/test"
+			service := NewHTTPService(10*time.Second, 3, testLogger())
 
 			ctx := context.Background()
-			response, err := service.Get(ctx, testURL, nil)
+			response, err := service.Get(ctx, server.URL+"/test", nil)
 
-			// The new implementation doesn't return an error for non-2xx status codes
-			// It just returns the response with the status code
 			if err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
@@ -295,7 +282,7 @@ func TestHTTPService_NonSuccessStatus(t *testing.T) {
 	}
 }
 
-// TestHTTPService_ContextCancellation verifies context cancellation handling
+// TestHTTPService_ContextCancellation verifies context cancellation is respected
 func TestHTTPService_ContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(100 * time.Millisecond)
@@ -303,13 +290,12 @@ func TestHTTPService_ContextCancellation(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := service.Get(ctx, testURL, nil)
+	_, err := service.Get(ctx, server.URL+"/test", nil)
 
 	if err == nil {
 		t.Fatal("expected error for cancelled context")
@@ -319,7 +305,7 @@ func TestHTTPService_ContextCancellation(t *testing.T) {
 	}
 }
 
-// TestHTTPService_Timeout verifies timeout handling
+// TestHTTPService_Timeout verifies the client-level timeout is enforced
 func TestHTTPService_Timeout(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(200 * time.Millisecond)
@@ -327,20 +313,18 @@ func TestHTTPService_Timeout(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 50*time.Millisecond, 0, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(50*time.Millisecond, 0, testLogger())
 
 	ctx := context.Background()
-	_, err := service.Get(ctx, testURL, nil)
+	_, err := service.Get(ctx, server.URL+"/test", nil)
 
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
 }
 
-// TestHTTPService_LargeResponse verifies size limit enforcement
+// TestHTTPService_LargeResponse verifies the response size limit is enforced
 func TestHTTPService_LargeResponse(t *testing.T) {
-	// Create response larger than DefaultMaxResponseSize
 	largeBody := strings.Repeat("x", DefaultMaxResponseSize+1000)
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -349,38 +333,32 @@ func TestHTTPService_LargeResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 10*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	response, err := service.Get(ctx, testURL, nil)
+	response, err := service.Get(ctx, server.URL+"/test", nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-
-	// Response should be truncated to DefaultMaxResponseSize
-	if len(response.Body) > DefaultMaxResponseSize {
-		t.Errorf("expected response size <= %d, got %d", DefaultMaxResponseSize, len(response.Body))
-	}
 	if len(response.Body) != DefaultMaxResponseSize {
-		t.Errorf("expected response to be truncated to %d, got %d", DefaultMaxResponseSize, len(response.Body))
+		t.Errorf("expected response truncated to %d bytes, got %d", DefaultMaxResponseSize, len(response.Body))
 	}
 }
 
-// TestHTTPService_InvalidURL verifies handling of malformed URLs
+// TestHTTPService_InvalidURL verifies that a malformed URL returns an error
 func TestHTTPService_InvalidURL(t *testing.T) {
-	service := NewHTTPService("http://[invalid-url", 10*time.Second, 3, testLogger())
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
-	_, err := service.Get(ctx, "test", nil)
+	_, err := service.Get(ctx, "http://[invalid-url", nil)
 
 	if err == nil {
-		t.Fatal("expected error for invalid URL")
+		t.Fatal("expected error for malformed URL")
 	}
 }
 
-// TestHTTPResponse_Structure verifies HTTPResponse struct
+// TestHTTPResponse_Structure verifies the HTTPResponse struct fields
 func TestHTTPResponse_Structure(t *testing.T) {
 	body := []byte("test payload")
 	headers := http.Header{
@@ -400,13 +378,13 @@ func TestHTTPResponse_Structure(t *testing.T) {
 		t.Errorf("expected body 'test payload', got '%s'", string(httpResp.Body))
 	}
 	if httpResp.Headers.Get("Content-Type") != "application/json" {
-		t.Errorf("expected Content-Type header 'application/json', got '%s'", httpResp.Headers.Get("Content-Type"))
+		t.Errorf("expected Content-Type 'application/json', got '%s'", httpResp.Headers.Get("Content-Type"))
 	}
 }
 
-// TestHTTPService_ConcurrentRequests verifies thread safety
+// TestHTTPService_ConcurrentRequests verifies thread safety under concurrent load
 func TestHTTPService_ConcurrentRequests(t *testing.T) {
-	var requestCount int32 // Use int32 for atomic operations
+	var requestCount int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count := atomic.AddInt32(&requestCount, 1)
 		w.WriteHeader(http.StatusOK)
@@ -414,8 +392,7 @@ func TestHTTPService_ConcurrentRequests(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := NewHTTPService(server.URL+"/", 0*time.Second, 3, testLogger())
-	testURL := server.URL + "/test"
+	service := NewHTTPService(10*time.Second, 3, testLogger())
 
 	ctx := context.Background()
 	done := make(chan bool)
@@ -423,7 +400,7 @@ func TestHTTPService_ConcurrentRequests(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		go func() {
-			_, err := service.Get(ctx, testURL, nil)
+			_, err := service.Get(ctx, server.URL+"/test", nil)
 			if err != nil {
 				errs <- err
 			}
@@ -441,7 +418,69 @@ func TestHTTPService_ConcurrentRequests(t *testing.T) {
 	}
 }
 
-// TestMockHTTPService verifies the mock implementation
+// TestHTTPService_CompleteURLRequired verifies that the httpClient layer expects
+// fully-formed URLs — URL construction is the responsibility of the api layer above.
+func TestHTTPService_CompleteURLRequired(t *testing.T) {
+	var receivedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	service := NewHTTPService(10*time.Second, 3, testLogger())
+	ctx := context.Background()
+
+	tests := []struct {
+		name         string
+		url          string
+		expectedPath string
+		wantErr      bool
+	}{
+		{
+			name:         "full URL with path",
+			url:          server.URL + "/v1/instances",
+			expectedPath: "/v1/instances",
+			wantErr:      false,
+		},
+		{
+			name:         "full URL with nested path",
+			url:          server.URL + "/v1/instances/abc123/snapshots",
+			expectedPath: "/v1/instances/abc123/snapshots",
+			wantErr:      false,
+		},
+		{
+			name:    "relative path is not a valid URL",
+			url:     "instances/abc123",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := service.Get(ctx, tt.url, nil)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error for relative path, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if receivedPath != tt.expectedPath {
+				t.Errorf("expected path '%s', got '%s'", tt.expectedPath, receivedPath)
+			}
+		})
+	}
+}
+
+// ============================================================================
+// Mock tests
+// ============================================================================
+
+// TestMockHTTPService_Get verifies the mock GET implementation
 func TestMockHTTPService_Get(t *testing.T) {
 	mock := NewMockHTTPService()
 	mock.WithResponse(200, `{"status":"ok"}`)
@@ -485,7 +524,7 @@ func TestMockHTTPService_Post(t *testing.T) {
 	}
 }
 
-// TestMockHTTPService_Error verifies error handling
+// TestMockHTTPService_Error verifies error handling in the mock
 func TestMockHTTPService_Error(t *testing.T) {
 	mock := NewMockHTTPService()
 	expectedErr := fmt.Errorf("network error")
@@ -502,7 +541,7 @@ func TestMockHTTPService_Error(t *testing.T) {
 	}
 }
 
-// TestMockHTTPService_Reset verifies reset functionality
+// TestMockHTTPService_Reset verifies reset clears all state
 func TestMockHTTPService_Reset(t *testing.T) {
 	mock := NewMockHTTPService()
 	mock.WithResponse(200, "test")
@@ -522,7 +561,7 @@ func TestMockHTTPService_Reset(t *testing.T) {
 	}
 }
 
-// TestMockHTTPService_CallHistory verifies call history tracking
+// TestMockHTTPService_CallHistory verifies the full call history is recorded
 func TestMockHTTPService_CallHistory(t *testing.T) {
 	mock := NewMockHTTPService()
 	mock.WithResponse(200, "ok")
@@ -535,7 +574,6 @@ func TestMockHTTPService_CallHistory(t *testing.T) {
 	if len(mock.CallHistory) != 3 {
 		t.Fatalf("expected 3 calls in history, got %d", len(mock.CallHistory))
 	}
-
 	if mock.CallHistory[0].Method != "GET" {
 		t.Errorf("expected first call to be GET, got %s", mock.CallHistory[0].Method)
 	}
@@ -547,64 +585,5 @@ func TestMockHTTPService_CallHistory(t *testing.T) {
 	}
 	if mock.CallHistory[2].Method != "DELETE" {
 		t.Errorf("expected third call to be DELETE, got %s", mock.CallHistory[2].Method)
-	}
-}
-
-// TestHTTPService_FullURL verifies that full URLs are used as-is without prepending base URL
-func TestHTTPService_FullURL(t *testing.T) {
-	// Create a test server
-	var requestedPath string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestedPath = r.URL.Path
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	tests := []struct {
-		name         string
-		endpoint     string
-		expectedPath string
-	}{
-		{
-			name:         "relative endpoint",
-			endpoint:     "api/test",
-			expectedPath: "/api/test",
-		},
-		{
-			name:         "https full URL",
-			endpoint:     server.URL + "/api/v1/query",
-			expectedPath: "/api/v1/query",
-		},
-		{
-			name:         "http full URL to different endpoint",
-			endpoint:     server.URL + "/metrics",
-			expectedPath: "/metrics",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Use a different base URL to ensure full URLs bypass it
-			service := NewHTTPService("https://wrong-base-url.example.com/", 10*time.Second, 3, testLogger())
-
-			ctx := context.Background()
-			_, err := service.Get(ctx, tt.endpoint, nil)
-
-			// For relative endpoints, we expect it to fail (wrong base URL)
-			// For full URLs, we expect it to succeed (uses provided URL)
-			if strings.HasPrefix(tt.endpoint, "http://") || strings.HasPrefix(tt.endpoint, "https://") {
-				if err != nil {
-					t.Fatalf("expected no error for full URL, got %v", err)
-				}
-				if requestedPath != tt.expectedPath {
-					t.Errorf("expected path '%s', got '%s'", tt.expectedPath, requestedPath)
-				}
-			} else {
-				// Relative endpoint with wrong base URL should fail
-				if err == nil {
-					t.Error("expected error for relative endpoint with wrong base URL, got nil")
-				}
-			}
-		})
 	}
 }
