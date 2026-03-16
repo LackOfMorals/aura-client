@@ -10,7 +10,7 @@ import (
 )
 
 // List returns all customer-managed encryption keys, optionally filtered by tenant
-func (c *cmekService) List(ctx context.Context, tenantId string) (*GetCmeksResponse, error) {
+func (c *cmekService) List(ctx context.Context, tenantID string) (*GetCmeksResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
 
@@ -18,15 +18,15 @@ func (c *cmekService) List(ctx context.Context, tenantId string) (*GetCmeksRespo
 
 	endpoint := "customer-managed-keys"
 
-	switch tenantIdLen := len(tenantId); tenantIdLen {
+	switch tenantIDLen := len(tenantID); tenantIDLen {
 	case 0:
 		// empty string, no tenant filter
 		break
 	case 36:
-		if err := utils.ValidateTenantID(tenantId); err != nil {
+		if err := utils.ValidateTenantID(tenantID); err != nil {
 			return nil, err
 		}
-		endpoint = endpoint + "?tenantid=" + tenantId
+		endpoint = endpoint + "?tenantID=" + tenantID
 	default:
 		return nil, fmt.Errorf("tenant ID must be in the format of hex 8-4-4-12 pattern")
 	}

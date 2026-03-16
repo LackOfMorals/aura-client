@@ -35,15 +35,15 @@ func TestGDSSessionService_List_Success(t *testing.T) {
 	expectedResponse := GetGDSSessionListResponse{
 		Data: []GetGDSSessionData{
 			{
-				Id: "session-1", Name: "analytics-session-1", Memory: "8GB",
-				InstanceId: "instance-1", DatabaseId: "db-uuid-1", Status: "running",
+				ID: "session-1", Name: "analytics-session-1", Memory: "8GB",
+				InstanceID: "instance-1", DatabaseID: "db-uuid-1", Status: "running",
 				Create: "2024-01-01T00:00:00Z", Host: "session1.gds.neo4j.io",
-				Expiry: "2024-01-02T00:00:00Z", Ttl: "24h", UserId: "user-1",
-				TenantId: "tenant-1", CloudProvider: "gcp", Region: "us-central1",
+				Expiry: "2024-01-02T00:00:00Z", Ttl: "24h", UserID: "user-1",
+				TenantID: "tenant-1", CloudProvider: "gcp", Region: "us-central1",
 			},
 			{
-				Id: "session-2", Name: "analytics-session-2", Memory: "16GB",
-				InstanceId: "instance-2", Status: "stopped", CloudProvider: "aws", Region: "us-east-1",
+				ID: "session-2", Name: "analytics-session-2", Memory: "16GB",
+				InstanceID: "instance-2", Status: "stopped", CloudProvider: "aws", Region: "us-east-1",
 			},
 		},
 	}
@@ -68,8 +68,8 @@ func TestGDSSessionService_List_Success(t *testing.T) {
 	if len(result.Data) != 2 {
 		t.Errorf("expected 2 GDS sessions, got %d", len(result.Data))
 	}
-	if result.Data[0].Id != "session-1" {
-		t.Errorf("expected first session ID 'session-1', got '%s'", result.Data[0].Id)
+	if result.Data[0].ID != "session-1" {
+		t.Errorf("expected first session ID 'session-1', got '%s'", result.Data[0].ID)
 	}
 	if result.Data[0].Name != "analytics-session-1" {
 		t.Errorf("expected first session name 'analytics-session-1', got '%s'", result.Data[0].Name)
@@ -98,7 +98,7 @@ func TestGDSSessionService_List_EmptyResult(t *testing.T) {
 func TestGDSSessionService_List_SingleSession(t *testing.T) {
 	responseBody, _ := json.Marshal(GetGDSSessionListResponse{
 		Data: []GetGDSSessionData{
-			{Id: "session-single", Name: "only-session", Memory: "32GB", Status: "running", CloudProvider: "gcp", Region: "europe-west2"},
+			{ID: "session-single", Name: "only-session", Memory: "32GB", Status: "running", CloudProvider: "gcp", Region: "europe-west2"},
 		},
 	})
 	mock := &mockAPIService{
@@ -114,8 +114,8 @@ func TestGDSSessionService_List_SingleSession(t *testing.T) {
 	if len(result.Data) != 1 {
 		t.Errorf("expected 1 GDS session, got %d", len(result.Data))
 	}
-	if result.Data[0].Id != "session-single" {
-		t.Errorf("expected session ID 'session-single', got '%s'", result.Data[0].Id)
+	if result.Data[0].ID != "session-single" {
+		t.Errorf("expected session ID 'session-single', got '%s'", result.Data[0].ID)
 	}
 }
 
@@ -123,10 +123,10 @@ func TestGDSSessionService_List_SingleSession(t *testing.T) {
 func TestGDSSessionService_List_MultipleStatuses(t *testing.T) {
 	responseBody, _ := json.Marshal(GetGDSSessionListResponse{
 		Data: []GetGDSSessionData{
-			{Id: "session-1", Status: "running"},
-			{Id: "session-2", Status: "stopped"},
-			{Id: "session-3", Status: "creating"},
-			{Id: "session-4", Status: "failed"},
+			{ID: "session-1", Status: "running"},
+			{ID: "session-2", Status: "stopped"},
+			{ID: "session-3", Status: "creating"},
+			{ID: "session-4", Status: "failed"},
 		},
 	})
 	mock := &mockAPIService{
@@ -157,11 +157,11 @@ func TestGDSSessionService_List_MultipleStatuses(t *testing.T) {
 // TestGDSSessionService_List_FullSessionDetails verifies all session fields
 func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 	expectedSession := GetGDSSessionData{
-		Id: "session-full", Name: "complete-session", Memory: "16GB",
-		InstanceId: "instance-abc123", DatabaseId: "db-uuid-xyz789", Status: "running",
+		ID: "session-full", Name: "complete-session", Memory: "16GB",
+		InstanceID: "instance-abc123", DatabaseID: "db-uuid-xyz789", Status: "running",
 		Create: "2024-01-15T10:30:00Z", Host: "session-full.gds.neo4j.io",
-		Expiry: "2024-01-22T10:30:00Z", Ttl: "7d", UserId: "user-abc",
-		TenantId: "tenant-xyz", CloudProvider: "gcp", Region: "europe-west2",
+		Expiry: "2024-01-22T10:30:00Z", Ttl: "7d", UserID: "user-abc",
+		TenantID: "tenant-xyz", CloudProvider: "gcp", Region: "europe-west2",
 	}
 
 	responseBody, _ := json.Marshal(GetGDSSessionListResponse{Data: []GetGDSSessionData{expectedSession}})
@@ -180,8 +180,8 @@ func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 	}
 
 	session := result.Data[0]
-	if session.Id != expectedSession.Id {
-		t.Errorf("expected ID '%s', got '%s'", expectedSession.Id, session.Id)
+	if session.ID != expectedSession.ID {
+		t.Errorf("expected ID '%s', got '%s'", expectedSession.ID, session.ID)
 	}
 	if session.Memory != expectedSession.Memory {
 		t.Errorf("expected memory '%s', got '%s'", expectedSession.Memory, session.Memory)

@@ -229,7 +229,6 @@ func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, htt
 		return "", "", fmt.Errorf("failed to parse token response: %w", err)
 	}
 
-	am.obtainedAt = time.Now().Unix()
 	am.token = tokenResp.AccessToken
 	am.tokenType = tokenResp.TokenType
 	am.expiresAt = time.Now().Unix() + tokenResp.ExpiresIn

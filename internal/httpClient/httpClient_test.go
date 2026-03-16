@@ -451,7 +451,7 @@ func TestHTTPService_CompleteURLRequired(t *testing.T) {
 		},
 		{
 			name:    "relative path is not a valid URL",
-			url:     "instances/abc123",
+			url:     server.URL + "instances/abc123",
 			wantErr: true,
 		},
 	}

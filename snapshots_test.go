@@ -34,8 +34,8 @@ func TestSnapshotService_List_Success(t *testing.T) {
 	instanceID := "aaaa1234"
 	expectedResponse := GetSnapshotsResponse{
 		Data: []GetSnapshotData{
-			{InstanceId: instanceID, SnapshotId: "snapshot-1", Profile: "daily", Status: "completed", Timestamp: "2024-01-01T00:00:00Z"},
-			{InstanceId: instanceID, SnapshotId: "snapshot-2", Profile: "hourly", Status: "completed", Timestamp: "2024-01-01T12:00:00Z"},
+			{InstanceID: instanceID, SnapshotID: "snapshot-1", Profile: "daily", Status: "completed", Timestamp: "2024-01-01T00:00:00Z"},
+			{InstanceID: instanceID, SnapshotID: "snapshot-2", Profile: "hourly", Status: "completed", Timestamp: "2024-01-01T12:00:00Z"},
 		},
 	}
 
@@ -67,7 +67,7 @@ func TestSnapshotService_Get_Success(t *testing.T) {
 	snapshotID := "snapshot-1"
 	expectedResponse := GetSnapshotDataResponse{
 		Data: GetSnapshotData{
-			InstanceId: instanceID, SnapshotId: snapshotID,
+			InstanceID: instanceID, SnapshotID: snapshotID,
 			Profile: "daily", Status: "completed", Timestamp: "2024-01-01T00:00:00Z", Exportable: true,
 		},
 	}
@@ -100,7 +100,7 @@ func TestSnapshotService_List_WithDate(t *testing.T) {
 	snapshotDate := "2024-01-15"
 	responseBody, _ := json.Marshal(GetSnapshotsResponse{
 		Data: []GetSnapshotData{
-			{InstanceId: instanceID, SnapshotId: "snapshot-date-1", Status: "completed", Timestamp: "2024-01-15T00:00:00Z"},
+			{InstanceID: instanceID, SnapshotID: "snapshot-date-1", Status: "completed", Timestamp: "2024-01-15T00:00:00Z"},
 		},
 	})
 	mock := &mockAPIService{
@@ -178,7 +178,7 @@ func TestSnapshotService_List_ValidDateFormats(t *testing.T) {
 func TestSnapshotService_Create_Success(t *testing.T) {
 	instanceID := "aaaa1234"
 	responseBody, _ := json.Marshal(CreateSnapshotResponse{
-		Data: CreateSnapshotData{SnapshotId: "snapshot-new-456"},
+		Data: CreateSnapshotData{SnapshotID: "snapshot-new-456"},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -196,8 +196,8 @@ func TestSnapshotService_Create_Success(t *testing.T) {
 	if mock.lastPath != "instances/"+instanceID+"/snapshots" {
 		t.Errorf("expected path 'instances/%s/snapshots', got '%s'", instanceID, mock.lastPath)
 	}
-	if result.Data.SnapshotId != "snapshot-new-456" {
-		t.Errorf("expected snapshot ID 'snapshot-new-456', got '%s'", result.Data.SnapshotId)
+	if result.Data.SnapshotID != "snapshot-new-456" {
+		t.Errorf("expected snapshot ID 'snapshot-new-456', got '%s'", result.Data.SnapshotID)
 	}
 }
 
@@ -231,7 +231,7 @@ func TestSnapshotService_Restore_Success(t *testing.T) {
 	instanceID := "aaaa1234"
 	snapshotID := "snapshot-123"
 	responseBody, _ := json.Marshal(RestoreSnapshotResponse{
-		Data: InstanceData{Id: instanceID, Status: "restoring"},
+		Data: InstanceData{ID: instanceID, Status: "restoring"},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -302,7 +302,7 @@ func TestSnapshotService_AuthenticationError(t *testing.T) {
 func TestSnapshotService_Create_ContextTimeout(t *testing.T) {
 	instanceID := "aaaa1234"
 	responseBody, _ := json.Marshal(CreateSnapshotResponse{
-		Data: CreateSnapshotData{SnapshotId: "snap-123"},
+		Data: CreateSnapshotData{SnapshotID: "snap-123"},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -331,7 +331,7 @@ func TestSnapshotService_Get_ContextTimeout(t *testing.T) {
 	instanceID := "aaaa1234"
 	snapshotID := "snapshot-123"
 	responseBody, _ := json.Marshal(GetSnapshotDataResponse{
-		Data: GetSnapshotData{InstanceId: instanceID, SnapshotId: snapshotID},
+		Data: GetSnapshotData{InstanceID: instanceID, SnapshotID: snapshotID},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},

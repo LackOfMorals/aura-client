@@ -15,9 +15,9 @@ type GetCmeksResponse struct {
 }
 
 type GetCmeksData struct {
-	Id       string `json:"id"`
+	ID       string `json:"id"`
 	Name     string `json:"name"`
-	TenantId string `json:"tenant_id"`
+	TenantID string `json:"tenant_id"`
 }
 
 // cmekService handles customer managed encryption key operations

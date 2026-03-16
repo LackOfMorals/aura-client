@@ -21,16 +21,16 @@ type ListInstancesResponse struct {
 }
 
 type ListInstanceData struct {
-	Id            string `json:"id"`
+	ID            string `json:"id"`
 	Name          string `json:"name"`
 	Created       string `json:"created_at"`
-	TenantId      string `json:"tenant_id"`
+	TenantID      string `json:"tenant_id"`
 	CloudProvider string `json:"cloud_provider"`
 }
 
 type CreateInstanceConfigData struct {
 	Name          string `json:"name"`
-	TenantId      string `json:"tenant_id"`
+	TenantID      string `json:"tenant_id"`
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
 	Type          string `json:"type"`
@@ -43,9 +43,9 @@ type CreateInstanceResponse struct {
 }
 
 type CreateInstanceData struct {
-	Id            string `json:"id"`
+	ID            string `json:"id"`
 	Name          string `json:"name"`
-	TenantId      string `json:"tenant_id"`
+	TenantID      string `json:"tenant_id"`
 	CloudProvider string `json:"cloud_provider"`
 	ConnectionUrl string `json:"connection_url"`
 	Region        string `json:"region"`
@@ -68,10 +68,10 @@ type DeleteInstanceResponse struct {
 }
 
 type InstanceData struct {
-	Id              string  `json:"id"`
+	ID              string  `json:"id"`
 	Name            string  `json:"name"`
 	Status          string  `json:"status"`
-	TenantId        string  `json:"tenant_id"`
+	TenantID        string  `json:"tenant_id"`
 	CloudProvider   string  `json:"cloud_provider"`
 	ConnectionUrl   string  `json:"connection_url"`
 	Region          string  `json:"region"`
@@ -86,8 +86,8 @@ type InstanceData struct {
 }
 
 type overwriteInstanceRequest struct {
-	SourceInstanceId string `json:"source_instance_id,omitempty"`
-	SourceSnapshotId string `json:"source_snapshot_id,omitempty"`
+	SourceInstanceID string `json:"source_instance_id,omitempty"`
+	SourceSnapshotID string `json:"source_snapshot_id,omitempty"`
 }
 
 type OverwriteInstanceResponse struct {

@@ -17,8 +17,8 @@ type GetSnapshotDataResponse struct {
 }
 
 type GetSnapshotData struct {
-	InstanceId string `json:"instance_id"`
-	SnapshotId string `json:"snapshot_id"`
+	InstanceID string `json:"instance_id"`
+	SnapshotID string `json:"snapshot_id"`
 	Profile    string `json:"profile"`
 	Status     string `json:"status"`
 	Timestamp  string `json:"timestamp"`
@@ -31,7 +31,7 @@ type CreateSnapshotResponse struct {
 }
 
 type CreateSnapshotData struct {
-	SnapshotId string `json:"snapshot_id"`
+	SnapshotID string `json:"snapshot_id"`
 }
 
 // RestoreSnapshotResponse stores the response from initiating restoration of an instance using a snapshot
