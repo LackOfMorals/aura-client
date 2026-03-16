@@ -18,18 +18,18 @@ type GetGDSSessionResponse struct {
 }
 
 type GetGDSSessionData struct {
-	Id            string `json:"id"`
+	ID            string `json:"id"`
 	Name          string `json:"name"`
 	Memory        string `json:"memory"`
-	InstanceId    string `json:"instance_id"`
-	DatabaseId    string `json:"database_uuid"`
+	InstanceID    string `json:"instance_id"`
+	DatabaseID    string `json:"database_uuid"`
 	Status        string `json:"status"`
 	Create        string `json:"created_at"`
 	Host          string `json:"host"`
 	Expiry        string `json:"expiry_date"`
 	Ttl           string `json:"ttl"`
-	UserId        string `json:"user_id"`
-	TenantId      string `json:"tenant_id"`
+	UserID        string `json:"user_id"`
+	TenantID      string `json:"tenant_id"`
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
 }
@@ -37,9 +37,9 @@ type GetGDSSessionData struct {
 type CreateGDSSessionConfigData struct {
 	Name          string `json:"name"`
 	Ttl           string `json:"ttl"`
-	TenantId      string `json:"tenant_id"`
-	InstanceId    string `json:"instance_id"`
-	DatabaseId    string `json:"database_uuid"`
+	TenantID      string `json:"tenant_id"`
+	InstanceID    string `json:"instance_id"`
+	DatabaseID    string `json:"database_uuid"`
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
 	Memory        string `json:"memory"`

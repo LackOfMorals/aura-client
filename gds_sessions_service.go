@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"path"
 
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
@@ -34,13 +35,13 @@ func (g *gDSSessionService) List(ctx context.Context) (*GetGDSSessionListRespons
 }
 
 // Get returns information on a single GDS session
-func (g *gDSSessionService) Get(ctx context.Context, GDSSessionID string) (*GetGDSSessionResponse, error) {
+func (g *gDSSessionService) Get(ctx context.Context, gdsSessionID string) (*GetGDSSessionResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
 
-	g.logger.DebugContext(ctx, "getting GDS session", slog.String("sessionID", GDSSessionID))
+	g.logger.DebugContext(ctx, "getting GDS session", slog.String("sessionID", gdsSessionID))
 
-	resp, err := g.api.Get(ctx, "graph-analytics/sessions/"+GDSSessionID)
+	resp, err := g.api.Get(ctx, path.Join("graph-analytics", "sessions", gdsSessionID))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to get GDS session", slog.String("error", err.Error()))
 		return nil, err
@@ -57,19 +58,19 @@ func (g *gDSSessionService) Get(ctx context.Context, GDSSessionID string) (*GetG
 }
 
 // Create creates a new GDS session
-func (g *gDSSessionService) Create(ctx context.Context, GDSSessionConfigRequest *CreateGDSSessionConfigData) (*GetGDSSessionResponse, error) {
+func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest *CreateGDSSessionConfigData) (*GetGDSSessionResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
 
 	g.logger.DebugContext(ctx, "creating GDS session")
 
-	body, err := utils.Marshall(GDSSessionConfigRequest)
+	body, err := utils.Marshal(gdsSessionConfigRequest)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to marshal create gds session request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	resp, err := g.api.Post(ctx, "graph-analytics/sessions", string(body))
+	resp, err := g.api.Post(ctx, path.Join("graph-analytics", "sessions"), string(body))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to create GDS session", slog.String("error", err.Error()))
 		return nil, err
@@ -86,19 +87,19 @@ func (g *gDSSessionService) Create(ctx context.Context, GDSSessionConfigRequest 
 }
 
 // Estimate estimates the size of a new GDS session
-func (g *gDSSessionService) Estimate(ctx context.Context, GDSSessionSizeEstimateRequest *GetGDSSessionSizeEstimation) (*GDSSessionSizeEstimationResponse, error) {
+func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimateRequest *GetGDSSessionSizeEstimation) (*GDSSessionSizeEstimationResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
 
 	g.logger.DebugContext(ctx, "estimating GDS session")
 
-	body, err := utils.Marshall(GDSSessionSizeEstimateRequest)
+	body, err := utils.Marshal(gdsSessionSizeEstimateRequest)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to marshal estimate gds session request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	resp, err := g.api.Post(ctx, "graph-analytics/sessions/sizing", string(body))
+	resp, err := g.api.Post(ctx, path.Join("graph-analytics", "sessions", "sizing"), string(body))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to estimate GDS session", slog.String("error", err.Error()))
 		return nil, err
@@ -115,13 +116,13 @@ func (g *gDSSessionService) Estimate(ctx context.Context, GDSSessionSizeEstimate
 }
 
 // Delete deletes a GDS session
-func (g *gDSSessionService) Delete(ctx context.Context, GDSSessionID string) (*DeleteGDSSessionResponse, error) {
+func (g *gDSSessionService) Delete(ctx context.Context, gdsSessionID string) (*DeleteGDSSessionResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
 
-	g.logger.DebugContext(ctx, "deleting a GDS session", slog.String("sessionID", GDSSessionID))
+	g.logger.DebugContext(ctx, "deleting a GDS session", slog.String("sessionID", gdsSessionID))
 
-	resp, err := g.api.Delete(ctx, "graph-analytics/sessions/"+GDSSessionID)
+	resp, err := g.api.Delete(ctx, path.Join("graph-analytics", "sessions", gdsSessionID))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to delete a GDS session", slog.String("error", err.Error()))
 		return nil, err

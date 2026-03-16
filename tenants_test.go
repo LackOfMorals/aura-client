@@ -33,9 +33,9 @@ func createTestTenantServiceWithTimeout(mock api.RequestService, timeout time.Du
 func TestTenantService_List_Success(t *testing.T) {
 	expectedResponse := ListTenantsResponse{
 		Data: []TenantsResponseData{
-			{Id: "tenant-1", Name: "Development Team"},
-			{Id: "tenant-2", Name: "Production Team"},
-			{Id: "tenant-3", Name: "Testing Team"},
+			{ID: "tenant-1", Name: "Development Team"},
+			{ID: "tenant-2", Name: "Production Team"},
+			{ID: "tenant-3", Name: "Testing Team"},
 		},
 	}
 
@@ -59,8 +59,8 @@ func TestTenantService_List_Success(t *testing.T) {
 	if len(result.Data) != 3 {
 		t.Errorf("expected 3 tenants, got %d", len(result.Data))
 	}
-	if result.Data[0].Id != "tenant-1" {
-		t.Errorf("expected first tenant ID 'tenant-1', got '%s'", result.Data[0].Id)
+	if result.Data[0].ID != "tenant-1" {
+		t.Errorf("expected first tenant ID 'tenant-1', got '%s'", result.Data[0].ID)
 	}
 	if result.Data[0].Name != "Development Team" {
 		t.Errorf("expected first tenant name 'Development Team', got '%s'", result.Data[0].Name)
@@ -90,7 +90,7 @@ func TestTenantService_Get_Success(t *testing.T) {
 	tenantID := "00000000-0000-0000-0000-000000000001"
 	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
-			Id:   tenantID,
+			ID:   tenantID,
 			Name: "Development Team",
 			InstanceConfigurations: []TenantInstanceConfiguration{
 				{CloudProvider: "gcp", Region: "us-central1", RegionName: "Iowa", Type: "enterprise-db", Memory: "8GB", Storage: "256GB", Version: "5"},
@@ -113,8 +113,8 @@ func TestTenantService_Get_Success(t *testing.T) {
 	if mock.lastPath != "tenants/"+tenantID {
 		t.Errorf("expected path 'tenants/%s', got '%s'", tenantID, mock.lastPath)
 	}
-	if result.Data.Id != tenantID {
-		t.Errorf("expected tenant ID '%s', got '%s'", tenantID, result.Data.Id)
+	if result.Data.ID != tenantID {
+		t.Errorf("expected tenant ID '%s', got '%s'", tenantID, result.Data.ID)
 	}
 	if result.Data.Name != "Development Team" {
 		t.Errorf("expected tenant name 'Development Team', got '%s'", result.Data.Name)
@@ -129,7 +129,7 @@ func TestTenantService_Get_InstanceConfigurations(t *testing.T) {
 	tenantID := "00000000-0000-0000-0000-000000000001"
 	expectedResponse := GetTenantResponse{
 		Data: TenantResponseData{
-			Id:   tenantID,
+			ID:   tenantID,
 			Name: "Test Tenant",
 			InstanceConfigurations: []TenantInstanceConfiguration{
 				{CloudProvider: "gcp", Region: "europe-west2", RegionName: "London", Type: "enterprise-db", Memory: "32GB", Storage: "1024GB", Version: "5"},
@@ -215,7 +215,7 @@ func TestTenantService_AuthenticationError(t *testing.T) {
 func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 	tenantID := "00000000-0000-0000-0000-000000000001"
 	responseBody, _ := json.Marshal(GetTenantResponse{
-		Data: TenantResponseData{Id: tenantID, Name: "Empty Tenant", InstanceConfigurations: []TenantInstanceConfiguration{}},
+		Data: TenantResponseData{ID: tenantID, Name: "Empty Tenant", InstanceConfigurations: []TenantInstanceConfiguration{}},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -235,7 +235,7 @@ func TestTenantService_Get_NoInstanceConfigurations(t *testing.T) {
 // TestTenantService_SingleTenant verifies list with single tenant
 func TestTenantService_SingleTenant(t *testing.T) {
 	responseBody, _ := json.Marshal(ListTenantsResponse{
-		Data: []TenantsResponseData{{Id: "tenant-single", Name: "Only Tenant"}},
+		Data: []TenantsResponseData{{ID: "tenant-single", Name: "Only Tenant"}},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -250,8 +250,8 @@ func TestTenantService_SingleTenant(t *testing.T) {
 	if len(result.Data) != 1 {
 		t.Errorf("expected 1 tenant, got %d", len(result.Data))
 	}
-	if result.Data[0].Id != "tenant-single" {
-		t.Errorf("expected tenant ID 'tenant-single', got '%s'", result.Data[0].Id)
+	if result.Data[0].ID != "tenant-single" {
+		t.Errorf("expected tenant ID 'tenant-single', got '%s'", result.Data[0].ID)
 	}
 }
 
@@ -263,7 +263,7 @@ func TestTenantService_SingleTenant(t *testing.T) {
 func TestTenantService_Get_ContextTimeout(t *testing.T) {
 	tenantID := "00000000-0000-0000-0000-000000000001"
 	responseBody, _ := json.Marshal(GetTenantResponse{
-		Data: TenantResponseData{Id: tenantID, Name: "Test"},
+		Data: TenantResponseData{ID: tenantID, Name: "Test"},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},

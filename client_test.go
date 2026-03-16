@@ -2,6 +2,7 @@ package aura
 
 import (
 	"log/slog"
+	"os"
 	"testing"
 	"time"
 )
@@ -152,7 +153,7 @@ func TestWithTimeout_Negative(t *testing.T) {
 // TestWithLogger_Valid verifies custom logger configuration
 func TestWithLogger_Valid(t *testing.T) {
 	opts := &slog.HandlerOptions{Level: slog.LevelDebug}
-	handler := slog.NewTextHandler(nil, opts)
+	handler := slog.NewTextHandler(os.Stderr, opts)
 	customLogger := slog.New(handler)
 
 	client, err := NewClient(

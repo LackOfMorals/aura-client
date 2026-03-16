@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path"
 
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
@@ -75,9 +76,9 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 		return nil, err
 	}
 
-	i.logger.DebugContext(ctx, "creating instance", slog.String("name", instanceRequest.Name), slog.String("tenantID", instanceRequest.TenantId))
+	i.logger.DebugContext(ctx, "creating instance", slog.String("name", instanceRequest.Name), slog.String("tenantID", instanceRequest.TenantID))
 
-	body, err := utils.Marshall(instanceRequest)
+	body, err := utils.Marshal(instanceRequest)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
@@ -95,7 +96,7 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 		return nil, err
 	}
 
-	i.logger.InfoContext(ctx, "instance created successfully", slog.String("instanceID", result.Data.Id), slog.String("name", result.Data.Name))
+	i.logger.InfoContext(ctx, "instance created successfully", slog.String("instanceID", result.Data.ID), slog.String("name", result.Data.Name))
 	return &result, nil
 }
 
@@ -139,7 +140,8 @@ func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 		return nil, err
 	}
 
-	resp, err := i.api.Post(ctx, "instances/"+instanceID+"/pause", "")
+	//path.Join returns the endpoint path complete with /
+	resp, err := i.api.Post(ctx, path.Join("instances", instanceID, "pause"), "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to pause instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -167,7 +169,7 @@ func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 		return nil, err
 	}
 
-	resp, err := i.api.Post(ctx, "instances/"+instanceID+"/resume", "")
+	resp, err := i.api.Post(ctx, path.Join("instances", instanceID, "resume"), "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to resume instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -202,13 +204,13 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 		return nil, err
 	}
 
-	body, err := utils.Marshall(instanceRequest)
+	body, err := utils.Marshal(instanceRequest)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	resp, err := i.api.Patch(ctx, "instances/"+instanceID, string(body))
+	resp, err := i.api.Patch(ctx, path.Join("instances", instanceID), string(body))
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to update instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -255,17 +257,17 @@ func (i *instanceService) Overwrite(ctx context.Context, instanceID string, sour
 	}
 
 	requestBody := overwriteInstanceRequest{
-		SourceInstanceId: sourceInstanceID,
-		SourceSnapshotId: sourceSnapshotID,
+		SourceInstanceID: sourceInstanceID,
+		SourceSnapshotID: sourceSnapshotID,
 	}
 
-	body, err := utils.Marshall(requestBody)
+	body, err := utils.Marshal(requestBody)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	resp, err := i.api.Post(ctx, "instances/"+instanceID+"/overwrite", string(body))
+	resp, err := i.api.Post(ctx, path.Join("instances", instanceID, "overwrite"), string(body))
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to overwrite instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err

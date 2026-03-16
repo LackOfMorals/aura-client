@@ -279,7 +279,7 @@ func TestConcurrentOperations_IndependentContexts(t *testing.T) {
 // or timers (i.e. defer cancel() is called correctly).
 func TestContextCleanup_NoDeferLeaks(t *testing.T) {
 	responseBody, _ := json.Marshal(GetInstanceResponse{
-		Data: InstanceData{Id: "aaaa1234", Name: "test"},
+		Data: InstanceData{ID: "aaaa1234", Name: "test"},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -608,7 +608,7 @@ func TestParentCancellation_DuringOperation(t *testing.T) {
 	parentCtx, parentCancel := context.WithCancel(context.Background())
 
 	responseBody, _ := json.Marshal(GetInstanceResponse{
-		Data: InstanceData{Id: "aaaa1234", Name: "test"},
+		Data: InstanceData{ID: "aaaa1234", Name: "test"},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -675,12 +675,12 @@ func TestLongRunningOperation_Cancellable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	createRequest := &CreateInstanceConfigData{
-		Name: "test-instance", TenantId: "tenant-1", CloudProvider: "gcp",
+		Name: "test-instance", TenantID: "tenant-1", CloudProvider: "gcp",
 		Region: "us-central1", Type: "enterprise-db", Version: "5", Memory: "8GB",
 	}
 
 	responseBody, _ := json.Marshal(CreateInstanceResponse{
-		Data: CreateInstanceData{Id: "new-id", Name: "test"},
+		Data: CreateInstanceData{ID: "new-id", Name: "test"},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"path"
 
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
@@ -56,7 +57,7 @@ func (s *snapshotService) Get(ctx context.Context, instanceID string, snapshotID
 
 	s.logger.DebugContext(ctx, "get snapshot details", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Get(ctx, "instances/"+instanceID+"/snapshots/"+snapshotID)
+	resp, err := s.api.Get(ctx, path.Join("instances", instanceID, "snapshots", snapshotID))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to get snapshot", slog.String("error", err.Error()))
 		return nil, err
@@ -79,7 +80,7 @@ func (s *snapshotService) Create(ctx context.Context, instanceID string) (*Creat
 
 	s.logger.DebugContext(ctx, "creating snapshot", slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Post(ctx, "instances/"+instanceID+"/snapshots", "")
+	resp, err := s.api.Post(ctx, path.Join("instances", instanceID, "snapshots"), "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to create snapshot", slog.String("error", err.Error()))
 		return nil, err
@@ -91,7 +92,7 @@ func (s *snapshotService) Create(ctx context.Context, instanceID string) (*Creat
 		return nil, err
 	}
 
-	s.logger.DebugContext(ctx, "snapshot created", slog.String("snapshotId", result.Data.SnapshotId))
+	s.logger.DebugContext(ctx, "snapshot created", slog.String("snapshotId", result.Data.SnapshotID))
 	return &result, nil
 }
 
@@ -102,7 +103,7 @@ func (s *snapshotService) Restore(ctx context.Context, instanceID string, snapsh
 
 	s.logger.DebugContext(ctx, "restore instance with a snapshot", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Post(ctx, "instances/"+instanceID+"/snapshots/"+snapshotID+"/restore", "")
+	resp, err := s.api.Post(ctx, path.Join("instance/", instanceID, "snapshots", snapshotID, "restore"), "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to restore using snapshot", slog.String("error", err.Error()))
 		return nil, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"path"
 
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
@@ -45,7 +46,7 @@ func (t *tenantService) Get(ctx context.Context, tenantID string) (*GetTenantRes
 
 	t.logger.DebugContext(ctx, "getting tenant details", slog.String("tenantID", tenantID))
 
-	resp, err := t.api.Get(ctx, "tenants/"+tenantID)
+	resp, err := t.api.Get(ctx, path.Join("tenants", tenantID))
 	if err != nil {
 		t.logger.ErrorContext(ctx, "failed to get tenant details", slog.String("tenantID", tenantID), slog.String("error", err.Error()))
 		return nil, err
@@ -73,7 +74,7 @@ func (t *tenantService) GetMetrics(ctx context.Context, tenantID string) (*GetTe
 
 	t.logger.DebugContext(ctx, "getting tenant prometheus metrics url", slog.String("tenantID", tenantID))
 
-	resp, err := t.api.Get(ctx, "tenants/"+tenantID+"/metrics-integration")
+	resp, err := t.api.Get(ctx, path.Join("tenants", tenantID, "metrics-integration"))
 	if err != nil {
 		return nil, err
 	}

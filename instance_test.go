@@ -34,8 +34,8 @@ func createTestInstanceServiceWithTimeout(mock api.RequestService, timeout time.
 func TestInstanceService_List_Success(t *testing.T) {
 	expectedResponse := ListInstancesResponse{
 		Data: []ListInstanceData{
-			{Id: "instance-1", Name: "test-instance-1", Created: "2024-01-01T00:00:00Z", TenantId: "tenant-1", CloudProvider: "gcp"},
-			{Id: "instance-2", Name: "test-instance-2", Created: "2024-01-02T00:00:00Z", TenantId: "tenant-1", CloudProvider: "aws"},
+			{ID: "instance-1", Name: "test-instance-1", Created: "2024-01-01T00:00:00Z", TenantID: "tenant-1", CloudProvider: "gcp"},
+			{ID: "instance-2", Name: "test-instance-2", Created: "2024-01-02T00:00:00Z", TenantID: "tenant-1", CloudProvider: "aws"},
 		},
 	}
 
@@ -59,8 +59,8 @@ func TestInstanceService_List_Success(t *testing.T) {
 	if len(result.Data) != 2 {
 		t.Errorf("expected 2 instances, got %d", len(result.Data))
 	}
-	if result.Data[0].Id != "instance-1" {
-		t.Errorf("expected first instance ID 'instance-1', got '%s'", result.Data[0].Id)
+	if result.Data[0].ID != "instance-1" {
+		t.Errorf("expected first instance ID 'instance-1', got '%s'", result.Data[0].ID)
 	}
 }
 
@@ -69,10 +69,10 @@ func TestInstanceService_Get_Success(t *testing.T) {
 	instanceID := "aaaa5678"
 	expectedResponse := GetInstanceResponse{
 		Data: InstanceData{
-			Id:            instanceID,
+			ID:            instanceID,
 			Name:          "my-instance",
 			Status:        "running",
-			TenantId:      "tenant-1",
+			TenantID:      "tenant-1",
 			CloudProvider: "gcp",
 			ConnectionUrl: "neo4j+s://xxxxx.databases.neo4j.io",
 			Region:        "us-east-1",
@@ -95,8 +95,8 @@ func TestInstanceService_Get_Success(t *testing.T) {
 	if mock.lastPath != "instances/"+instanceID {
 		t.Errorf("expected path 'instances/%s', got '%s'", instanceID, mock.lastPath)
 	}
-	if result.Data.Id != instanceID {
-		t.Errorf("expected instance ID '%s', got '%s'", instanceID, result.Data.Id)
+	if result.Data.ID != instanceID {
+		t.Errorf("expected instance ID '%s', got '%s'", instanceID, result.Data.ID)
 	}
 	if result.Data.Status != "running" {
 		t.Errorf("expected status 'running', got '%s'", result.Data.Status)
@@ -156,13 +156,13 @@ func TestInstanceService_Get_NotFound(t *testing.T) {
 // TestInstanceService_Create_Success verifies instance creation
 func TestInstanceService_Create_Success(t *testing.T) {
 	createRequest := &CreateInstanceConfigData{
-		Name: "new-instance", TenantId: "tenant-1", CloudProvider: "gcp",
+		Name: "new-instance", TenantID: "tenant-1", CloudProvider: "gcp",
 		Region: "us-central1", Type: "enterprise-db", Version: "5", Memory: "8GB",
 	}
 
 	expectedResponse := CreateInstanceResponse{
 		Data: CreateInstanceData{
-			Id: "instance-new", Name: "new-instance", TenantId: "tenant-1",
+			ID: "instance-new", Name: "new-instance", TenantID: "tenant-1",
 			CloudProvider: "gcp", ConnectionUrl: "neo4j+s://xxxxx.databases.neo4j.io",
 			Region: "us-central1", Type: "enterprise-db", Username: "neo4j", Password: "generated-password",
 		},
@@ -202,7 +202,7 @@ func TestInstanceService_Create_Success(t *testing.T) {
 // TestInstanceService_Delete_Success verifies instance deletion
 func TestInstanceService_Delete_Success(t *testing.T) {
 	instanceID := "aaaa1234"
-	responseBody, _ := json.Marshal(GetInstanceResponse{Data: InstanceData{Id: instanceID, Status: "destroying"}})
+	responseBody, _ := json.Marshal(GetInstanceResponse{Data: InstanceData{ID: instanceID, Status: "destroying"}})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
@@ -227,7 +227,7 @@ func TestInstanceService_Delete_Success(t *testing.T) {
 // TestInstanceService_Pause_Success verifies instance pausing
 func TestInstanceService_Pause_Success(t *testing.T) {
 	instanceID := "bbbb5678"
-	responseBody, _ := json.Marshal(GetInstanceResponse{Data: InstanceData{Id: instanceID, Status: "pausing"}})
+	responseBody, _ := json.Marshal(GetInstanceResponse{Data: InstanceData{ID: instanceID, Status: "pausing"}})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
@@ -252,7 +252,7 @@ func TestInstanceService_Pause_Success(t *testing.T) {
 // TestInstanceService_Resume_Success verifies instance resuming
 func TestInstanceService_Resume_Success(t *testing.T) {
 	instanceID := "bbbb1234"
-	responseBody, _ := json.Marshal(GetInstanceResponse{Data: InstanceData{Id: instanceID, Status: "resuming"}})
+	responseBody, _ := json.Marshal(GetInstanceResponse{Data: InstanceData{ID: instanceID, Status: "resuming"}})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
 	}
@@ -276,7 +276,7 @@ func TestInstanceService_Update_Success(t *testing.T) {
 	instanceID := "f1f1b2b2"
 	updateRequest := &UpdateInstanceData{Name: "updated-name", Memory: "16GB"}
 	responseBody, _ := json.Marshal(GetInstanceResponse{
-		Data: InstanceData{Id: instanceID, Name: "updated-name", Memory: "16GB", Status: "updating"},
+		Data: InstanceData{ID: instanceID, Name: "updated-name", Memory: "16GB", Status: "updating"},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -329,8 +329,8 @@ func TestInstanceService_Overwrite_Success(t *testing.T) {
 
 	var sentRequest overwriteInstanceRequest
 	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
-	if sentRequest.SourceInstanceId != sourceInstanceID {
-		t.Errorf("expected source instance '%s', got '%s'", sourceInstanceID, sentRequest.SourceInstanceId)
+	if sentRequest.SourceInstanceID != sourceInstanceID {
+		t.Errorf("expected source instance '%s', got '%s'", sourceInstanceID, sentRequest.SourceInstanceID)
 	}
 }
 
@@ -355,8 +355,8 @@ func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 
 	var sentRequest overwriteInstanceRequest
 	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
-	if sentRequest.SourceSnapshotId != snapshotID {
-		t.Errorf("expected snapshot '%s', got '%s'", snapshotID, sentRequest.SourceSnapshotId)
+	if sentRequest.SourceSnapshotID != snapshotID {
+		t.Errorf("expected snapshot '%s', got '%s'", snapshotID, sentRequest.SourceSnapshotID)
 	}
 }
 
@@ -464,7 +464,7 @@ func TestInstanceService_AuthenticationError(t *testing.T) {
 func TestInstanceService_Get_ContextTimeout(t *testing.T) {
 	instanceID := "aaaa5678"
 	responseBody, _ := json.Marshal(GetInstanceResponse{
-		Data: InstanceData{Id: instanceID, Name: "test"},
+		Data: InstanceData{ID: instanceID, Name: "test"},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -495,7 +495,7 @@ func TestInstanceService_Update_TimeoutRespected(t *testing.T) {
 	updateRequest := &UpdateInstanceData{Name: "new-name", Memory: "16GB"}
 
 	responseBody, _ := json.Marshal(GetInstanceResponse{
-		Data: InstanceData{Id: instanceID, Name: "new-name"},
+		Data: InstanceData{ID: instanceID, Name: "new-name"},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -527,7 +527,7 @@ func TestInstanceService_Update_TimeoutRespected(t *testing.T) {
 func TestInstanceService_Pause_ContextNotLeaked(t *testing.T) {
 	instanceID := "bbbb5678"
 	responseBody, _ := json.Marshal(GetInstanceResponse{
-		Data: InstanceData{Id: instanceID, Status: "pausing"},
+		Data: InstanceData{ID: instanceID, Status: "pausing"},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -551,7 +551,7 @@ func TestInstanceService_Resume_QuickCancellation(t *testing.T) {
 
 	instanceID := "bbbb1234"
 	responseBody, _ := json.Marshal(GetInstanceResponse{
-		Data: InstanceData{Id: instanceID, Status: "resuming"},
+		Data: InstanceData{ID: instanceID, Status: "resuming"},
 	})
 	mock := &mockAPIService{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
@@ -599,12 +599,12 @@ func TestInstanceService_List_ContextPropagation(t *testing.T) {
 // TestInstanceService_Create_MultipleTimeouts verifies shorter deadline always wins
 func TestInstanceService_Create_MultipleTimeouts(t *testing.T) {
 	createRequest := &CreateInstanceConfigData{
-		Name: "test-instance", TenantId: "tenant-1", CloudProvider: "gcp",
+		Name: "test-instance", TenantID: "tenant-1", CloudProvider: "gcp",
 		Region: "us-central1", Type: "enterprise-db", Version: "5", Memory: "8GB",
 	}
 
 	responseBody, _ := json.Marshal(CreateInstanceResponse{
-		Data: CreateInstanceData{Id: "new-id", Name: "test"},
+		Data: CreateInstanceData{ID: "new-id", Name: "test"},
 	})
 	mock := &mockAPIServiceWithDelay{
 		response: &api.Response{StatusCode: 200, Body: responseBody},

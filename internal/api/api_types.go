@@ -54,10 +54,10 @@ type authManager struct {
 	clientSecret string
 	tokenType    string
 	token        string
-	obtainedAt   int64
-	expiresAt    int64
-	logger       *slog.Logger
-	mu           sync.RWMutex
+
+	expiresAt int64
+	logger    *slog.Logger
+	mu        sync.RWMutex
 }
 
 // tokenResponse represents the OAuth token response

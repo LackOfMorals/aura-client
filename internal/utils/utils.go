@@ -16,6 +16,7 @@ func Base64Encode(s1, s2 string) string {
 }
 
 // Takes a JSON payload and copies it into a struct T
+// Used in utils_test.go
 func Unmarshal[T any](payload []byte) (T, error) {
 	var result T
 	err := json.Unmarshal(payload, &result)
@@ -23,14 +24,14 @@ func Unmarshal[T any](payload []byte) (T, error) {
 }
 
 // Takes a payload and returns JSON
-func Marshall(payload any) ([]byte, error) {
+func Marshal(payload any) ([]byte, error) {
 	result, err := json.Marshal(payload)
 
 	return result, err
 }
 
 // Takes a payload and returns indented JSON
-func MarshallIndent(payload any) ([]byte, error) {
+func MarshalIndent(payload any) ([]byte, error) {
 
 	result, err := json.MarshalIndent(payload, "", "  ")
 
@@ -74,7 +75,7 @@ func ValidateInstanceID(InstanceID string) error {
 		return fmt.Errorf("instance ID must not be empty")
 	}
 	if !uuidInstanceIdRegex.MatchString(InstanceID) {
-		return fmt.Errorf("instance ID must be a valid UUID format (xxxxxxxx)")
+		return fmt.Errorf("instance ID must be in the format of a 8-character hex string (xxxxxxxx)")
 	}
 	return nil
 }

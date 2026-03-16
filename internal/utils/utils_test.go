@@ -158,7 +158,7 @@ func TestMarshall_SimpleStruct(t *testing.T) {
 		Value: 42,
 	}
 
-	result, err := Marshall(data)
+	result, err := Marshal(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestMarshallIndent_Formatting(t *testing.T) {
 		Value: 42,
 	}
 
-	result, err := MarshallIndent(data)
+	result, err := MarshalIndent(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -325,7 +325,7 @@ func BenchmarkMarshall(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = Marshall(data)
+		_, _ = Marshal(data)
 	}
 }
 

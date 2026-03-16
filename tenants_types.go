@@ -13,7 +13,7 @@ type ListTenantsResponse struct {
 }
 
 type TenantsResponseData struct {
-	Id   string `json:"id"`
+	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -23,7 +23,7 @@ type GetTenantResponse struct {
 }
 
 type TenantResponseData struct {
-	Id                     string                        `json:"id"`
+	ID                     string                        `json:"id"`
 	Name                   string                        `json:"name"`
 	InstanceConfigurations []TenantInstanceConfiguration `json:"instance_configurations"`
 }

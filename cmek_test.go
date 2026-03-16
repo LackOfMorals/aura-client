@@ -34,9 +34,9 @@ func createTestCmekServiceWithTimeout(mock api.RequestService, timeout time.Dura
 func TestCmekService_List_Success(t *testing.T) {
 	expectedResponse := GetCmeksResponse{
 		Data: []GetCmeksData{
-			{Id: "cmek-1", Name: "Production Key", TenantId: "tenant-1"},
-			{Id: "cmek-2", Name: "Development Key", TenantId: "tenant-1"},
-			{Id: "cmek-3", Name: "Testing Key", TenantId: "tenant-2"},
+			{ID: "cmek-1", Name: "Production Key", TenantID: "tenant-1"},
+			{ID: "cmek-2", Name: "Development Key", TenantID: "tenant-1"},
+			{ID: "cmek-3", Name: "Testing Key", TenantID: "tenant-2"},
 		},
 	}
 
@@ -64,10 +64,10 @@ func TestCmekService_List_Success(t *testing.T) {
 
 // TestCmekService_List_WithTenantFilter verifies tenant ID filtering
 func TestCmekService_List_WithTenantFilter(t *testing.T) {
-	tenantID := "c1e2c556-a924-5fac-b7f8-bb624ad9761d"
+	TenantID := "c1e2c556-a924-5fac-b7f8-bb624ad9761d"
 	responseBody, _ := json.Marshal(GetCmeksResponse{
 		Data: []GetCmeksData{
-			{Id: "cmek-filtered-1", Name: "Filtered Key 1", TenantId: tenantID},
+			{ID: "cmek-filtered-1", Name: "Filtered Key 1", TenantID: TenantID},
 		},
 	})
 	mock := &mockAPIService{
@@ -75,12 +75,12 @@ func TestCmekService_List_WithTenantFilter(t *testing.T) {
 	}
 
 	service := createTestCmekService(mock)
-	result, err := service.List(context.Background(), tenantID)
+	result, err := service.List(context.Background(), TenantID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if mock.lastPath != "customer-managed-keys?tenantid="+tenantID {
+	if mock.lastPath != "customer-managed-keys?tenantID="+TenantID {
 		t.Errorf("expected path with tenant filter, got '%s'", mock.lastPath)
 	}
 	if len(result.Data) != 1 {
@@ -92,7 +92,7 @@ func TestCmekService_List_WithTenantFilter(t *testing.T) {
 func TestCmekService_List_InvalidTenantID(t *testing.T) {
 	tests := []struct {
 		name     string
-		tenantID string
+		TenantID string
 	}{
 		{"too short", "abc"},
 		{"wrong length", "not-valid-uuid"},
@@ -103,7 +103,7 @@ func TestCmekService_List_InvalidTenantID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.List(context.Background(), tt.tenantID)
+			_, err := service.List(context.Background(), tt.TenantID)
 			if err == nil {
 				t.Error("expected validation error")
 			}
