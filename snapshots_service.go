@@ -103,7 +103,7 @@ func (s *snapshotService) Restore(ctx context.Context, instanceID string, snapsh
 
 	s.logger.DebugContext(ctx, "restore instance with a snapshot", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Post(ctx, path.Join("instance/", instanceID, "snapshots", snapshotID, "restore"), "")
+	resp, err := s.api.Post(ctx, path.Join("instances/", instanceID, "snapshots", snapshotID, "restore"), "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to restore using snapshot", slog.String("error", err.Error()))
 		return nil, err

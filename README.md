@@ -243,7 +243,7 @@ if err != nil {
 
 fmt.Printf("Instance: %s\n", instance.Data.Name)
 fmt.Printf("Status: %s\n", instance.Data.Status)
-fmt.Printf("Connection URL: %s\n", instance.Data.ConnectionUrl)
+fmt.Printf("Connection URL: %s\n", instance.Data.ConnectionURL)
 fmt.Printf("Memory: %s\n", instance.Data.Memory)
 fmt.Printf("Type: %s\n", instance.Data.Type)
 fmt.Printf("Region: %s\n", instance.Data.Region)
@@ -271,7 +271,7 @@ if err != nil {
 
 fmt.Printf("Instance created!\n")
 fmt.Printf("  ID: %s\n", instance.Data.Id)
-fmt.Printf("  Connection URL: %s\n", instance.Data.ConnectionUrl)
+fmt.Printf("  Connection URL: %s\n", instance.Data.ConnectionURL)
 fmt.Printf("  Username: %s\n", instance.Data.Username)
 fmt.Printf("  Password: %s\n", instance.Data.Password)
 
@@ -665,7 +665,7 @@ if err != nil {
 // ⚠️ CRITICAL: Save these immediately — they are only shown once!
 credentials := map[string]string{
     "instance_id":    instance.Data.Id,
-    "connection_url": instance.Data.ConnectionUrl,
+    "connection_url": instance.Data.ConnectionURL,
     "username":       instance.Data.Username,
     "password":       instance.Data.Password,
 }

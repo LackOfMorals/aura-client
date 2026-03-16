@@ -219,7 +219,7 @@ func TestNewClient_AllServicesExposed(t *testing.T) {
 }
 
 func TestStatusConstants_AreAccessible(t *testing.T) {
-	constants := map[string]string{
+	constants := map[string]aura.InstanceStatus{
 		"StatusRunning":   aura.StatusRunning,
 		"StatusStopped":   aura.StatusStopped,
 		"StatusPaused":    aura.StatusPaused,
@@ -343,8 +343,8 @@ func TestErrorType_HasMultipleErrors(t *testing.T) {
 func TestInstances_List_Success(t *testing.T) {
 	payload := map[string]any{
 		"data": []map[string]any{
-			{"id": "aaaa0001", "name": "prod-db", "tenant_id": "tenant-abc", "cloud_provider": "gcp", "created_at": "2024-01-01T00:00:00Z"},
-			{"id": "bbbb0002", "name": "dev-db", "tenant_id": "tenant-abc", "cloud_provider": "aws", "created_at": "2024-01-02T00:00:00Z"},
+			{"id": "aaaa0001", "name": "prod-db", "tenant_id": "ad69ff24-12fc-5a34-af02-ff8d3cc23611", "cloud_provider": "gcp", "created_at": "2024-01-01T00:00:00Z"},
+			{"id": "bbbb0002", "name": "dev-db", "tenant_id": "ad69ff24-12fc-5a34-af02-ff8d3cc23612", "cloud_provider": "aws", "created_at": "2024-01-02T00:00:00Z"},
 		},
 	}
 
@@ -459,7 +459,7 @@ func TestInstances_Get_Success(t *testing.T) {
 	if result.Data.Status != aura.StatusRunning {
 		t.Errorf("expected status '%s', got '%s'", aura.StatusRunning, result.Data.Status)
 	}
-	if result.Data.ConnectionUrl == "" {
+	if result.Data.ConnectionURL == "" {
 		t.Error("expected non-empty connection URL")
 	}
 }
@@ -513,7 +513,7 @@ func TestInstances_Create_Success(t *testing.T) {
 		"data": map[string]any{
 			"id":             "neww0001",
 			"name":           "fresh-db",
-			"tenant_id":      "tenant-1",
+			"tenant_id":      "ad69ff24-12fc-5a34-af02-ff8d3cc23611",
 			"cloud_provider": "gcp",
 			"connection_url": "neo4j+s://neww0001.databases.neo4j.io",
 			"region":         "us-central1",
@@ -535,7 +535,7 @@ func TestInstances_Create_Success(t *testing.T) {
 
 	req := &aura.CreateInstanceConfigData{
 		Name:          "fresh-db",
-		TenantID:      "tenant-1",
+		TenantID:      "ad69ff24-12fc-5a34-af02-ff8d3cc23611",
 		CloudProvider: "gcp",
 		Region:        "us-central1",
 		Type:          "enterprise-db",
@@ -1224,14 +1224,14 @@ func TestInstances_RequestRouting(t *testing.T) {
 			wantMethod: http.MethodPost,
 			wantSuffix: "/v1/instances",
 			payload: map[string]any{"data": map[string]any{
-				"id": "newwwwww", "name": "x", "tenant_id": "t",
+				"id": "newwwwww", "name": "x", "tenant_id": "ad69ff24-12fc-5a34-af02-ff8d3cc23611",
 				"cloud_provider": "gcp", "connection_url": "neo4j+s://x.io",
 				"region": "us-east1", "type": "enterprise-db",
 				"username": "neo4j", "password": "pw",
 			}},
 			call: func(c *aura.AuraAPIClient, _ *httptest.Server) error {
 				_, err := c.Instances.Create(context.Background(), &aura.CreateInstanceConfigData{
-					Name: "x", TenantID: "t", CloudProvider: "gcp",
+					Name: "x", TenantID: "ad69ff24-12fc-5a34-af02-ff8d3cc23611", CloudProvider: "gcp",
 					Region: "us-east1", Type: "enterprise-db", Version: "5", Memory: "4GB",
 				})
 				return err

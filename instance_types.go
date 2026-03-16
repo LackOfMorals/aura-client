@@ -8,11 +8,14 @@ import (
 )
 
 // instance status values that we're interested in
+
+type InstanceStatus string
+
 const (
-	StatusRunning   = "running"
-	StatusStopped   = "stopped"
-	StatusPaused    = "paused"
-	StatusAvailable = "available"
+	StatusRunning   InstanceStatus = "running"
+	StatusStopped   InstanceStatus = "stopped"
+	StatusPaused    InstanceStatus = "paused"
+	StatusAvailable InstanceStatus = "available"
 )
 
 // ListInstancesResponse contains a list of instances in a tenant
@@ -47,7 +50,7 @@ type CreateInstanceData struct {
 	Name          string `json:"name"`
 	TenantID      string `json:"tenant_id"`
 	CloudProvider string `json:"cloud_provider"`
-	ConnectionUrl string `json:"connection_url"`
+	ConnectionURL string `json:"connection_url"`
 	Region        string `json:"region"`
 	Type          string `json:"type"`
 	Username      string `json:"username"`
@@ -68,21 +71,21 @@ type DeleteInstanceResponse struct {
 }
 
 type InstanceData struct {
-	ID              string  `json:"id"`
-	Name            string  `json:"name"`
-	Status          string  `json:"status"`
-	TenantID        string  `json:"tenant_id"`
-	CloudProvider   string  `json:"cloud_provider"`
-	ConnectionUrl   string  `json:"connection_url"`
-	Region          string  `json:"region"`
-	Type            string  `json:"type"`
-	Memory          string  `json:"memory"`
-	Storage         *string `json:"storage"`
-	CDCEnrichment   string  `json:"cdc_enrichment_mode"`
-	GDSPlugin       bool    `json:"graph_analytics_plugin"`
-	MetricsURL      string  `json:"metrics_integration_url"`
-	Secondaries     int     `json:"secondaries_count"`
-	VectorOptimized bool    `json:"vector_optimized"`
+	ID              string         `json:"id"`
+	Name            string         `json:"name"`
+	Status          InstanceStatus `json:"status"`
+	TenantID        string         `json:"tenant_id"`
+	CloudProvider   string         `json:"cloud_provider"`
+	ConnectionURL   string         `json:"connection_url"`
+	Region          string         `json:"region"`
+	Type            string         `json:"type"`
+	Memory          string         `json:"memory"`
+	Storage         *string        `json:"storage"`
+	CDCEnrichment   string         `json:"cdc_enrichment_mode"`
+	GDSPlugin       bool           `json:"graph_analytics_plugin"`
+	MetricsURL      string         `json:"metrics_integration_url"`
+	Secondaries     int            `json:"secondaries_count"`
+	VectorOptimized bool           `json:"vector_optimized"`
 }
 
 type overwriteInstanceRequest struct {

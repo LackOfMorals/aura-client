@@ -74,7 +74,7 @@ func TestInstanceService_Get_Success(t *testing.T) {
 			Status:        "running",
 			TenantID:      "tenant-1",
 			CloudProvider: "gcp",
-			ConnectionUrl: "neo4j+s://xxxxx.databases.neo4j.io",
+			ConnectionURL: "neo4j+s://xxxxx.databases.neo4j.io",
 			Region:        "us-east-1",
 			Type:          "enterprise-db",
 			Memory:        "8GB",
@@ -156,14 +156,14 @@ func TestInstanceService_Get_NotFound(t *testing.T) {
 // TestInstanceService_Create_Success verifies instance creation
 func TestInstanceService_Create_Success(t *testing.T) {
 	createRequest := &CreateInstanceConfigData{
-		Name: "new-instance", TenantID: "tenant-1", CloudProvider: "gcp",
+		Name: "new-instance", TenantID: "ad69ff24-12fc-5a34-af02-ff8d3cc23611", CloudProvider: "gcp",
 		Region: "us-central1", Type: "enterprise-db", Version: "5", Memory: "8GB",
 	}
 
 	expectedResponse := CreateInstanceResponse{
 		Data: CreateInstanceData{
-			ID: "instance-new", Name: "new-instance", TenantID: "tenant-1",
-			CloudProvider: "gcp", ConnectionUrl: "neo4j+s://xxxxx.databases.neo4j.io",
+			ID: "instance-new", Name: "new-instance", TenantID: "ad69ff24-12fc-5a34-af02-ff8d3cc23611",
+			CloudProvider: "gcp", ConnectionURL: "neo4j+s://xxxxx.databases.neo4j.io",
 			Region: "us-central1", Type: "enterprise-db", Username: "neo4j", Password: "generated-password",
 		},
 	}
@@ -599,7 +599,8 @@ func TestInstanceService_List_ContextPropagation(t *testing.T) {
 // TestInstanceService_Create_MultipleTimeouts verifies shorter deadline always wins
 func TestInstanceService_Create_MultipleTimeouts(t *testing.T) {
 	createRequest := &CreateInstanceConfigData{
-		Name: "test-instance", TenantID: "tenant-1", CloudProvider: "gcp",
+
+		Name: "test-instance", TenantID: "ad69ff24-12fc-5a34-af02-ff8d3cc23611", CloudProvider: "gcp",
 		Region: "us-central1", Type: "enterprise-db", Version: "5", Memory: "8GB",
 	}
 

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/httpClient"
@@ -108,7 +109,16 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 		return nil, err
 	}
 
-	fullURL := s.endpointBase + "/" + endpoint
+	// We did to handle the majority case - relative URL from base URL - and when
+	// a full URL is given e.g used by Prometheus service
+	var fullURL string
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		// Endpoint is already a full URL, use it as-is
+		fullURL = endpoint
+	} else {
+		// Endpoint is relative, prepend base URL
+		fullURL = fmt.Sprintf("%s/%s", s.endpointBase, endpoint)
+	}
 
 	tokenType, token, err := s.authMgr.ensureValidToken(ctx, s.baseURL, s.httpClient)
 	if err != nil {

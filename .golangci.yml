@@ -3,7 +3,7 @@ version: "2"
 run:
   timeout: 5m
   skip-dirs:
-    - internal/mocks
+    - example/
 
 linters:
   enable:
@@ -14,6 +14,7 @@ linters:
     - misspell
     - nakedret
     - revive
+    - errcheck
   exclusions:
     generated: lax
     presets:

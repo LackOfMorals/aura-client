@@ -60,7 +60,7 @@ func (i *instanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 		return nil, err
 	}
 
-	i.logger.DebugContext(ctx, "instance retrieved successfully", slog.String("instanceID", instanceID), slog.String("name", result.Data.Name), slog.String("status", result.Data.Status))
+	i.logger.DebugContext(ctx, "instance retrieved successfully", slog.String("instanceID", instanceID), slog.String("name", result.Data.Name), slog.Any("status", result.Data.Status))
 	return &result, nil
 }
 
@@ -73,6 +73,13 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	if instanceRequest == nil {
 		err := errors.New("instanceRequest must not be nil")
 		i.logger.ErrorContext(ctx, "instanceRequest must not be nil ", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	// Check configuration has min number of parameters set
+	err := ValidateCreateInstanceConfig(instanceRequest)
+	if err != nil {
+		i.logger.ErrorContext(ctx, "failed to validate instance configuration", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -231,15 +238,17 @@ func (i *instanceService) Overwrite(ctx context.Context, instanceID string, sour
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
+	i.logger.DebugContext(ctx, "overwriting instance", slog.String("instanceID", instanceID))
+
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
 		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	i.logger.DebugContext(ctx, "overwriting instance", slog.String("instanceID", instanceID))
-
-	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		return nil, err
+	if sourceInstanceID != "" {
+		if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
+			return nil, fmt.Errorf("invalid source instance ID: %w", err)
+		}
 	}
 
 	if sourceInstanceID == "" && sourceSnapshotID == "" {
@@ -248,12 +257,6 @@ func (i *instanceService) Overwrite(ctx context.Context, instanceID string, sour
 
 	if sourceInstanceID != "" && sourceSnapshotID != "" {
 		return nil, fmt.Errorf("cannot provide both sourceInstanceID and sourceSnapshotID")
-	}
-
-	if sourceInstanceID != "" {
-		if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
-			return nil, fmt.Errorf("invalid source instance ID: %w", err)
-		}
 	}
 
 	requestBody := overwriteInstanceRequest{
@@ -281,4 +284,51 @@ func (i *instanceService) Overwrite(ctx context.Context, instanceID string, sour
 
 	i.logger.InfoContext(ctx, "instance overwrite started", slog.String("instanceID", instanceID))
 	return &result, nil
+}
+
+// ValidateCreateInstanceConfig performs basic checks that the min number
+// configuration options have been supplied when creating an instance
+func ValidateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) error {
+
+	// Region name cannot be empty
+	if instanceConfig.Region == "" {
+		return fmt.Errorf("Region must not be empty")
+	}
+
+	// Memroy cannot be empty
+	if instanceConfig.Memory == "" {
+		return fmt.Errorf("Memory must not be empty")
+	}
+
+	// Type cannot be empty
+	if instanceConfig.Type == "" {
+		return fmt.Errorf("Instannce type must not be empty")
+	}
+
+	// Cloud provider cannot be empty
+	if instanceConfig.CloudProvider == "" {
+		return fmt.Errorf("Cloud provider must not be empty")
+	}
+
+	// Instance name cannot be empty or greater than 30 characters
+	if instanceConfig.Name == "" {
+		return fmt.Errorf("Instance name must not be empty")
+	}
+
+	if len(instanceConfig.Name) > 30 {
+		return fmt.Errorf("Instance name must be less than 30 characters long")
+
+	}
+	// TenantID cannot be empty
+	if instanceConfig.TenantID == "" {
+		return fmt.Errorf("tenant ID must not be empty")
+	}
+
+	// Check the format of the TenantID
+	err := utils.ValidateTenantID(instanceConfig.TenantID)
+	if err != nil {
+		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
+	}
+
+	return nil
 }

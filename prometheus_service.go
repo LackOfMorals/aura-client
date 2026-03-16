@@ -193,14 +193,20 @@ func (p *prometheusService) GetInstanceHealth(ctx context.Context, instanceID st
 
 // GetMetricValue retrieves a specific metric value by name and optional label filters.
 // When no filters are provided it averages across all series for that metric name.
-func (p *prometheusService) GetMetricValue(_ context.Context, metrics *PrometheusMetricsResponse, name string, labelFilters map[string]string) (float64, error) {
+func (p *prometheusService) GetMetricValue(ctx context.Context, metrics *PrometheusMetricsResponse, name string, labelFilters map[string]string) (float64, error) {
+	if err := ctx.Err(); err != nil {
+		p.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return 0, err
+	}
 	metricList, ok := metrics.Metrics[name]
 	if !ok {
+		p.logger.ErrorContext(ctx, "metric not found", slog.String("metric", name))
 		return 0, fmt.Errorf("metric %s not found", name)
 	}
 
 	if len(labelFilters) == 0 {
 		if len(metricList) == 0 {
+			p.logger.ErrorContext(ctx, "no values for metric", slog.String("metric", name))
 			return 0, fmt.Errorf("no values for metric %s", name)
 		}
 		var sum float64
@@ -225,6 +231,7 @@ func (p *prometheusService) GetMetricValue(_ context.Context, metrics *Prometheu
 	}
 
 	if len(matchingMetrics) == 0 {
+		p.logger.ErrorContext(ctx, "no matching metrics found", slog.String("metric", name), slog.Any("label filter", labelFilters))
 		return 0, fmt.Errorf("no matching metrics found for %s with filters %v", name, labelFilters)
 	}
 

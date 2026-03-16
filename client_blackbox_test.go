@@ -735,7 +735,7 @@ func TestBlackBox_Instances_Get_Success(t *testing.T) {
 			Data: aura.InstanceData{
 				ID:     instanceID,
 				Name:   "my-db",
-				Status: aura.StatusRunning,
+				Status: "running",
 			},
 		},
 	}
@@ -747,7 +747,7 @@ func TestBlackBox_Instances_Get_Success(t *testing.T) {
 	if result.Data.ID != instanceID {
 		t.Errorf("expected ID %s, got %s", instanceID, result.Data.ID)
 	}
-	if result.Data.Status != aura.StatusRunning {
+	if result.Data.Status != "running" {
 		t.Errorf("expected status %s, got %s", aura.StatusRunning, result.Data.Status)
 	}
 }
@@ -1446,7 +1446,7 @@ func TestBlackBox_ErrorDetail_Fields(t *testing.T) {
 func TestBlackBox_Constants_StatusValues(t *testing.T) {
 	tests := []struct {
 		name     string
-		constant string
+		constant aura.InstanceStatus
 		expected string
 	}{
 		{"StatusRunning", aura.StatusRunning, "running"},
@@ -1456,7 +1456,7 @@ func TestBlackBox_Constants_StatusValues(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.constant != tt.expected {
+			if string(tt.constant) != tt.expected {
 				t.Errorf("expected %q, got %q", tt.expected, tt.constant)
 			}
 		})
