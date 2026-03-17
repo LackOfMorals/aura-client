@@ -5,11 +5,19 @@ import (
 	"encoding/json"
 	"log/slog"
 	"path"
+	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // GDS Sessions
+// gDSSessionService handles GDS Session operations
+type gDSSessionService struct {
+	api     api.RequestService
+	timeout time.Duration
+	logger  *slog.Logger
+}
 
 // List returns all GDS sessions accessible to the authenticated user
 func (g *gDSSessionService) List(ctx context.Context) (*GetGDSSessionListResponse, error) {

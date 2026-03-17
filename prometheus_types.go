@@ -1,10 +1,7 @@
 package aura
 
 import (
-	"log/slog"
 	"time"
-
-	"github.com/LackOfMorals/aura-client/internal/api"
 )
 
 // Prometheus Metrics Types
@@ -57,11 +54,4 @@ type PrometheusMetric struct {
 // PrometheusMetricsResponse contains parsed metrics from the raw endpoint
 type PrometheusMetricsResponse struct {
 	Metrics map[string][]PrometheusMetric
-}
-
-// prometheusService handles Prometheus metrics operations
-type prometheusService struct {
-	api     api.RequestService
-	timeout time.Duration
-	logger  *slog.Logger
 }

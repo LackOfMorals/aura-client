@@ -1,13 +1,7 @@
 package aura
 
-import (
-	"log/slog"
-	"time"
-
-	"github.com/LackOfMorals/aura-client/internal/api"
-)
-
 // Customer Managed Encryption Keys
+// service structs are in the service go file
 
 // GetCmeksResponse contains a list of customer managed encryption keys
 type GetCmeksResponse struct {
@@ -18,11 +12,4 @@ type GetCmeksData struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`
 	TenantID string `json:"tenant_id"`
-}
-
-// cmekService handles customer managed encryption key operations
-type cmekService struct {
-	api     api.RequestService
-	timeout time.Duration
-	logger  *slog.Logger
 }

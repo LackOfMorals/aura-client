@@ -1,11 +1,6 @@
 package aura
 
-import (
-	"log/slog"
-	"time"
-
-	"github.com/LackOfMorals/aura-client/internal/api"
-)
+// service structs are in the service go file
 
 // GetGDSSessionListResponse contains a list of GDS sessions
 type GetGDSSessionListResponse struct {
@@ -69,11 +64,4 @@ type DeleteGDSSessionResponse struct {
 
 type DeleteGDSSession struct {
 	ID string `json:"id"`
-}
-
-// gDSSessionService handles GDS Session operations
-type gDSSessionService struct {
-	api     api.RequestService
-	timeout time.Duration
-	logger  *slog.Logger
 }

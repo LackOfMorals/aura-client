@@ -1,12 +1,5 @@
 package aura
 
-import (
-	"log/slog"
-	"time"
-
-	"github.com/LackOfMorals/aura-client/internal/api"
-)
-
 // ListTenantsResponse contains a list of tenants in your organisation
 type ListTenantsResponse struct {
 	Data []TenantsResponseData `json:"data"`
@@ -44,11 +37,4 @@ type GetTenantMetricsURLResponse struct {
 
 type GetTenantMetricsURLData struct {
 	Endpoint string `json:"endpoint"`
-}
-
-// tenantService handles tenant operations
-type tenantService struct {
-	api     api.RequestService
-	timeout time.Duration
-	logger  *slog.Logger
 }

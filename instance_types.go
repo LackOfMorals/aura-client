@@ -1,12 +1,5 @@
 package aura
 
-import (
-	"log/slog"
-	"time"
-
-	"github.com/LackOfMorals/aura-client/internal/api"
-)
-
 // instance status values that we're interested in
 
 type InstanceStatus string
@@ -95,11 +88,4 @@ type overwriteInstanceRequest struct {
 
 type OverwriteInstanceResponse struct {
 	Data string `json:"data"`
-}
-
-// instanceService handles instance operations
-type instanceService struct {
-	api     api.RequestService
-	timeout time.Duration
-	logger  *slog.Logger
 }

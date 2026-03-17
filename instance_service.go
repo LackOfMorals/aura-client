@@ -7,11 +7,19 @@ import (
 	"fmt"
 	"log/slog"
 	"path"
+	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Instances
+// instanceService handles instance operations
+type instanceService struct {
+	api     api.RequestService
+	timeout time.Duration
+	logger  *slog.Logger
+}
 
 // List returns all instances accessible to the authenticated user
 func (i *instanceService) List(ctx context.Context) (*ListInstancesResponse, error) {

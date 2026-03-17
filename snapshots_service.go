@@ -6,11 +6,19 @@ import (
 	"fmt"
 	"log/slog"
 	"path"
+	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Snapshots
+// snapshotService handles snapshot operations
+type snapshotService struct {
+	api     api.RequestService
+	timeout time.Duration
+	logger  *slog.Logger
+}
 
 // List returns snapshots for an instance, optionally filtered by date (YYYY-MM-DD)
 func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {

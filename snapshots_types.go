@@ -1,12 +1,5 @@
 package aura
 
-import (
-	"log/slog"
-	"time"
-
-	"github.com/LackOfMorals/aura-client/internal/api"
-)
-
 // GetSnapshotsResponse contains a list of snapshots for an instance
 type GetSnapshotsResponse struct {
 	Data []GetSnapshotData `json:"data"`
@@ -38,11 +31,4 @@ type CreateSnapshotData struct {
 // The response is the same as for getting instance configuration details
 type RestoreSnapshotResponse struct {
 	Data InstanceData `json:"data"`
-}
-
-// snapshotService handles snapshot operations
-type snapshotService struct {
-	api     api.RequestService
-	timeout time.Duration
-	logger  *slog.Logger
 }

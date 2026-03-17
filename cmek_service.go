@@ -5,9 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
+
+// cmekService handles customer managed encryption key operations
+type cmekService struct {
+	api     api.RequestService
+	timeout time.Duration
+	logger  *slog.Logger
+}
 
 // List returns all customer-managed encryption keys, optionally filtered by tenant
 func (c *cmekService) List(ctx context.Context, tenantID string) (*GetCmeksResponse, error) {

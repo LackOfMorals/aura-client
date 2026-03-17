@@ -5,11 +5,19 @@ import (
 	"encoding/json"
 	"log/slog"
 	"path"
+	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Tenants
+// tenantService handles tenant operations
+type tenantService struct {
+	api     api.RequestService
+	timeout time.Duration
+	logger  *slog.Logger
+}
 
 // List returns all tenants accessible to the authenticated user
 func (t *tenantService) List(ctx context.Context) (*ListTenantsResponse, error) {

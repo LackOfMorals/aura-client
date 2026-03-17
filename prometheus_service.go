@@ -9,10 +9,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/LackOfMorals/aura-client/internal/api"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 )
+
+// Prometheus service
+// prometheusService handles Prometheus metrics operations
+type prometheusService struct {
+	api     api.RequestService
+	timeout time.Duration
+	logger  *slog.Logger
+}
 
 // FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint
 func (p *prometheusService) FetchRawMetrics(ctx context.Context, prometheusURL string) (*PrometheusMetricsResponse, error) {
