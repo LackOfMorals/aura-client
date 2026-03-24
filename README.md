@@ -56,7 +56,7 @@ func main() {
     }
 
     for _, instance := range instances.Data {
-        log.Printf("Instance: %s (ID: %s)\n", instance.Name, instance.Id)
+        log.Printf("Instance: %s (ID: %s)\n", instance.Name, instance.ID)
     }
 }
 ```
@@ -179,7 +179,7 @@ if err != nil {
 }
 
 for _, tenant := range tenants.Data {
-    fmt.Printf("Tenant: %s (ID: %s)\n", tenant.Name, tenant.Id)
+    fmt.Printf("Tenant: %s (ID: %s)\n", tenant.Name, tenant.ID)
 }
 ```
 
@@ -224,7 +224,7 @@ fmt.Printf("Found %d instances:\n", len(instances.Data))
 for _, instance := range instances.Data {
     fmt.Printf("  - %s (ID: %s) on %s\n",
         instance.Name,
-        instance.Id,
+        instance.ID,
         instance.CloudProvider,
     )
 }
@@ -269,7 +269,7 @@ if err != nil {
 }
 
 fmt.Printf("Instance created!\n")
-fmt.Printf("  ID: %s\n", instance.Data.Id)
+fmt.Printf("  ID: %s\n", instance.Data.ID)
 fmt.Printf("  Connection URL: %s\n", instance.Data.ConnectionURL)
 fmt.Printf("  Username: %s\n", instance.Data.Username)
 fmt.Printf("  Password: %s\n", instance.Data.Password)
@@ -336,7 +336,7 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance %s deleted\n", instance.Data.Id)
+fmt.Printf("Instance %s deleted\n", instance.Data.ID)
 ```
 
 ### Overwrite Instance from Another Instance
@@ -448,7 +448,7 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance ID: %s\nStatus: %s\n", result.Data.Id, result.Data.Status)
+fmt.Printf("Instance ID: %s\nStatus: %s\n", result.Data.ID, result.Data.Status)
 ```
 
 ---
@@ -467,7 +467,7 @@ if err != nil {
 }
 
 for _, cmek := range cmeks.Data {
-    fmt.Printf("  - %s (ID: %s) in tenant %s\n", cmek.Name, cmek.Id, cmek.TenantId)
+    fmt.Printf("  - %s (ID: %s) in tenant %s\n", cmek.Name, cmek.ID, cmek.TenantId)
 }
 ```
 
@@ -501,7 +501,7 @@ if err != nil {
 }
 
 for _, session := range sessions.Data {
-    fmt.Printf("  - %s (ID: %s)\n", session.Name, session.Id)
+    fmt.Printf("  - %s (ID: %s)\n", session.Name, session.ID)
     fmt.Printf("    Memory: %s, Status: %s\n", session.Memory, session.Status)
     fmt.Printf("    Instance: %s, Expires: %s\n", session.InstanceId, session.Expiry)
 }
@@ -663,7 +663,7 @@ if err != nil {
 
 // ⚠️ CRITICAL: Save these immediately — they are only shown once!
 credentials := map[string]string{
-    "instance_id":    instance.Data.Id,
+    "instance_id":    instance.Data.ID,
     "connection_url": instance.Data.ConnectionURL,
     "username":       instance.Data.Username,
     "password":       instance.Data.Password,
@@ -676,7 +676,7 @@ credentials := map[string]string{
 ```go
 ctx := context.Background()
 
-instanceID := newInstance.Data.Id
+instanceID := newInstance.Data.ID
 
 for range 30 {
     inst, err := client.Instances.Get(ctx, instanceID)
@@ -787,7 +787,7 @@ func main() {
     }
 
     for _, inst := range instances.Data {
-        fmt.Printf("- %s: %s (%s)\n", inst.Name, inst.Id, inst.CloudProvider)
+        fmt.Printf("- %s: %s (%s)\n", inst.Name, inst.ID, inst.CloudProvider)
     }
 
     if tenantID != "" {

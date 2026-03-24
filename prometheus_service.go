@@ -25,6 +25,12 @@ type prometheusService struct {
 
 // FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint
 func (p *prometheusService) FetchRawMetrics(ctx context.Context, prometheusURL string) (*PrometheusMetricsResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		p.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 
@@ -120,6 +126,12 @@ func (p *prometheusService) parsePrometheusMetrics(data []byte) (*PrometheusMetr
 
 // GetInstanceHealth retrieves comprehensive health metrics for an instance
 func (p *prometheusService) GetInstanceHealth(ctx context.Context, instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		p.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, p.timeout)
 	defer cancel()
 

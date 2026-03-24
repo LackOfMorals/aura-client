@@ -22,6 +22,13 @@ type instanceService struct {
 
 // List returns all instances accessible to the authenticated user
 func (i *instanceService) List(ctx context.Context) (*ListInstancesResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -45,6 +52,13 @@ func (i *instanceService) List(ctx context.Context) (*ListInstancesResponse, err
 
 // Get retrieves details for a specific instance by ID
 func (i *instanceService) Get(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -73,6 +87,13 @@ func (i *instanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 
 // Create provisions a new database instance
 func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateInstanceConfigData) (*CreateInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -116,6 +137,12 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 
 // Delete removes an instance by ID
 func (i *instanceService) Delete(ctx context.Context, instanceID string) (*DeleteInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -144,6 +171,12 @@ func (i *instanceService) Delete(ctx context.Context, instanceID string) (*Delet
 
 // Pause suspends an instance by ID
 func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -172,6 +205,12 @@ func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 
 // Resume restarts a paused instance by ID
 func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -200,6 +239,13 @@ func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 
 // Update modifies an instance's configuration
 func (i *instanceService) Update(ctx context.Context, instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -241,6 +287,12 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 
 // Overwrite replaces instance data from another instance or snapshot
 func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID string, sourceInstanceID string) (*OverwriteInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -336,6 +388,12 @@ func ValidateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) erro
 
 // Overwrite replaces instance data from a snapshot
 func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
+	// Guard against the caller passing a cancelled context
+	// Check ctx.Err() at entry and return early:
+	if err := ctx.Err(); err != nil {
+		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
+		return nil, err
+	}
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
