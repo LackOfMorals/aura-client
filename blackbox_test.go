@@ -936,7 +936,7 @@ func TestSnapshots_List_NoDateFilter(t *testing.T) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
-	result, err := newClient(t, srv).Snapshots.List(context.Background(), instanceID, "")
+	result, err := newClient(t, srv).Snapshots.List(context.Background(), instanceID, nil)
 	if err != nil {
 		t.Fatalf("Snapshots.List: %v", err)
 	}
@@ -959,7 +959,7 @@ func TestSnapshots_List_WithDateFilter(t *testing.T) {
 				"instance_id": instanceID,
 				"snapshot_id": "snap-003",
 				"status":      "Completed",
-				"timestamp":   "2024-03-01T08:00:00Z",
+				"timestamp":   "2024-01-01T08:00:00Z",
 				"exportable":  true,
 			},
 		},
@@ -971,32 +971,16 @@ func TestSnapshots_List_WithDateFilter(t *testing.T) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
-	result, err := newClient(t, srv).Snapshots.List(context.Background(), instanceID, "2024-03-01")
+	filter := aura.SnapshotDate{Year: 2024, Month: time.January, Day: 01}
+	result, err := newClient(t, srv).Snapshots.List(context.Background(), instanceID, &filter)
 	if err != nil {
 		t.Fatalf("Snapshots.List with date: %v", err)
 	}
 	if len(result.Data) != 1 {
 		t.Errorf("expected 1 snapshot, got %d", len(result.Data))
 	}
-	if !strings.Contains(gotQuery, "date=2024-03-01") {
-		t.Errorf("expected query string to contain date=2024-03-01, got '%s'", gotQuery)
-	}
-}
-
-func TestSnapshots_List_InvalidDateFormat(t *testing.T) {
-	// Validation is local — no server needed.
-	client, _ := aura.NewClient(aura.WithCredentials("id", "secret"))
-	_, err := client.Snapshots.List(context.Background(), "aaaa1234", "15-01-2024")
-	if err == nil {
-		t.Fatal("expected error for date in DD-MM-YYYY format")
-	}
-}
-
-func TestSnapshots_List_DateTooShort(t *testing.T) {
-	client, _ := aura.NewClient(aura.WithCredentials("id", "secret"))
-	_, err := client.Snapshots.List(context.Background(), "aaaa1234", "2024-01")
-	if err == nil {
-		t.Fatal("expected error for incomplete date")
+	if !strings.Contains(gotQuery, "date=2024-01-01") {
+		t.Errorf("expected query string to contain date=2024-01-01, got '%s'", gotQuery)
 	}
 }
 

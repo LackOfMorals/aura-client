@@ -38,7 +38,7 @@ type InstanceService interface {
 // SnapshotService defines operations for managing instance snapshots
 type SnapshotService interface {
 	// List returns snapshots for an instance, optionally filtered by date (YYYY-MM-DD)
-	List(ctx context.Context, instanceID string, snapshotDate string) (*GetSnapshotsResponse, error)
+	List(ctx context.Context, instanceID string, snapshotDate *SnapshotDate) (*GetSnapshotsResponse, error)
 	// Create triggers an on-demand snapshot for an instance
 	Create(ctx context.Context, instanceID string) (*CreateSnapshotResponse, error)
 	// Get returns details for a snapshot of an instance

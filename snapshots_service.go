@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
-	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Snapshots
@@ -20,7 +19,7 @@ type snapshotService struct {
 }
 
 // List returns snapshots for an instance, optionally filtered by date (YYYY-MM-DD)
-func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotDate string) (*GetSnapshotsResponse, error) {
+func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotDate *SnapshotDate) (*GetSnapshotsResponse, error) {
 	// Guard against the caller passing a cancelled context
 	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
@@ -34,17 +33,9 @@ func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotD
 
 	endpoint := "instances/" + instanceID + "/snapshots"
 
-	switch datelen := len(snapshotDate); datelen {
-	case 0:
-		// empty string, no date filter
-		break
-	case 10:
-		if err := utils.CheckDate(snapshotDate); err != nil {
-			return nil, err
-		}
-		endpoint = endpoint + "?date=" + snapshotDate
-	default:
-		return nil, fmt.Errorf("date must be in the format of YYYY-MM-DD")
+	if snapshotDate != nil {
+		endpoint += fmt.Sprintf("?date=%04d-%02d-%02d", snapshotDate.Year, int(snapshotDate.Month), snapshotDate.Day)
+		s.logger.Debug("Endpoint:", slog.String("URL", endpoint))
 	}
 
 	resp, err := s.api.Get(ctx, endpoint)

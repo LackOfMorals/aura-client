@@ -344,7 +344,7 @@ fmt.Printf("Instance %s deleted\n", instance.Data.ID)
 ```go
 ctx := context.Background()
 
-result, err := client.Instances.Overwrite(ctx, "target-instance-id", "source-instance-id", "")
+result, err := client.Instances.OverwriteFromInstance(ctx, "target-instance-id", "source-instance-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -358,7 +358,7 @@ fmt.Printf("Overwrite initiated: %s\n", result.Data)
 ```go
 ctx := context.Background()
 
-result, err := client.Instances.Overwrite(ctx, "target-instance-id", "", "snapshot-id")
+result, err := client.Instances.OverwriteFromSnapShot(ctx, "target-instance-id", "snapshot-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -371,12 +371,22 @@ fmt.Printf("Overwrite from snapshot initiated\n")
 ## Snapshot Operations
 
 ### List Snapshots
+Snapshots.List accepts an optional filter to return snapshots for a particular day.  If this is not given , nil is used instead, then snapshots for the current day are returned. 
+
+The date is of type SnapshotDate that holds the Year, Month and Day.  For example, to see snapshots for 23rd March 2026
+
+filter := aura.SnapshotDate{Year: 2026, Month: time.March, Day: 23})
+
+Then call List 
+
+snapshots, err := client.Snapshots.List(ctx, "your-instance-id", &filter )
+
 
 ```go
 ctx := context.Background()
 
 // Empty date string returns today's snapshots
-snapshots, err := client.Snapshots.List(ctx, "your-instance-id", "")
+snapshots, err := client.Snapshots.List(ctx, "your-instance-id", nil)
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -396,7 +406,7 @@ for _, snapshot := range snapshots.Data {
 ```go
 ctx := context.Background()
 
-snapshots, err := client.Snapshots.List(ctx, "your-instance-id", "2024-01-15")
+snapshots, err := client.Snapshots.List(ctx, "your-instance-id", &aura.SnapshotDate{Year: 2026, Month: time.March, Day: 23})
 if err != nil {
     log.Fatalf("Error: %v", err)
 }

@@ -49,7 +49,7 @@ func TestAllServices_ContextCancellation(t *testing.T) {
 			name: "SnapshotService.List",
 			operation: func() error {
 				service := &snapshotService{api: mock, timeout: 30 * time.Second, logger: testLogger()}
-				_, err := service.List(ctx, "aaaa1234", "")
+				_, err := service.List(ctx, "aaaa1234", nil)
 				return err
 			},
 		},
@@ -474,7 +474,7 @@ func TestMultipleServices_SameParentContext(t *testing.T) {
 
 	go func() { _, err := instanceSvc.List(parentCtx); done <- err }()
 	go func() { _, err := tenantSvc.List(parentCtx); done <- err }()
-	go func() { _, err := snapshotSvc.List(parentCtx, "aaaa1234", ""); done <- err }()
+	go func() { _, err := snapshotSvc.List(parentCtx, "aaaa1234", nil); done <- err }()
 
 	time.Sleep(100 * time.Millisecond)
 	parentCancel()

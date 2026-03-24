@@ -165,11 +165,11 @@ type mockSnapshotService struct {
 	LastMethod     string
 	LastInstanceID string
 	LastSnapshotID string
-	LastDate       string
+	LastDate       *aura.SnapshotDate
 	CallCount      int
 }
 
-func (m *mockSnapshotService) List(ctx context.Context, instanceID, date string) (*aura.GetSnapshotsResponse, error) {
+func (m *mockSnapshotService) List(ctx context.Context, instanceID string, date *aura.SnapshotDate) (*aura.GetSnapshotsResponse, error) {
 	m.LastMethod = "List"
 	m.LastInstanceID = instanceID
 	m.LastDate = date
@@ -1018,7 +1018,7 @@ func TestBlackBox_Snapshots_List_Success(t *testing.T) {
 		},
 	}
 
-	result, err := client.Snapshots.List(context.Background(), "inst-1", "")
+	result, err := client.Snapshots.List(context.Background(), "inst-1", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1034,12 +1034,13 @@ func TestBlackBox_Snapshots_List_WithDateFilter(t *testing.T) {
 	}
 	client.Snapshots = mock
 
-	_, err := client.Snapshots.List(context.Background(), "inst-1", "2024-01-01")
+	filter := aura.SnapshotDate{Year: 2024, Month: time.January, Day: 01}
+	_, err := client.Snapshots.List(context.Background(), "inst-1", &filter)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if mock.LastDate != "2024-01-01" {
-		t.Errorf("date filter not forwarded: %s", mock.LastDate)
+	if mock.LastDate != &filter {
+		t.Errorf("date filter not forwarded: %d-%s-%d", mock.LastDate.Year, mock.LastDate.Month.String(), mock.LastDate.Day)
 	}
 }
 

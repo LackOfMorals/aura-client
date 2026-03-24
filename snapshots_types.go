@@ -1,5 +1,7 @@
 package aura
 
+import "time"
+
 // GetSnapshotsResponse contains a list of snapshots for an instance
 type GetSnapshotsResponse struct {
 	Data []GetSnapshotData `json:"data"`
@@ -31,4 +33,17 @@ type CreateSnapshotData struct {
 // The response is the same as for getting instance configuration details
 type RestoreSnapshotResponse struct {
 	Data InstanceData `json:"data"`
+}
+
+// This is ( optionally ) used when listing Snaphots as a filter
+type SnapshotDate struct {
+	Year  int
+	Month time.Month
+	Day   int
+}
+
+// Return Todays date as *SnapshotDate.  Primarily for use as a filter when listing an instances snapshots
+func Today() *SnapshotDate {
+	y, m, d := time.Now().Date()
+	return &SnapshotDate{y, m, d}
 }

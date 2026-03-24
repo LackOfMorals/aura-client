@@ -45,7 +45,7 @@ func TestSnapshotService_List_Success(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.List(context.Background(), instanceID, "")
+	result, err := service.List(context.Background(), instanceID, nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -108,7 +108,9 @@ func TestSnapshotService_List_WithDate(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.List(context.Background(), instanceID, snapshotDate)
+	filter := SnapshotDate{Year: 2024, Month: time.January, Day: 15}
+
+	result, err := service.List(context.Background(), instanceID, &filter)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -118,59 +120,6 @@ func TestSnapshotService_List_WithDate(t *testing.T) {
 	}
 	if len(result.Data) != 1 {
 		t.Errorf("expected 1 snapshot, got %d", len(result.Data))
-	}
-}
-
-// TestSnapshotService_List_InvalidDateFormat verifies date format validation
-func TestSnapshotService_List_InvalidDateFormat(t *testing.T) {
-	tests := []struct {
-		name string
-		date string
-	}{
-		{"wrong separator", "2024/01/15"},
-		{"too short", "2024-01"},
-		{"too long", "2024-01-15-extra"},
-		{"random string", "not-a-date"},
-	}
-
-	mock := &mockAPIService{}
-	service := createTestSnapshotService(mock)
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.List(context.Background(), "aaaa1234", tt.date)
-			if err == nil {
-				t.Errorf("expected error for invalid date format '%s'", tt.date)
-			}
-		})
-	}
-}
-
-// TestSnapshotService_List_ValidDateFormats verifies valid date formats
-func TestSnapshotService_List_ValidDateFormats(t *testing.T) {
-	tests := []struct {
-		name string
-		date string
-	}{
-		{"valid date", "2024-01-15"},
-		{"leap year", "2024-02-29"},
-		{"end of year", "2024-12-31"},
-		{"start of year", "2024-01-01"},
-	}
-
-	responseBody, _ := json.Marshal(GetSnapshotsResponse{Data: []GetSnapshotData{}})
-	mock := &mockAPIService{
-		response: &api.Response{StatusCode: 200, Body: responseBody},
-	}
-	service := createTestSnapshotService(mock)
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := service.List(context.Background(), "aaaa1234", tt.date)
-			if err != nil {
-				t.Errorf("expected no error for valid date '%s', got %v", tt.date, err)
-			}
-		})
 	}
 }
 
@@ -262,7 +211,7 @@ func TestSnapshotService_List_EmptyResult(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	result, err := service.List(context.Background(), "aaaa1234", "")
+	result, err := service.List(context.Background(), "aaaa1234", nil)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -279,7 +228,7 @@ func TestSnapshotService_AuthenticationError(t *testing.T) {
 	}
 
 	service := createTestSnapshotService(mock)
-	_, err := service.List(context.Background(), "aaaa1234", "")
+	_, err := service.List(context.Background(), "aaaa1234", nil)
 
 	if err == nil {
 		t.Fatal("expected authentication error")
