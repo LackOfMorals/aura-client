@@ -1,14 +1,24 @@
 package aura
 
-// instance status values that we're interested in
-
+// instance status values as defined in the Aura API specification
 type InstanceStatus string
 
 const (
-	StatusRunning   InstanceStatus = "running"
-	StatusStopped   InstanceStatus = "stopped"
-	StatusPaused    InstanceStatus = "paused"
-	StatusAvailable InstanceStatus = "available"
+	StatusRunning       InstanceStatus = "running"
+	StatusStopped       InstanceStatus = "paused"
+	StatusPaused        InstanceStatus = "paused"
+	StatusAvailable     InstanceStatus = "available"
+	StatusCreating      InstanceStatus = "creating"
+	StatusDestroying    InstanceStatus = "destroying"
+	StatusPausing       InstanceStatus = "pausing"
+	StatusSuspending    InstanceStatus = "suspending"
+	StatusSuspended     InstanceStatus = "suspended"
+	StatusResuming      InstanceStatus = "resuming"
+	StatusLoading       InstanceStatus = "loading"
+	StatusLoadingFailed InstanceStatus = "loading failed"
+	StatusRestroying    InstanceStatus = "restoring"
+	StatusUpdating      InstanceStatus = "updating"
+	StatusOverwriting   InstanceStatus = "overwriting"
 )
 
 // ListInstancesResponse contains a list of instances in a tenant

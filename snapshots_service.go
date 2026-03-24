@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
+	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
 // Snapshots
@@ -31,11 +32,16 @@ func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotD
 
 	s.logger.DebugContext(ctx, "listing snapshots", slog.String("instanceID", instanceID))
 
-	endpoint := "instances/" + instanceID + "/snapshots"
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		s.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	endpoint := fmt.Sprintf("instances/%s/snapshots", instanceID)
 
 	if snapshotDate != nil {
 		endpoint += fmt.Sprintf("?date=%04d-%02d-%02d", snapshotDate.Year, int(snapshotDate.Month), snapshotDate.Day)
-		s.logger.Debug("Endpoint:", slog.String("URL", endpoint))
+		s.logger.DebugContext(ctx, "Endpoint:", slog.String("URL", endpoint))
 	}
 
 	resp, err := s.api.Get(ctx, endpoint)
@@ -65,9 +71,19 @@ func (s *snapshotService) Get(ctx context.Context, instanceID string, snapshotID
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		s.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	if err := utils.ValidateSnapshotID(snapshotID); err != nil {
+		s.logger.ErrorContext(ctx, "invalid snapshot Id ", slog.String("error", err.Error()))
+		return nil, err
+	}
+
 	s.logger.DebugContext(ctx, "get snapshot details", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Get(ctx, fmt.Sprintf("instances/%s/snapshots", snapshotID))
+	resp, err := s.api.Get(ctx, fmt.Sprintf("instances/%s/snapshots/%s", instanceID, snapshotID))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to get snapshot", slog.String("error", err.Error()))
 		return nil, err
@@ -93,6 +109,11 @@ func (s *snapshotService) Create(ctx context.Context, instanceID string) (*Creat
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
+
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		s.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		return nil, err
+	}
 
 	s.logger.DebugContext(ctx, "creating snapshot", slog.String("instanceID", instanceID))
 
@@ -122,6 +143,16 @@ func (s *snapshotService) Restore(ctx context.Context, instanceID string, snapsh
 	}
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
+
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		s.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	if err := utils.ValidateSnapshotID(snapshotID); err != nil {
+		s.logger.ErrorContext(ctx, "invalid snapshot Id ", slog.String("error", err.Error()))
+		return nil, err
+	}
 
 	s.logger.DebugContext(ctx, "restore instance with a snapshot", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 

@@ -105,7 +105,7 @@ func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*Respo
 // timeout is applied here.
 func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*Response, error) {
 	if err := ctx.Err(); err != nil {
-		s.logger.ErrorContext(ctx, "context already cancelled before request", slog.String("error", err.Error()))
+		s.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
 	}
 

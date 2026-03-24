@@ -53,15 +53,30 @@ func CheckDate(t string) error {
 
 // Regex expression for a valid tenant Id
 // Doing it here ensures it is compiled once to improve performance
-var uuidTenantIdRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+var uuidTenantIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // ValidateTenantID checks if the tenant ID is valid and returns an error if not
 func ValidateTenantID(tenantID string) error {
 	if tenantID == "" {
 		return fmt.Errorf("tenant ID must not be empty")
 	}
-	if !uuidTenantIdRegex.MatchString(tenantID) {
+	if !uuidTenantIDRegex.MatchString(tenantID) {
 		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
+	}
+	return nil
+}
+
+// Regex expression for a valid snapshot Id
+// Doing it here ensures it is compiled once to improve performance
+var uuidSnapshotIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+// ValidateSnapshotID checks if the tenant ID is valid and returns an error if not
+func ValidateSnapshotID(snapshotID string) error {
+	if snapshotID == "" {
+		return fmt.Errorf("snapshot ID must not be empty")
+	}
+	if !uuidSnapshotIDRegex.MatchString(snapshotID) {
+		return fmt.Errorf("Snapshot ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
 	}
 	return nil
 }

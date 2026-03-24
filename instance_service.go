@@ -105,7 +105,7 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	}
 
 	// Check configuration has min number of parameters set
-	err := ValidateCreateInstanceConfig(instanceRequest)
+	err := validateCreateInstanceConfig(instanceRequest)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to validate instance configuration", slog.String("error", err.Error()))
 		return nil, err
@@ -285,7 +285,7 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 	return &result, nil
 }
 
-// Overwrite replaces instance data from another instance or snapshot
+// Overwrite replaces instance data from another instance
 func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID string, sourceInstanceID string) (*OverwriteInstanceResponse, error) {
 	// Guard against the caller passing a cancelled context
 	// Check ctx.Err() at entry and return early:
@@ -303,14 +303,14 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 		return nil, err
 	}
 
+	if sourceInstanceID == "" {
+		return nil, fmt.Errorf("must provide sourceInstanceID")
+	}
+
 	if sourceInstanceID != "" {
 		if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
 			return nil, fmt.Errorf("invalid source instance ID: %w", err)
 		}
-	}
-
-	if sourceInstanceID == "" {
-		return nil, fmt.Errorf("must provide either sourceInstanceID")
 	}
 
 	requestBody := overwriteInstanceRequest{
@@ -341,7 +341,7 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 
 // ValidateCreateInstanceConfig performs basic checks that the min number
 // configuration options have been supplied when creating an instance
-func ValidateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) error {
+func validateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) error {
 
 	// Region name cannot be empty
 	if instanceConfig.Region == "" {
@@ -355,7 +355,7 @@ func ValidateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) erro
 
 	// Type cannot be empty
 	if instanceConfig.Type == "" {
-		return fmt.Errorf("instannce type must not be empty")
+		return fmt.Errorf("instance type must not be empty")
 	}
 
 	// Cloud provider cannot be empty
