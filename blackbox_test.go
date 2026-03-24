@@ -704,7 +704,7 @@ func TestInstances_Overwrite_WithSourceInstance(t *testing.T) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
-	result, err := newClient(t, srv).Instances.Overwrite(context.Background(), instanceID, sourceID, "")
+	result, err := newClient(t, srv).Instances.OverwriteFromInstance(context.Background(), instanceID, sourceID)
 	if err != nil {
 		t.Fatalf("Instances.Overwrite: %v", err)
 	}
@@ -730,7 +730,7 @@ func TestInstances_Overwrite_WithSourceSnapshot(t *testing.T) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
-	result, err := newClient(t, srv).Instances.Overwrite(context.Background(), instanceID, "", snapshotID)
+	result, err := newClient(t, srv).Instances.OverwriteFromSnapshot(context.Background(), instanceID, snapshotID)
 	if err != nil {
 		t.Fatalf("Instances.Overwrite with snapshot: %v", err)
 	}
@@ -742,18 +742,9 @@ func TestInstances_Overwrite_WithSourceSnapshot(t *testing.T) {
 	}
 }
 
-func TestInstances_Overwrite_BothSources_Error(t *testing.T) {
-	// Validation is local — no server needed.
-	client, _ := aura.NewClient(aura.WithCredentials("id", "secret"))
-	_, err := client.Instances.Overwrite(context.Background(), "aaaa1234", "bbbb5678", "snap-001")
-	if err == nil {
-		t.Fatal("expected error when both sourceInstanceID and sourceSnapshotID are provided")
-	}
-}
-
 func TestInstances_Overwrite_NoSource_Error(t *testing.T) {
 	client, _ := aura.NewClient(aura.WithCredentials("id", "secret"))
-	_, err := client.Instances.Overwrite(context.Background(), "aaaa1234", "", "")
+	_, err := client.Instances.OverwriteFromInstance(context.Background(), "aaaa1234", "")
 	if err == nil {
 		t.Fatal("expected error when neither source is provided")
 	}
@@ -761,7 +752,7 @@ func TestInstances_Overwrite_NoSource_Error(t *testing.T) {
 
 func TestInstances_Overwrite_InvalidInstanceID(t *testing.T) {
 	client, _ := aura.NewClient(aura.WithCredentials("id", "secret"))
-	_, err := client.Instances.Overwrite(context.Background(), "bad", "bbbb5678", "")
+	_, err := client.Instances.OverwriteFromInstance(context.Background(), "bad", "bbbb5678")
 	if err == nil {
 		t.Fatal("expected validation error for invalid instance ID")
 	}

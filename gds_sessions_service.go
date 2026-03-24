@@ -3,8 +3,8 @@ package aura
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
-	"path"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
@@ -49,7 +49,7 @@ func (g *gDSSessionService) Get(ctx context.Context, gdsSessionID string) (*GetG
 
 	g.logger.DebugContext(ctx, "getting GDS session", slog.String("sessionID", gdsSessionID))
 
-	resp, err := g.api.Get(ctx, path.Join("graph-analytics", "sessions", gdsSessionID))
+	resp, err := g.api.Get(ctx, fmt.Sprintf("graph-analytics/sessions/%s", gdsSessionID))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to get GDS session", slog.String("error", err.Error()))
 		return nil, err
@@ -78,7 +78,7 @@ func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest 
 		return nil, err
 	}
 
-	resp, err := g.api.Post(ctx, path.Join("graph-analytics", "sessions"), string(body))
+	resp, err := g.api.Post(ctx, "graph-analytics/sessions", string(body))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to create GDS session", slog.String("error", err.Error()))
 		return nil, err
@@ -107,7 +107,7 @@ func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimate
 		return nil, err
 	}
 
-	resp, err := g.api.Post(ctx, path.Join("graph-analytics", "sessions", "sizing"), string(body))
+	resp, err := g.api.Post(ctx, "graph-analytics/sessions/sizing", string(body))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to estimate GDS session", slog.String("error", err.Error()))
 		return nil, err
@@ -130,7 +130,7 @@ func (g *gDSSessionService) Delete(ctx context.Context, gdsSessionID string) (*D
 
 	g.logger.DebugContext(ctx, "deleting a GDS session", slog.String("sessionID", gdsSessionID))
 
-	resp, err := g.api.Delete(ctx, path.Join("graph-analytics", "sessions", gdsSessionID))
+	resp, err := g.api.Delete(ctx, fmt.Sprintf("graph-analytics/sessions/%s", gdsSessionID))
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to delete a GDS session", slog.String("error", err.Error()))
 		return nil, err

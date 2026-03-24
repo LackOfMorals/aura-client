@@ -30,7 +30,7 @@ type CreateInstanceConfigData struct {
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
 	Type          string `json:"type"`
-	Version       string `json:"version"`
+	Version       string `json:"version,omitempty"`
 	Memory        string `json:"memory"`
 }
 
@@ -51,8 +51,8 @@ type CreateInstanceData struct {
 }
 
 type UpdateInstanceData struct {
-	Name   string `json:"name"`
-	Memory string `json:"memory"`
+	Name   string `json:"name,omitempty"`
+	Memory string `json:"memory,omitempty"`
 }
 
 type GetInstanceResponse struct {

@@ -101,10 +101,17 @@ func (m *mockInstanceService) Update(ctx context.Context, id string, req *aura.U
 	m.CallCount++
 	return m.UpdateResp, m.UpdateErr
 }
-func (m *mockInstanceService) Overwrite(ctx context.Context, id, srcInst, srcSnap string) (*aura.OverwriteInstanceResponse, error) {
+func (m *mockInstanceService) OverwriteFromInstance(ctx context.Context, id, srcInst string) (*aura.OverwriteInstanceResponse, error) {
 	m.LastMethod = "Overwrite"
 	m.LastInstanceID = id
 	m.LastSourceInstanceID = srcInst
+	m.CallCount++
+	return m.OverwriteResp, m.OverwriteErr
+}
+
+func (m *mockInstanceService) OverwriteFromSnapshot(ctx context.Context, id, srcSnap string) (*aura.OverwriteInstanceResponse, error) {
+	m.LastMethod = "Overwrite"
+	m.LastInstanceID = id
 	m.LastSourceSnapshotID = srcSnap
 	m.CallCount++
 	return m.OverwriteResp, m.OverwriteErr
@@ -902,7 +909,7 @@ func TestBlackBox_Instances_Overwrite_WithSourceInstance(t *testing.T) {
 	}
 	client.Instances = mock
 
-	result, err := client.Instances.Overwrite(context.Background(), "ddeeff00", "aabbccdd", "")
+	result, err := client.Instances.OverwriteFromInstance(context.Background(), "ddeeff00", "aabbccdd")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -924,7 +931,7 @@ func TestBlackBox_Instances_Overwrite_WithSnapshot(t *testing.T) {
 	}
 	client.Instances = mock
 
-	_, err := client.Instances.Overwrite(context.Background(), "ddeeff00", "", "snap-abc")
+	_, err := client.Instances.OverwriteFromSnapshot(context.Background(), "ddeeff00", "snap-abc")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1556,7 +1563,14 @@ func (m *mockCancelAwareInstanceService) Update(ctx context.Context, _ string, _
 	}
 	return &aura.GetInstanceResponse{}, nil
 }
-func (m *mockCancelAwareInstanceService) Overwrite(ctx context.Context, _, _, _ string) (*aura.OverwriteInstanceResponse, error) {
+func (m *mockCancelAwareInstanceService) OverwriteFromInstance(ctx context.Context, _, _ string) (*aura.OverwriteInstanceResponse, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	return &aura.OverwriteInstanceResponse{}, nil
+}
+
+func (m *mockCancelAwareInstanceService) OverwriteFromSnapshot(ctx context.Context, _, _ string) (*aura.OverwriteInstanceResponse, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

@@ -312,7 +312,7 @@ func TestInstanceService_Overwrite_Success(t *testing.T) {
 	}
 
 	service := createTestInstanceService(mock)
-	result, err := service.Overwrite(context.Background(), instanceID, sourceInstanceID, "")
+	result, err := service.OverwriteFromInstance(context.Background(), instanceID, sourceInstanceID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -344,7 +344,7 @@ func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 	}
 
 	service := createTestInstanceService(mock)
-	result, err := service.Overwrite(context.Background(), instanceID, "", snapshotID)
+	result, err := service.OverwriteFromSnapshot(context.Background(), instanceID, snapshotID)
 
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
@@ -361,7 +361,7 @@ func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 }
 
 // TestInstanceService_Overwrite_Validation verifies overwrite validation
-func TestInstanceService_Overwrite_Validation(t *testing.T) {
+func TestInstanceService_OverwriteFromInstance_Validation(t *testing.T) {
 	tests := []struct {
 		name             string
 		instanceID       string
@@ -401,7 +401,63 @@ func TestInstanceService_Overwrite_Validation(t *testing.T) {
 			}
 			service := createTestInstanceService(mock)
 
-			_, err := service.Overwrite(context.Background(), tt.instanceID, tt.sourceInstanceID, tt.sourceSnapshotID)
+			_, err := service.OverwriteFromInstance(context.Background(), tt.instanceID, tt.sourceInstanceID)
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error but got none")
+				} else if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("error should contain '%s', got '%s'", tt.errorContains, err.Error())
+				}
+			} else if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+// TestInstanceService_Overwrite_Validation verifies overwrite validation
+func TestInstanceService_OverwriteFromSnapshot_Validation(t *testing.T) {
+	tests := []struct {
+		name             string
+		instanceID       string
+		sourceInstanceID string
+		sourceSnapshotID string
+		expectError      bool
+		errorContains    string
+	}{
+		{
+			name: "both sources empty", instanceID: "aaaa1234",
+			expectError: true, errorContains: "must provide either",
+		},
+		{
+			name: "both sources provided", instanceID: "aaaa1234",
+			sourceInstanceID: "bbbb5678", sourceSnapshotID: "snapshot-123",
+			expectError: true, errorContains: "cannot provide both",
+		},
+		{
+			name: "only source instance", instanceID: "aaaa1234",
+			sourceInstanceID: "bbbb5678", expectError: false,
+		},
+		{
+			name: "only source snapshot", instanceID: "aaaa1234",
+			sourceSnapshotID: "snapshot-123", expectError: false,
+		},
+		{
+			name: "invalid source instance ID", instanceID: "aaaa1234",
+			sourceInstanceID: "invalid", expectError: true, errorContains: "invalid source instance ID",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			responseBody, _ := json.Marshal(OverwriteInstanceResponse{Data: "job-123"})
+			mock := &mockAPIService{
+				response: &api.Response{StatusCode: 200, Body: responseBody},
+			}
+			service := createTestInstanceService(mock)
+
+			_, err := service.OverwriteFromSnapshot(context.Background(), tt.instanceID, tt.sourceSnapshotID)
 
 			if tt.expectError {
 				if err == nil {
@@ -643,7 +699,7 @@ func TestInstanceService_Overwrite_CancellationDuringValidation(t *testing.T) {
 	}
 
 	service := createTestInstanceService(mock)
-	_, err := service.Overwrite(ctx, "aaaa1234", "bbbb5678", "")
+	_, err := service.OverwriteFromInstance(ctx, "aaaa1234", "bbbb5678")
 
 	if err == nil {
 		t.Fatal("expected context error")

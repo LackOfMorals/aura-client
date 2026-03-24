@@ -30,7 +30,9 @@ type InstanceService interface {
 	// Update modifies an instance's configuration
 	Update(ctx context.Context, instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error)
 	// Overwrite replaces instance data from another instance or snapshot
-	Overwrite(ctx context.Context, instanceID string, sourceInstanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error)
+	OverwriteFromInstance(ctx context.Context, instanceID string, sourceInstanceID string) (*OverwriteInstanceResponse, error)
+	// Overwrite replaces instance data from another instance or snapshot
+	OverwriteFromSnapshot(ctx context.Context, instanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error)
 }
 
 // SnapshotService defines operations for managing instance snapshots

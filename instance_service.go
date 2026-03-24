@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"path"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
@@ -155,8 +154,7 @@ func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 		return nil, err
 	}
 
-	//path.Join returns the endpoint path complete with /
-	resp, err := i.api.Post(ctx, path.Join("instances", instanceID, "pause"), "")
+	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/pause", instanceID), "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to pause instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -184,7 +182,7 @@ func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 		return nil, err
 	}
 
-	resp, err := i.api.Post(ctx, path.Join("instances", instanceID, "resume"), "")
+	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/resume", instanceID), "")
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to resume instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -225,7 +223,7 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 		return nil, err
 	}
 
-	resp, err := i.api.Patch(ctx, path.Join("instances", instanceID), string(body))
+	resp, err := i.api.Patch(ctx, fmt.Sprintf("instances/%s", instanceID), string(body))
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to update instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
@@ -242,7 +240,7 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 }
 
 // Overwrite replaces instance data from another instance or snapshot
-func (i *instanceService) Overwrite(ctx context.Context, instanceID string, sourceInstanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
+func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID string, sourceInstanceID string) (*OverwriteInstanceResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
@@ -259,17 +257,12 @@ func (i *instanceService) Overwrite(ctx context.Context, instanceID string, sour
 		}
 	}
 
-	if sourceInstanceID == "" && sourceSnapshotID == "" {
-		return nil, fmt.Errorf("must provide either sourceInstanceID or sourceSnapshotID")
-	}
-
-	if sourceInstanceID != "" && sourceSnapshotID != "" {
-		return nil, fmt.Errorf("cannot provide both sourceInstanceID and sourceSnapshotID")
+	if sourceInstanceID == "" {
+		return nil, fmt.Errorf("must provide either sourceInstanceID")
 	}
 
 	requestBody := overwriteInstanceRequest{
 		SourceInstanceID: sourceInstanceID,
-		SourceSnapshotID: sourceSnapshotID,
 	}
 
 	body, err := utils.Marshal(requestBody)
@@ -278,9 +271,9 @@ func (i *instanceService) Overwrite(ctx context.Context, instanceID string, sour
 		return nil, err
 	}
 
-	resp, err := i.api.Post(ctx, path.Join("instances", instanceID, "overwrite"), string(body))
+	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/overwrite", instanceID), string(body))
 	if err != nil {
-		i.logger.ErrorContext(ctx, "failed to overwrite instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "failed to overwrite instance from another instance ", slog.String("instanceID", instanceID), slog.String("sourceInstanceID", sourceInstanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -300,31 +293,31 @@ func ValidateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) erro
 
 	// Region name cannot be empty
 	if instanceConfig.Region == "" {
-		return fmt.Errorf("Region must not be empty")
+		return fmt.Errorf("region must not be empty")
 	}
 
 	// Memroy cannot be empty
 	if instanceConfig.Memory == "" {
-		return fmt.Errorf("Memory must not be empty")
+		return fmt.Errorf("memory must not be empty")
 	}
 
 	// Type cannot be empty
 	if instanceConfig.Type == "" {
-		return fmt.Errorf("Instannce type must not be empty")
+		return fmt.Errorf("instannce type must not be empty")
 	}
 
 	// Cloud provider cannot be empty
 	if instanceConfig.CloudProvider == "" {
-		return fmt.Errorf("Cloud provider must not be empty")
+		return fmt.Errorf("cloud provider must not be empty")
 	}
 
 	// Instance name cannot be empty or greater than 30 characters
 	if instanceConfig.Name == "" {
-		return fmt.Errorf("Instance name must not be empty")
+		return fmt.Errorf("instance name must not be empty")
 	}
 
 	if len(instanceConfig.Name) > 30 {
-		return fmt.Errorf("Instance name must be less than 30 characters long")
+		return fmt.Errorf("instance name must be less than 30 characters long")
 
 	}
 	// TenantID cannot be empty
@@ -339,4 +332,46 @@ func ValidateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) erro
 	}
 
 	return nil
+}
+
+// Overwrite replaces instance data from a snapshot
+func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, i.timeout)
+	defer cancel()
+
+	i.logger.DebugContext(ctx, "overwriting instance", slog.String("instanceID", instanceID))
+
+	if err := utils.ValidateInstanceID(instanceID); err != nil {
+		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	if sourceSnapshotID == "" {
+		return nil, fmt.Errorf("must provide sourceSnapshotID")
+	}
+
+	requestBody := overwriteInstanceRequest{
+		SourceSnapshotID: sourceSnapshotID,
+	}
+
+	body, err := utils.Marshal(requestBody)
+	if err != nil {
+		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/overwrite", instanceID), string(body))
+	if err != nil {
+		i.logger.ErrorContext(ctx, "failed to overwrite instance with a snapshot", slog.String("instanceID", instanceID), slog.String("snapshotID", sourceSnapshotID), slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	var result OverwriteInstanceResponse
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		i.logger.ErrorContext(ctx, "failed to unmarshal overwrite instance response", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	i.logger.InfoContext(ctx, "instance overwrite started", slog.String("instanceID", instanceID))
+	return &result, nil
 }

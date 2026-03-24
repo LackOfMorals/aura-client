@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"path"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
@@ -65,7 +64,7 @@ func (s *snapshotService) Get(ctx context.Context, instanceID string, snapshotID
 
 	s.logger.DebugContext(ctx, "get snapshot details", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Get(ctx, path.Join("instances", instanceID, "snapshots", snapshotID))
+	resp, err := s.api.Get(ctx, fmt.Sprintf("instances/%s/snapshots", snapshotID))
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to get snapshot", slog.String("error", err.Error()))
 		return nil, err
@@ -88,7 +87,7 @@ func (s *snapshotService) Create(ctx context.Context, instanceID string) (*Creat
 
 	s.logger.DebugContext(ctx, "creating snapshot", slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Post(ctx, path.Join("instances", instanceID, "snapshots"), "")
+	resp, err := s.api.Post(ctx, fmt.Sprintf("instances/%s/snapshots", instanceID), "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to create snapshot", slog.String("error", err.Error()))
 		return nil, err
@@ -111,7 +110,7 @@ func (s *snapshotService) Restore(ctx context.Context, instanceID string, snapsh
 
 	s.logger.DebugContext(ctx, "restore instance with a snapshot", slog.String("snapshotID", snapshotID), slog.String("instanceID", instanceID))
 
-	resp, err := s.api.Post(ctx, path.Join("instances/", instanceID, "snapshots", snapshotID, "restore"), "")
+	resp, err := s.api.Post(ctx, fmt.Sprintf("instances/%s/snapshots/%s/restore", instanceID, snapshotID), "")
 	if err != nil {
 		s.logger.ErrorContext(ctx, "failed to restore using snapshot", slog.String("error", err.Error()))
 		return nil, err
