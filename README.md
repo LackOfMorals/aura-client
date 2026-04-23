@@ -20,6 +20,7 @@ Client Id and Secret are required and these can be obtained from the [Neo4j Aura
 - [Prometheus Metrics Operations](#prometheus-metrics-operations)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
+- [CI & Releases](#ci--releases)
 
 ---
 
@@ -831,6 +832,77 @@ go run main.go
 - [GitHub Repository](https://github.com/LackOfMorals/aura-client)
 - [Report Issues](https://github.com/LackOfMorals/aura-client/issues)
 - [Prometheus Metrics Guide](./docs/prometheus.md)
+
+---
+
+## CI & Releases
+
+Three GitHub Actions workflows manage CI and the release process.
+
+### Workflows
+
+| Workflow | Trigger | What it does |
+|---|---|---|
+| **CI** | Push to `main`, every PR | Runs tests with the race detector, golangci-lint, and `go build ./...` |
+| **Changelog check** | Every PR | Fails if the PR changes `.go` files but has no entry in `.changes/unreleased/` |
+| **Release** | Push of a `vX.Y.Z` tag | Gates on tests, verifies the tag matches `AuraAPIClientVersion`, extracts the changelog section, creates a GitHub Release |
+
+### Making a release
+
+Releases follow a four-step process. changie collects the unreleased fragment files and determines the correct semver bump automatically from the change kinds (`Added` → minor, `Fixed`/`Security` → patch, `Changed`/`Removed` → major).
+
+**1. Batch and merge the changelog**
+
+```bash
+changie batch   # collects .changes/unreleased/*.yaml → .changes/vX.Y.Z.md
+changie merge   # folds that file into CHANGELOG.md
+```
+
+**2. Bump the version constant**
+
+Edit `client_types.go` and update `AuraAPIClientVersion` to match the version changie just created:
+
+```go
+const AuraAPIClientVersion = "v1.9.0"  // ← update this
+```
+
+> The release workflow verifies that the pushed tag and this constant are identical.
+> If they differ the workflow fails before creating any GitHub Release.
+
+**3. Commit and tag**
+
+```bash
+git add CHANGELOG.md .changes/ client_types.go
+git commit -m "chore: release v1.9.0"
+git tag v1.9.0
+git push origin main --tags
+```
+
+**4. Workflow takes over**
+
+Pushing the tag fires the Release workflow, which:
+- Runs `go test -race ./...` — the release is aborted if any test fails
+- Verifies the tag matches `AuraAPIClientVersion` in code
+- Extracts the `## v1.9.0` section from `CHANGELOG.md`
+- Creates a GitHub Release with that text as the release notes
+
+Because this is a Go module with no compiled binaries, the tag itself is what consumers reference:
+
+```bash
+go get github.com/LackOfMorals/aura-client@v1.9.0
+```
+
+### Adding a changelog entry
+
+Every PR that changes Go source files needs a changie fragment. Run:
+
+```bash
+changie new
+```
+
+Choose a kind and write a one-line summary, then commit the generated `.yaml` file alongside your code changes. The Changelog check workflow will fail the PR if this step is skipped.
+
+To bypass the check for a PR that genuinely needs no entry (docs-only, CI-only, or test-only changes), add the **`no-changelog`** label to the PR.
 
 ---
 
