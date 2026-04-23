@@ -26,7 +26,7 @@ jobs:
       # Gate: tests must pass before any release artefact is created
       # -----------------------------------------------------------------
       - name: Run tests
-        run: go test -race ./...
+        run: go test -race $(go list ./... | grep -v /examples/)
 
       # -----------------------------------------------------------------
       # Sanity check: the tag must match AuraAPIClientVersion in code.

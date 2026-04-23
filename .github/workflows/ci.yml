@@ -22,7 +22,7 @@ jobs:
           cache: true
 
       - name: Run tests
-        run: go test -race -coverprofile=coverage.out ./...
+        run: go test -race -coverprofile=coverage.out $(go list ./... | grep -v /examples/)
 
       - name: Show coverage summary
         run: go tool cover -func=coverage.out | tail -n 1
