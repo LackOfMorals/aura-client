@@ -7,6 +7,7 @@ type InstanceStatus string
 
 const (
 	StatusRunning       InstanceStatus = "running"
+	StatusStopped       InstanceStatus = "stopped"
 	StatusPaused        InstanceStatus = "paused"
 	StatusAvailable     InstanceStatus = "available"
 	StatusCreating      InstanceStatus = "creating"
