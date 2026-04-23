@@ -21,9 +21,8 @@ type gDSSessionService struct {
 
 // List returns all GDS sessions accessible to the authenticated user
 func (g *gDSSessionService) List(ctx context.Context) (*GetGDSSessionListResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
+		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
@@ -49,13 +48,16 @@ func (g *gDSSessionService) List(ctx context.Context) (*GetGDSSessionListRespons
 
 // Get returns information on a single GDS session
 func (g *gDSSessionService) Get(ctx context.Context, gdsSessionID string) (*GetGDSSessionResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
+		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
+
+	if gdsSessionID == "" {
+		return nil, fmt.Errorf("GDS session ID must not be empty")
+	}
 
 	g.logger.DebugContext(ctx, "getting GDS session", slog.String("sessionID", gdsSessionID))
 
@@ -71,20 +73,22 @@ func (g *gDSSessionService) Get(ctx context.Context, gdsSessionID string) (*GetG
 		return nil, err
 	}
 
-	g.logger.DebugContext(ctx, "GDS session obtained successfully", slog.Int("count", len(result.Data)))
+	g.logger.DebugContext(ctx, "GDS session obtained successfully")
 	return &result, nil
 }
 
 // Create creates a new GDS session
 func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest *CreateGDSSessionConfigData) (*GetGDSSessionResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
+
+	if gdsSessionConfigRequest == nil {
+		return nil, fmt.Errorf("gdsSessionConfigRequest must not be nil")
+	}
 
 	g.logger.DebugContext(ctx, "creating GDS session")
 
@@ -112,14 +116,16 @@ func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest 
 
 // Estimate estimates the size of a new GDS session
 func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimateRequest *GetGDSSessionSizeEstimation) (*GDSSessionSizeEstimationResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
+
+	if gdsSessionSizeEstimateRequest == nil {
+		return nil, fmt.Errorf("gdsSessionSizeEstimateRequest must not be nil")
+	}
 
 	g.logger.DebugContext(ctx, "estimating GDS session")
 
@@ -147,15 +153,16 @@ func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimate
 
 // Delete deletes a GDS session
 func (g *gDSSessionService) Delete(ctx context.Context, gdsSessionID string) (*DeleteGDSSessionResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
 	}
-
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
+
+	if gdsSessionID == "" {
+		return nil, fmt.Errorf("GDS session ID must not be empty")
+	}
 
 	g.logger.DebugContext(ctx, "deleting a GDS session", slog.String("sessionID", gdsSessionID))
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"strings"
 	"time"
 
@@ -23,10 +22,8 @@ type prometheusService struct {
 	logger  *slog.Logger
 }
 
-// FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint
+// FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint.
 func (p *prometheusService) FetchRawMetrics(ctx context.Context, prometheusURL string) (*PrometheusMetricsResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		p.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -35,7 +32,15 @@ func (p *prometheusService) FetchRawMetrics(ctx context.Context, prometheusURL s
 	defer cancel()
 
 	p.logger.DebugContext(ctx, "fetching raw Prometheus metrics", slog.String("url", prometheusURL))
+	return p.doFetchRawMetrics(ctx, prometheusURL)
+}
 
+// doFetchRawMetrics performs the HTTP fetch and metric parse. It assumes the
+// caller has already applied an appropriate context deadline — no additional
+// timeout is set here. This separation ensures that composed callers such as
+// GetInstanceHealth apply the deadline exactly once rather than stacking two
+// independent timeouts that would shorten the effective budget unexpectedly.
+func (p *prometheusService) doFetchRawMetrics(ctx context.Context, prometheusURL string) (*PrometheusMetricsResponse, error) {
 	if prometheusURL == "" {
 		return nil, fmt.Errorf("prometheus URL cannot be empty")
 	}
@@ -46,12 +51,6 @@ func (p *prometheusService) FetchRawMetrics(ctx context.Context, prometheusURL s
 		return nil, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		p.logger.ErrorContext(ctx, "metrics endpoint returned non-200 status",
-			slog.Int("statusCode", resp.StatusCode))
-		return nil, fmt.Errorf("metrics endpoint failed with status %d", resp.StatusCode)
-	}
-
 	metrics, err := p.parsePrometheusMetrics(resp.Body)
 	if err != nil {
 		p.logger.ErrorContext(ctx, "failed to parse metrics", slog.String("error", err.Error()))
@@ -60,7 +59,6 @@ func (p *prometheusService) FetchRawMetrics(ctx context.Context, prometheusURL s
 
 	p.logger.DebugContext(ctx, "raw metrics fetched successfully",
 		slog.Int("metricCount", len(metrics.Metrics)))
-
 	return metrics, nil
 }
 
@@ -145,9 +143,11 @@ func (p *prometheusService) GetInstanceHealth(ctx context.Context, instanceID st
 		return nil, fmt.Errorf("prometheus URL cannot be empty")
 	}
 
-	// FetchRawMetrics will create its own child timeout from ctx, which is fine —
-	// the outer timeout here acts as a ceiling for the entire GetInstanceHealth call.
-	rawMetrics, err := p.FetchRawMetrics(ctx, prometheusURL)
+	// doFetchRawMetrics is used directly here so the context deadline set above
+	// is applied exactly once. Calling the public FetchRawMetrics would create
+	// a second child deadline from the already-bounded ctx, shortening the
+	// effective timeout unpredictably.
+	rawMetrics, err := p.doFetchRawMetrics(ctx, prometheusURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch metrics: %w", err)
 	}
@@ -218,6 +218,9 @@ func (p *prometheusService) GetMetricValue(ctx context.Context, metrics *Prometh
 	if err := ctx.Err(); err != nil {
 		p.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return 0, err
+	}
+	if metrics == nil {
+		return 0, fmt.Errorf("metrics response must not be nil")
 	}
 	metricList, ok := metrics.Metrics[name]
 	if !ok {

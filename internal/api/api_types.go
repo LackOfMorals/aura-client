@@ -35,8 +35,9 @@ type Config struct {
 	ClientSecret string
 	BaseURL      string
 	APIVersion   string
-	Timeout      time.Duration // ← moved here from client.go
-	MaxRetry     int           // ← moved here from client.go
+	Timeout      time.Duration
+	MaxRetry     int
+	UserAgent    string // e.g. "aura-go-client/v1.8.0"; defaults to "aura-go-client" if empty
 }
 
 // apiRequestService is the concrete implementation of RequestService
@@ -45,6 +46,7 @@ type apiRequestService struct {
 	authMgr      *authManager
 	baseURL      string
 	endpointBase string
+	userAgent    string
 	logger       *slog.Logger
 }
 

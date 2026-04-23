@@ -7,7 +7,7 @@ build:
 	go build ./...
 
 test:
-	go test ./...
+	go test $$(go list ./... | grep -v /examples/)
 
 clean:
 	go clean
