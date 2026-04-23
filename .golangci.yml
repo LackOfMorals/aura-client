@@ -1,9 +1,5 @@
-version: "2"
-
 run:
   timeout: 5m
-  skip-dirs:
-    - example/
 
 linters:
   enable:
@@ -15,16 +11,20 @@ linters:
     - nakedret
     - revive
     - errcheck
-  exclusions:
-    generated: lax
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-  settings:
-    staticcheck:
-      checks:
-        - "all"
-        - -QF1008
-        - -ST1000
+
+linters-settings:
+  staticcheck:
+    checks:
+      - "all"
+      - "-QF1008"
+      - "-ST1000"
+
+issues:
+  exclude-dirs:
+    - examples/
+  exclude-rules:
+    # Don't require error checks or security linting in test files
+    - path: _test\.go
+      linters:
+        - gosec
+        - errcheck
