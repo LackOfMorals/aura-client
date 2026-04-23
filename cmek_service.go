@@ -3,7 +3,6 @@ package aura
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -33,17 +32,11 @@ func (c *cmekService) List(ctx context.Context, tenantID string) (*GetCmeksRespo
 
 	endpoint := "customer-managed-keys"
 
-	switch tenantIDLen := len(tenantID); tenantIDLen {
-	case 0:
-		// empty string, no tenant filter
-		break
-	case 36:
+	if tenantID != "" {
 		if err := utils.ValidateTenantID(tenantID); err != nil {
 			return nil, err
 		}
-		endpoint = endpoint + "?tenantID=" + tenantID
-	default:
-		return nil, fmt.Errorf("tenant ID must be in the format of hex 8-4-4-12 pattern")
+		endpoint += "?tenantID=" + tenantID
 	}
 
 	resp, err := c.api.Get(ctx, endpoint)

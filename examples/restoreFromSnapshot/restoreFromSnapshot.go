@@ -61,7 +61,7 @@ func main() {
 
 	// Take snapshot
 	fmt.Println("=== List Snapshots ===")
-	getInstanceSnapshots, err := client.Snapshots.List(ctx, instanceID, "")
+	getInstanceSnapshots, err := client.Snapshots.List(ctx, instanceID, nil)
 	if err != nil {
 		log.Fatalf("Failed to list snapshots: %v", err)
 	}

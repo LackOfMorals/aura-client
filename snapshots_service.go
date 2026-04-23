@@ -41,7 +41,7 @@ func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotD
 
 	if snapshotDate != nil {
 		endpoint += fmt.Sprintf("?date=%04d-%02d-%02d", snapshotDate.Year, int(snapshotDate.Month), snapshotDate.Day)
-		s.logger.DebugContext(ctx, "Endpoint:", slog.String("URL", endpoint))
+		s.logger.DebugContext(ctx, "listing snapshots with date filter", slog.String("url", endpoint))
 	}
 
 	resp, err := s.api.Get(ctx, endpoint)

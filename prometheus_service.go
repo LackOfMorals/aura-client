@@ -219,6 +219,9 @@ func (p *prometheusService) GetMetricValue(ctx context.Context, metrics *Prometh
 		p.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return 0, err
 	}
+	if metrics == nil {
+		return 0, fmt.Errorf("metrics response must not be nil")
+	}
 	metricList, ok := metrics.Metrics[name]
 	if !ok {
 		p.logger.ErrorContext(ctx, "metric not found", slog.String("metric", name))
