@@ -14,7 +14,7 @@ const auraAPIVersion = "v1"
 
 // AuraAPIClientVersion is the current release version of this library.
 // Updated via changie on each release.
-const AuraAPIClientVersion = "v1.8.0"
+const AuraAPIClientVersion = "v1.8.2"
 
 // AuraAPIClient is the main client for interacting with the Neo4j Aura API
 type AuraAPIClient struct {
