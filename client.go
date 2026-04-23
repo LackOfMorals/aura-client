@@ -19,6 +19,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
@@ -82,10 +83,14 @@ func WithLogger(logger *slog.Logger) Option {
 }
 
 // WithBaseURL overrides the default API base URL. Useful for staging or sandbox environments.
+// The URL must use HTTPS to protect OAuth tokens and API credentials in transit.
 func WithBaseURL(baseURL string) Option {
 	return func(o *options) error {
 		if baseURL == "" {
 			return errors.New("base URL must not be empty")
+		}
+		if !strings.HasPrefix(baseURL, "https://") {
+			return errors.New("base URL must use HTTPS to protect credentials in transit")
 		}
 		o.config.baseURL = baseURL
 		return nil
@@ -133,6 +138,7 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		APIVersion:   auraAPIVersion,
 		Timeout:      o.config.apiTimeout,
 		MaxRetry:     o.config.apiRetryMax,
+		UserAgent:    "aura-go-client/" + AuraAPIClientVersion,
 	}, o.logger)
 
 	clientLogger := o.logger.With(slog.String("component", "AuraAPIClient"))

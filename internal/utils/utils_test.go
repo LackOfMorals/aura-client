@@ -339,6 +339,36 @@ func BenchmarkCheckDate(b *testing.B) {
 	}
 }
 
+// TestTruncateString verifies correct truncation by rune count, not byte count.
+func TestTruncateString(t *testing.T) {
+	tests := []struct {
+		name  string
+		s     string
+		n     int
+		want  string
+	}{
+		{"shorter than limit", "hello", 10, "hello"},
+		{"exact length", "hello", 5, "hello"},
+		{"truncate ASCII", "hello world", 5, "hello"},
+		{"empty string", "", 5, ""},
+		{"zero limit", "hello", 0, ""},
+		// Multibyte: each of these characters is 3 bytes in UTF-8.
+		// Byte-slicing at n=3 would return only the first character;
+		// rune-slicing at n=3 returns the first three characters.
+		{"multibyte rune count", "日本語テスト", 3, "日本語"},
+		{"multibyte no truncation", "日本語", 10, "日本語"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := TruncateString(tt.s, tt.n)
+			if got != tt.want {
+				t.Errorf("TruncateString(%q, %d) = %q, want %q", tt.s, tt.n, got, tt.want)
+			}
+		})
+	}
+}
+
 // Helper function for string contains check
 func contains(s, substr string) bool {
 	for i := 0; i <= len(s)-len(substr); i++ {

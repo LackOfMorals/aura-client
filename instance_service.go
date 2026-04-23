@@ -307,10 +307,8 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 		return nil, fmt.Errorf("must provide sourceInstanceID")
 	}
 
-	if sourceInstanceID != "" {
-		if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
-			return nil, fmt.Errorf("invalid source instance ID: %w", err)
-		}
+	if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
+		return nil, fmt.Errorf("invalid source instance ID: %w", err)
 	}
 
 	requestBody := overwriteInstanceRequest{

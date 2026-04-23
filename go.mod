@@ -1,6 +1,6 @@
 module github.com/LackOfMorals/aura-client
 
-go 1.25
+go 1.25.3
 
 require (
 	github.com/hashicorp/go-retryablehttp v0.7.8

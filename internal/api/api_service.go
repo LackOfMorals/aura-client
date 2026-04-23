@@ -62,6 +62,11 @@ func (e *Error) IsBadRequest() bool {
 func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
 	httpSvc := httpClient.NewHTTPService(cfg.Timeout, cfg.MaxRetry, logger)
 
+	userAgent := cfg.UserAgent
+	if userAgent == "" {
+		userAgent = "aura-go-client"
+	}
+
 	return &apiRequestService{
 		httpClient: httpSvc,
 		authMgr: &authManager{
@@ -71,6 +76,7 @@ func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
 		},
 		baseURL:      cfg.BaseURL,
 		endpointBase: cfg.BaseURL + "/" + cfg.APIVersion,
+		userAgent:    userAgent,
 		logger:       logger,
 	}
 }
@@ -109,15 +115,15 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 		return nil, err
 	}
 
-	// We did to handle the majority case - relative URL from base URL - and when
-	// a full URL is given e.g used by Prometheus service
+	// Handle both relative endpoints (the common case) and absolute URLs
+	// (used by the Prometheus service). For relative endpoints, trim any
+	// stray leading/trailing slashes before joining so a misplaced "/"
+	// never produces a double-slash in the final URL.
 	var fullURL string
 	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
-		// Endpoint is already a full URL, use it as-is
 		fullURL = endpoint
 	} else {
-		// Endpoint is relative, prepend base URL
-		fullURL = fmt.Sprintf("%s/%s", s.endpointBase, endpoint)
+		fullURL = strings.TrimRight(s.endpointBase, "/") + "/" + strings.TrimLeft(endpoint, "/")
 	}
 
 	tokenType, token, err := s.authMgr.ensureValidToken(ctx, s.baseURL, s.httpClient)
@@ -128,7 +134,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 
 	headers := map[string]string{
 		"Content-Type":  "application/json",
-		"User-Agent":    "aura-go-client",
+		"User-Agent":    s.userAgent,
 		"Authorization": tokenType + " " + token,
 	}
 

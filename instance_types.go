@@ -1,11 +1,12 @@
 package aura
 
+import "fmt"
+
 // instance status values as defined in the Aura API specification
 type InstanceStatus string
 
 const (
 	StatusRunning       InstanceStatus = "running"
-	StatusStopped       InstanceStatus = "paused"
 	StatusPaused        InstanceStatus = "paused"
 	StatusAvailable     InstanceStatus = "available"
 	StatusCreating      InstanceStatus = "creating"
@@ -16,9 +17,12 @@ const (
 	StatusResuming      InstanceStatus = "resuming"
 	StatusLoading       InstanceStatus = "loading"
 	StatusLoadingFailed InstanceStatus = "loading failed"
-	StatusRestroying    InstanceStatus = "restoring"
+	StatusRestoring     InstanceStatus = "restoring"
 	StatusUpdating      InstanceStatus = "updating"
 	StatusOverwriting   InstanceStatus = "overwriting"
+
+	// Deprecated: StatusRestroying was a misspelling. Use StatusRestoring.
+	StatusRestroying = StatusRestoring
 )
 
 // ListInstancesResponse contains a list of instances in a tenant
@@ -48,6 +52,10 @@ type CreateInstanceResponse struct {
 	Data CreateInstanceData `json:"data"`
 }
 
+// CreateInstanceData holds the response fields for a newly provisioned instance.
+// It contains the database password returned by the API — treat this value as a
+// secret and avoid logging or serialising the struct directly. The String()
+// method redacts the password for safe use in log output.
 type CreateInstanceData struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
@@ -58,6 +66,15 @@ type CreateInstanceData struct {
 	Type          string `json:"type"`
 	Username      string `json:"username"`
 	Password      string `json:"password"`
+}
+
+// String implements fmt.Stringer and redacts the Password field so that
+// accidentally logging or printing this struct never exposes credentials.
+func (c CreateInstanceData) String() string {
+	return fmt.Sprintf(
+		"CreateInstanceData{ID:%s Name:%s TenantID:%s CloudProvider:%s Region:%s Type:%s Username:%s Password:[redacted]}",
+		c.ID, c.Name, c.TenantID, c.CloudProvider, c.Region, c.Type, c.Username,
+	)
 }
 
 type UpdateInstanceData struct {

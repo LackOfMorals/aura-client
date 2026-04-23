@@ -8,115 +8,87 @@ import (
 	"time"
 )
 
-// Returns base64 encoding of two strings
-// for use with Basic Auth
+// Returns base64 encoding of two strings for use with Basic Auth.
 func Base64Encode(s1, s2 string) string {
 	auth := s1 + ":" + s2
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
-// Takes a JSON payload and copies it into a struct T
-// Used in utils_test.go
+// Unmarshal copies a JSON payload into a value of type T.
 func Unmarshal[T any](payload []byte) (T, error) {
 	var result T
 	err := json.Unmarshal(payload, &result)
 	return result, err
 }
 
-// Takes a payload and returns JSON
+// Marshal returns the JSON encoding of payload.
 func Marshal(payload any) ([]byte, error) {
-	result, err := json.Marshal(payload)
-
-	return result, err
+	return json.Marshal(payload)
 }
 
-// Takes a payload and returns indented JSON
+// MarshalIndent returns the indented JSON encoding of payload.
 func MarshalIndent(payload any) ([]byte, error) {
-
-	result, err := json.MarshalIndent(payload, "", "  ")
-
-	return result, err
-
+	return json.MarshalIndent(payload, "", "  ")
 }
 
-// Checks a string to see if it contains a valid date. Returns error if not valid
+// CheckDate returns an error if t is not a valid YYYY-MM-DD date string.
 func CheckDate(t string) error {
-
 	_, err := time.Parse(time.DateOnly, t)
 	if err != nil {
 		return fmt.Errorf("the date must in the format of YYYY-MM-DD")
 	}
-
 	return nil
-
 }
 
-// Regex expression for a valid tenant Id
-// Doing it here ensures it is compiled once to improve performance
-var uuidTenantIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+// uuidRegex matches a standard 8-4-4-4-12 UUID. Compiled once at package init
+// and shared by ValidateTenantID and ValidateSnapshotID.
+var uuidRegex = regexp.MustCompile(
+	`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`,
+)
 
-// ValidateTenantID checks if the tenant ID is valid and returns an error if not
+// ValidateTenantID returns an error if tenantID is empty or not a valid UUID.
 func ValidateTenantID(tenantID string) error {
 	if tenantID == "" {
 		return fmt.Errorf("tenant ID must not be empty")
 	}
-	if !uuidTenantIDRegex.MatchString(tenantID) {
+	if !uuidRegex.MatchString(tenantID) {
 		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
 	}
 	return nil
 }
 
-// Regex expression for a valid snapshot Id
-// Doing it here ensures it is compiled once to improve performance
-var uuidSnapshotIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-
-// ValidateSnapshotID checks if the tenant ID is valid and returns an error if not
+// ValidateSnapshotID returns an error if snapshotID is empty or not a valid UUID.
 func ValidateSnapshotID(snapshotID string) error {
 	if snapshotID == "" {
 		return fmt.Errorf("snapshot ID must not be empty")
 	}
-	if !uuidSnapshotIDRegex.MatchString(snapshotID) {
-		return fmt.Errorf("Snapshot ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
+	if !uuidRegex.MatchString(snapshotID) {
+		return fmt.Errorf("snapshot ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
 	}
 	return nil
 }
 
-// Regex for instance Id
-var uuidInstanceIdRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}$`)
+// uuidInstanceIDRegex matches an 8-character hex instance ID.
+var uuidInstanceIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}$`)
 
-// ValidateInstanceID checks if the instance ID is valid and returns an error if not
+// ValidateInstanceID returns an error if InstanceID is empty or not an 8-character hex string.
 func ValidateInstanceID(InstanceID string) error {
 	if InstanceID == "" {
 		return fmt.Errorf("instance ID must not be empty")
 	}
-	if !uuidInstanceIdRegex.MatchString(InstanceID) {
+	if !uuidInstanceIDRegex.MatchString(InstanceID) {
 		return fmt.Errorf("instance ID must be in the format of a 8-character hex string (xxxxxxxx)")
 	}
 	return nil
 }
 
-// Takes a string, s, and returns n bytes of it.
-// If s is of n bytes or less, then s is returned back
+// TruncateString returns the first n runes of s. If s contains n or fewer
+// runes it is returned unchanged. Using rune counts rather than byte offsets
+// ensures that multibyte UTF-8 characters are never split.
 func TruncateString(s string, n int) string {
-	var truncatedString string
-
-	// Get the length of the string in bytes
-	l := len(s)
-
-	// n has to be smaller than the length of the string
-	// If it is not, return the original string
-	// If it is, then return
-	if n >= l {
-		truncatedString = s
-		return truncatedString
+	runes := []rune(s)
+	if n >= len(runes) {
+		return s
 	}
-
-	// convert s into a byte slice array
-	t := []byte(s)
-
-	// Now grab the bytes we want from the slice
-	// and convert back to a string
-	truncatedString = string(t[0:n])
-
-	return truncatedString
+	return string(runes[:n])
 }
