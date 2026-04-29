@@ -1,2 +1,0 @@
-kind: Changed
-body: "Merged client_types.go into client.go — AuraAPIClient struct, config, and functional options are now co-located with NewClient"

@@ -675,7 +675,7 @@ func TestLongRunningOperation_Cancellable(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	createRequest := &CreateInstanceConfigData{
-		Name: "test-instance", TenantID: "tenant-1", CloudProvider: "gcp",
+		Name: "test-instance", TenantID: "ad69ff24-12fc-5a34-af02-ff8d3cc23611", CloudProvider: "gcp",
 		Region: "us-central1", Type: "enterprise-db", Version: "5", Memory: "8GB",
 	}
 

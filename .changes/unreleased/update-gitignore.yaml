@@ -1,2 +1,0 @@
-kind: Changed
-body: "Updated .gitignore to remove stale internal/auraClient/coverage.out entry and confirm internal/httpclient/coverage.out is correctly excluded"

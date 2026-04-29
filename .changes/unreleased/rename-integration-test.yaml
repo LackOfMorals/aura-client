@@ -1,2 +1,0 @@
-kind: Changed
-body: "Renamed blackbox_test.go to integration_test.go — the name now describes what the tests are (httptest.Server integration tests) rather than how they are structured (external package)"

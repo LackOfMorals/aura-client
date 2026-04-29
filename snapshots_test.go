@@ -64,7 +64,7 @@ func TestSnapshotService_List_Success(t *testing.T) {
 // TestSnapshotService_Get_Success verifies successful obtaining of snapshot details
 func TestSnapshotService_Get_Success(t *testing.T) {
 	instanceID := "aaaa1234"
-	snapshotID := "snapshot-1"
+	snapshotID := "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 	expectedResponse := GetSnapshotDataResponse{
 		Data: GetSnapshotData{
 			InstanceID: instanceID, SnapshotID: snapshotID,
@@ -178,7 +178,7 @@ func TestSnapshotService_Create_InstanceNotFound(t *testing.T) {
 // TestSnapshotService_Restore_Success verifies snapshot restore
 func TestSnapshotService_Restore_Success(t *testing.T) {
 	instanceID := "aaaa1234"
-	snapshotID := "snapshot-123"
+	snapshotID := "b2c3d4e5-f6a7-8901-bcde-f01234567891"
 	responseBody, _ := json.Marshal(RestoreSnapshotResponse{
 		Data: InstanceData{ID: instanceID, Status: "restoring"},
 	})
@@ -278,7 +278,7 @@ func TestSnapshotService_Create_ContextTimeout(t *testing.T) {
 // TestSnapshotService_Get_ContextTimeout verifies Get with timeout
 func TestSnapshotService_Get_ContextTimeout(t *testing.T) {
 	instanceID := "aaaa1234"
-	snapshotID := "snapshot-123"
+	snapshotID := "c3d4e5f6-a7b8-9012-cdef-012345678912"
 	responseBody, _ := json.Marshal(GetSnapshotDataResponse{
 		Data: GetSnapshotData{InstanceID: instanceID, SnapshotID: snapshotID},
 	})

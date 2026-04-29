@@ -150,6 +150,20 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
+// WithInsecureBaseURL overrides the base URL without enforcing HTTPS.
+// This is intended for local development and in-process testing only (e.g. httptest.Server).
+// Never use this option against a real Aura environment — OAuth tokens and API
+// credentials will be transmitted in cleartext over the network.
+func WithInsecureBaseURL(baseURL string) Option {
+	return func(o *options) error {
+		if baseURL == "" {
+			return errors.New("base URL must not be empty")
+		}
+		o.config.baseURL = baseURL
+		return nil
+	}
+}
+
 // NewClient creates a new Aura API client with functional options.
 func NewClient(opts ...Option) (*AuraAPIClient, error) {
 	o := defaultOptions()

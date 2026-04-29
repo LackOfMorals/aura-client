@@ -1,2 +1,0 @@
-kind: Changed
-body: "Renamed gds_sessions_service.go / gds_sessions_types.go / gds_sessions_test.go to graphanalytics.go / graphanalytics_test.go — name now matches the Aura API path (graph-analytics) and the AuraAPIClient field (GraphAnalytics)"

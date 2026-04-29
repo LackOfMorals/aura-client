@@ -12,16 +12,34 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 )
 
+// networkOnlyRetryPolicy retries only on connection-level errors (e.g. refused,
+// reset, DNS failure). HTTP responses — including 5xx — are returned as-is so
+// the api layer above can inspect the status code and decide what to do.
+func networkOnlyRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	// Context cancelled/deadline exceeded — do not retry.
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+	// Network-level error with no HTTP response — retry.
+	if err != nil && resp == nil {
+		return true, nil
+	}
+	// Any actual HTTP response, regardless of status code — do not retry.
+	// Status-code interpretation is the responsibility of the api layer.
+	return false, nil
+}
+
 // NewHTTPService creates a new HTTPService backed by a retryable HTTP client.
-// The client enforces the given timeout per request and retries up to maxRetry
-// times on transient failures. The caller-supplied logger is used for debug
-// output; pass a warn-level logger to suppress verbose output in production.
+// Retries are attempted only on network-level errors (no response received);
+// HTTP error responses (including 5xx) are always returned to the caller.
+// The caller-supplied logger is used for debug output.
 func NewHTTPService(timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = maxRetry
 	retryClient.RetryWaitMin = 1 * time.Second
 	retryClient.RetryWaitMax = 5 * time.Second
 	retryClient.Logger = nil // suppress retryablehttp's own logger; we use slog
+	retryClient.CheckRetry = networkOnlyRetryPolicy
 
 	retryClient.HTTPClient = &http.Client{
 		Timeout: timeout,

@@ -1,2 +1,0 @@
-kind: Changed
-body: "Renamed internal/httpClient package to internal/httpclient — package name now follows Go's all-lowercase convention; import path updated from internal/httpClient to internal/httpclient across all consumers"

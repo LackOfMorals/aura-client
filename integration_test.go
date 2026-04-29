@@ -59,11 +59,13 @@ func newTestServer(t *testing.T, apiHandler http.Handler) *httptest.Server {
 
 // newClient creates an AuraAPIClient pointing at srv. MaxRetry is set to 1 to
 // keep tests fast — we are not testing retry logic here.
+// WithInsecureBaseURL is used because httptest.Server issues http:// URLs;
+// the HTTPS enforcement in WithBaseURL is intentionally bypassed for tests.
 func newClient(t *testing.T, srv *httptest.Server) *aura.AuraAPIClient {
 	t.Helper()
 	client, err := aura.NewClient(
 		aura.WithCredentials("test-client-id", "test-client-secret"),
-		aura.WithBaseURL(srv.URL),
+		aura.WithInsecureBaseURL(srv.URL),
 		aura.WithTimeout(5*time.Second),
 		aura.WithMaxRetry(1),
 	)
@@ -1014,7 +1016,7 @@ func TestSnapshots_Create_Success(t *testing.T) {
 
 func TestSnapshots_Get_Success(t *testing.T) {
 	instanceID := "dddd5678"
-	snapshotID := "snap-get-001"
+	snapshotID := "d4e5f6a7-b8c9-0123-defa-123456789013"
 	payload := map[string]any{
 		"data": map[string]any{
 			"instance_id": instanceID,
