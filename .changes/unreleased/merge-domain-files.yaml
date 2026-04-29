@@ -1,0 +1,2 @@
+kind: Changed
+body: "Merged {domain}_service.go + {domain}_types.go into single domain files (instances.go, tenants.go, snapshots.go, cmek.go, graphanalytics.go, prometheus.go) — each domain is now self-contained"

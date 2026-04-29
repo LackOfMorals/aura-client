@@ -1,0 +1,2 @@
+kind: Changed
+body: "Renamed error_types.go to errors.go — follows Go convention for files holding error type definitions"

@@ -1,6 +1,4 @@
-// Package api provides the authenticated API request layer.
-//
-// The mock for this package has moved to internal/testutil.
-// Import github.com/LackOfMorals/aura-client/internal/testutil and use
-// testutil.MockRequestService / testutil.NewMockRequestService in tests.
+//go:build ignore
+
+// Tombstone — mock types have been moved to internal/testutil. This file can be deleted.
 package api

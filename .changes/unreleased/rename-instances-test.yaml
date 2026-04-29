@@ -1,0 +1,2 @@
+kind: Changed
+body: "Renamed instance_test.go to instances_test.go for consistency with the new instances.go source file"

@@ -1,0 +1,2 @@
+kind: Changed
+body: "Merged test_helpers_test.go and test_helpers_types_test.go into a single mocks_test.go — mock type definitions and their method implementations are now co-located"

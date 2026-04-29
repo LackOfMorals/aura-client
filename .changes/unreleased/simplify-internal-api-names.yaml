@@ -1,0 +1,2 @@
+kind: Changed
+body: "Simplified internal/api file names: api_service.go → api.go, api_types.go → types.go, api_service_test.go → api_test.go — the _service suffix was redundant given the package is already named api"

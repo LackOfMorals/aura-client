@@ -1,0 +1,2 @@
+kind: Removed
+body: "Deleted all tombstone/no-op files (test_helpers.go, test_helpers_types.go, api_test.go, and the empty _service.go/_types.go stubs) and coverage.out from source control — these files served only as migration markers and are no longer needed"
