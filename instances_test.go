@@ -360,36 +360,31 @@ func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 	}
 }
 
-// TestInstanceService_Overwrite_Validation verifies overwrite validation
+// TestInstanceService_OverwriteFromInstance_Validation verifies OverwriteFromInstance validation.
+// The method takes exactly one source — sourceInstanceID — so the only validation
+// cases are: empty, valid, and invalid format.
 func TestInstanceService_OverwriteFromInstance_Validation(t *testing.T) {
 	tests := []struct {
 		name             string
 		instanceID       string
 		sourceInstanceID string
-		sourceSnapshotID string
 		expectError      bool
 		errorContains    string
 	}{
 		{
-			name: "both sources empty", instanceID: "aaaa1234",
-			expectError: true, errorContains: "must provide either",
+			name: "empty source instance ID", instanceID: "aaaa1234",
+			sourceInstanceID: "",
+			expectError: true, errorContains: "must provide sourceInstanceID",
 		},
 		{
-			name: "both sources provided", instanceID: "aaaa1234",
-			sourceInstanceID: "bbbb5678", sourceSnapshotID: "snapshot-123",
-			expectError: true, errorContains: "cannot provide both",
+			name: "valid source instance ID", instanceID: "aaaa1234",
+			sourceInstanceID: "bbbb5678",
+			expectError: false,
 		},
 		{
-			name: "only source instance", instanceID: "aaaa1234",
-			sourceInstanceID: "bbbb5678", expectError: false,
-		},
-		{
-			name: "only source snapshot", instanceID: "aaaa1234",
-			sourceSnapshotID: "snapshot-123", expectError: false,
-		},
-		{
-			name: "invalid source instance ID", instanceID: "aaaa1234",
-			sourceInstanceID: "invalid", expectError: true, errorContains: "invalid source instance ID",
+			name: "invalid source instance ID format", instanceID: "aaaa1234",
+			sourceInstanceID: "invalid",
+			expectError: true, errorContains: "invalid source instance ID",
 		},
 	}
 
@@ -416,36 +411,26 @@ func TestInstanceService_OverwriteFromInstance_Validation(t *testing.T) {
 	}
 }
 
-// TestInstanceService_Overwrite_Validation verifies overwrite validation
+// TestInstanceService_OverwriteFromSnapshot_Validation verifies OverwriteFromSnapshot validation.
+// The method takes exactly one source — sourceSnapshotID — so the only validation
+// cases are: empty and valid (snapshot IDs are opaque strings; no format check).
 func TestInstanceService_OverwriteFromSnapshot_Validation(t *testing.T) {
 	tests := []struct {
 		name             string
 		instanceID       string
-		sourceInstanceID string
 		sourceSnapshotID string
 		expectError      bool
 		errorContains    string
 	}{
 		{
-			name: "both sources empty", instanceID: "aaaa1234",
-			expectError: true, errorContains: "must provide either",
+			name: "empty source snapshot ID", instanceID: "aaaa1234",
+			sourceSnapshotID: "",
+			expectError: true, errorContains: "must provide sourceSnapshotID",
 		},
 		{
-			name: "both sources provided", instanceID: "aaaa1234",
-			sourceInstanceID: "bbbb5678", sourceSnapshotID: "snapshot-123",
-			expectError: true, errorContains: "cannot provide both",
-		},
-		{
-			name: "only source instance", instanceID: "aaaa1234",
-			sourceInstanceID: "bbbb5678", expectError: false,
-		},
-		{
-			name: "only source snapshot", instanceID: "aaaa1234",
-			sourceSnapshotID: "snapshot-123", expectError: false,
-		},
-		{
-			name: "invalid source instance ID", instanceID: "aaaa1234",
-			sourceInstanceID: "invalid", expectError: true, errorContains: "invalid source instance ID",
+			name: "valid source snapshot ID", instanceID: "aaaa1234",
+			sourceSnapshotID: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			expectError: false,
 		},
 	}
 

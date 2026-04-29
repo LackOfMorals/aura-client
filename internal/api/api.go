@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LackOfMorals/aura-client/internal/httpClient"
+	"github.com/LackOfMorals/aura-client/internal/httpclient"
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
-// Error implements the error interface
+// Error implements the error interface.
 func (e *Error) Error() string {
 	if len(e.Details) == 0 {
 		return fmt.Sprintf("API error (status %d): %s", e.StatusCode, e.Message)
@@ -28,7 +28,7 @@ func (e *Error) Error() string {
 	return msg
 }
 
-// AllErrors returns all error messages as a slice
+// AllErrors returns all error messages as a slice.
 func (e *Error) AllErrors() []string {
 	errors := []string{e.Message}
 	for _, detail := range e.Details {
@@ -37,30 +37,31 @@ func (e *Error) AllErrors() []string {
 	return errors
 }
 
-// HasMultipleErrors returns true if there are multiple error details
+// HasMultipleErrors returns true if there are multiple error details.
 func (e *Error) HasMultipleErrors() bool {
 	return len(e.Details) > 1
 }
 
-// IsNotFound returns true if the error is a 404
+// IsNotFound returns true if the error is a 404.
 func (e *Error) IsNotFound() bool {
 	return e.StatusCode == http.StatusNotFound
 }
 
-// IsUnauthorized returns true if the error is a 401
+// IsUnauthorized returns true if the error is a 401.
 func (e *Error) IsUnauthorized() bool {
 	return e.StatusCode == http.StatusUnauthorized
 }
 
-// IsBadRequest returns true if the error is a 400
+// IsBadRequest returns true if the error is a 400.
 func (e *Error) IsBadRequest() bool {
 	return e.StatusCode == http.StatusBadRequest
 }
 
-// NewRequestService creates a new RequestService. It constructs its own HTTP transport
-// layer internally — callers do not need to know about or create an httpClient.
+// NewRequestService creates a new RequestService. It constructs its own HTTP
+// transport layer internally — callers do not need to know about or create an
+// httpclient.
 func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
-	httpSvc := httpClient.NewHTTPService(cfg.Timeout, cfg.MaxRetry, logger)
+	httpSvc := httpclient.NewHTTPService(cfg.Timeout, cfg.MaxRetry, logger)
 
 	userAgent := cfg.UserAgent
 	if userAgent == "" {
@@ -81,34 +82,34 @@ func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
 	}
 }
 
-// Get performs an authenticated GET request
+// Get performs an authenticated GET request.
 func (s *apiRequestService) Get(ctx context.Context, endpoint string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodGet, endpoint, "")
 }
 
-// Post performs an authenticated POST request
+// Post performs an authenticated POST request.
 func (s *apiRequestService) Post(ctx context.Context, endpoint string, body string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodPost, endpoint, body)
 }
 
-// Put performs an authenticated PUT request
+// Put performs an authenticated PUT request.
 func (s *apiRequestService) Put(ctx context.Context, endpoint string, body string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodPut, endpoint, body)
 }
 
-// Patch performs an authenticated PATCH request
+// Patch performs an authenticated PATCH request.
 func (s *apiRequestService) Patch(ctx context.Context, endpoint string, body string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodPatch, endpoint, body)
 }
 
-// Delete performs an authenticated DELETE request
+// Delete performs an authenticated DELETE request.
 func (s *apiRequestService) Delete(ctx context.Context, endpoint string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodDelete, endpoint, "")
 }
 
-// doAuthenticatedRequest handles the common pattern of making an authenticated API request.
-// It trusts the deadline already set on ctx by the calling service layer — no additional
-// timeout is applied here.
+// doAuthenticatedRequest handles the common pattern of making an authenticated
+// API request. It trusts the deadline already set on ctx by the calling service
+// layer — no additional timeout is applied here.
 func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, endpoint, body string) (*Response, error) {
 	if err := ctx.Err(); err != nil {
 		s.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -143,7 +144,7 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 		slog.String("endpoint", fullURL),
 	)
 
-	var resp *httpClient.HTTPResponse
+	var resp *httpclient.HTTPResponse
 
 	switch method {
 	case http.MethodGet:
@@ -192,9 +193,10 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 	}, nil
 }
 
-// ensureValidToken gets or refreshes the authentication token and returns it to the caller.
-// Token fields are always read while the mutex is held to prevent data races.
-func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, httpSvc httpClient.HTTPService) (tokenType, token string, err error) {
+// ensureValidToken gets or refreshes the authentication token and returns it
+// to the caller. Token fields are always read while the mutex is held to
+// prevent data races.
+func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, httpSvc httpclient.HTTPService) (tokenType, token string, err error) {
 	am.mu.RLock()
 	if len(am.token) > 0 && time.Now().Unix() <= am.expiresAt-60 {
 		t, tt := am.token, am.tokenType
@@ -249,14 +251,12 @@ func (am *authManager) ensureValidToken(ctx context.Context, baseURL string, htt
 	am.tokenType = tokenResp.TokenType
 	am.expiresAt = time.Now().Unix() + tokenResp.ExpiresIn
 
-	am.logger.DebugContext(ctx, "token obtained successfully",
-		slog.Int64("expiresIn", tokenResp.ExpiresIn),
-	)
+	am.logger.DebugContext(ctx, "token obtained successfully", slog.Int64("expiresIn", tokenResp.ExpiresIn))
 
 	return am.tokenType, am.token, nil
 }
 
-// parseError attempts to parse an error response body from the API
+// parseError attempts to parse an error response body from the API.
 func parseError(responseBody []byte, statusCode int) *Error {
 	apiErr := &Error{
 		StatusCode: statusCode,

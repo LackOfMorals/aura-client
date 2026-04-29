@@ -11,15 +11,61 @@ import (
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
-// Tenants
-// tenantService handles tenant operations
+// ============================================================================
+// Types
+// ============================================================================
+
+// ListTenantsResponse contains a list of tenants in your organisation.
+type ListTenantsResponse struct {
+	Data []TenantsResponseData `json:"data"`
+}
+
+type TenantsResponseData struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GetTenantResponse contains details of a tenant.
+type GetTenantResponse struct {
+	Data TenantResponseData `json:"data"`
+}
+
+type TenantResponseData struct {
+	ID                     string                        `json:"id"`
+	Name                   string                        `json:"name"`
+	InstanceConfigurations []TenantInstanceConfiguration `json:"instance_configurations"`
+}
+
+type TenantInstanceConfiguration struct {
+	CloudProvider string `json:"cloud_provider"`
+	Region        string `json:"region"`
+	RegionName    string `json:"region_name"`
+	Type          string `json:"type"`
+	Memory        string `json:"memory"`
+	Storage       string `json:"storage"`
+	Version       string `json:"version"`
+}
+
+type GetTenantMetricsURLResponse struct {
+	Data GetTenantMetricsURLData `json:"data"`
+}
+
+type GetTenantMetricsURLData struct {
+	Endpoint string `json:"endpoint"`
+}
+
+// ============================================================================
+// Service
+// ============================================================================
+
+// tenantService handles tenant operations.
 type tenantService struct {
 	api     api.RequestService
 	timeout time.Duration
 	logger  *slog.Logger
 }
 
-// List returns all tenants accessible to the authenticated user
+// List returns all tenants accessible to the authenticated user.
 func (t *tenantService) List(ctx context.Context) (*ListTenantsResponse, error) {
 	if err := ctx.Err(); err != nil {
 		t.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -47,7 +93,7 @@ func (t *tenantService) List(ctx context.Context) (*ListTenantsResponse, error) 
 	return &result, nil
 }
 
-// Get retrieves details for a specific tenant by ID
+// Get retrieves details for a specific tenant by ID.
 func (t *tenantService) Get(ctx context.Context, tenantID string) (*GetTenantResponse, error) {
 	if err := ctx.Err(); err != nil {
 		t.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -58,7 +104,7 @@ func (t *tenantService) Get(ctx context.Context, tenantID string) (*GetTenantRes
 	defer cancel()
 
 	if err := utils.ValidateTenantID(tenantID); err != nil {
-		t.logger.ErrorContext(ctx, "invalid tenant Id ", slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "invalid tenant ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -80,7 +126,7 @@ func (t *tenantService) Get(ctx context.Context, tenantID string) (*GetTenantRes
 	return &result, nil
 }
 
-// GetMetrics retrieves the Prometheus metrics URL for a specific tenant
+// GetMetrics retrieves the Prometheus metrics URL for a specific tenant.
 func (t *tenantService) GetMetrics(ctx context.Context, tenantID string) (*GetTenantMetricsURLResponse, error) {
 	if err := ctx.Err(); err != nil {
 		t.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -91,7 +137,7 @@ func (t *tenantService) GetMetrics(ctx context.Context, tenantID string) (*GetTe
 	defer cancel()
 
 	if err := utils.ValidateTenantID(tenantID); err != nil {
-		t.logger.ErrorContext(ctx, "invalid tenant Id ", slog.String("error", err.Error()))
+		t.logger.ErrorContext(ctx, "invalid tenant ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 

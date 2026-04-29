@@ -14,8 +14,65 @@ import (
 	"github.com/prometheus/common/expfmt"
 )
 
-// Prometheus service
-// prometheusService handles Prometheus metrics operations
+// ============================================================================
+// Types
+// ============================================================================
+
+// PrometheusHealthMetrics contains parsed health metrics for an instance.
+type PrometheusHealthMetrics struct {
+	InstanceID      string            `json:"instance_id"`
+	Timestamp       time.Time         `json:"timestamp"`
+	Resources       ResourceMetrics   `json:"resources"`
+	Query           QueryMetrics      `json:"query"`
+	Connections     ConnectionMetrics `json:"connections"`
+	Storage         StorageMetrics    `json:"storage"`
+	OverallStatus   string            `json:"overall_status"`
+	Issues          []string          `json:"issues"`
+	Recommendations []string          `json:"recommendations"`
+}
+
+// ResourceMetrics contains CPU and memory usage.
+type ResourceMetrics struct {
+	CPUUsagePercent    float64 `json:"cpu_usage_percent"`
+	MemoryUsagePercent float64 `json:"memory_usage_percent"`
+}
+
+// QueryMetrics contains query performance statistics.
+type QueryMetrics struct {
+	QueriesPerSecond float64 `json:"queries_per_second"`
+	AvgLatencyMS     float64 `json:"avg_latency_ms"`
+}
+
+// ConnectionMetrics contains connection pool information.
+type ConnectionMetrics struct {
+	ActiveConnections int     `json:"active_connections"`
+	MaxConnections    int     `json:"max_connections"`
+	UsagePercent      float64 `json:"usage_percent"`
+}
+
+// StorageMetrics contains storage usage information.
+type StorageMetrics struct {
+	PageCacheHitRate float64 `json:"page_cache_hit_rate,omitempty"`
+}
+
+// PrometheusMetric represents a single parsed metric from Prometheus exposition format.
+type PrometheusMetric struct {
+	Name      string
+	Labels    map[string]string
+	Value     float64
+	Timestamp int64
+}
+
+// PrometheusMetricsResponse contains parsed metrics from the raw endpoint.
+type PrometheusMetricsResponse struct {
+	Metrics map[string][]PrometheusMetric
+}
+
+// ============================================================================
+// Service
+// ============================================================================
+
+// prometheusService handles Prometheus metrics operations.
 type prometheusService struct {
 	api     api.RequestService
 	timeout time.Duration
@@ -57,12 +114,11 @@ func (p *prometheusService) doFetchRawMetrics(ctx context.Context, prometheusURL
 		return nil, err
 	}
 
-	p.logger.DebugContext(ctx, "raw metrics fetched successfully",
-		slog.Int("metricCount", len(metrics.Metrics)))
+	p.logger.DebugContext(ctx, "raw metrics fetched successfully", slog.Int("metricCount", len(metrics.Metrics)))
 	return metrics, nil
 }
 
-// parsePrometheusMetrics parses Prometheus metrics using the official client library
+// parsePrometheusMetrics parses Prometheus metrics using the official client library.
 func (p *prometheusService) parsePrometheusMetrics(data []byte) (*PrometheusMetricsResponse, error) {
 	result := &PrometheusMetricsResponse{
 		Metrics: make(map[string][]PrometheusMetric),
@@ -122,10 +178,8 @@ func (p *prometheusService) parsePrometheusMetrics(data []byte) (*PrometheusMetr
 	return result, nil
 }
 
-// GetInstanceHealth retrieves comprehensive health metrics for an instance
+// GetInstanceHealth retrieves comprehensive health metrics for an instance.
 func (p *prometheusService) GetInstanceHealth(ctx context.Context, instanceID string, prometheusURL string) (*PrometheusHealthMetrics, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		p.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -144,9 +198,7 @@ func (p *prometheusService) GetInstanceHealth(ctx context.Context, instanceID st
 	}
 
 	// doFetchRawMetrics is used directly here so the context deadline set above
-	// is applied exactly once. Calling the public FetchRawMetrics would create
-	// a second child deadline from the already-bounded ctx, shortening the
-	// effective timeout unpredictably.
+	// is applied exactly once.
 	rawMetrics, err := p.doFetchRawMetrics(ctx, prometheusURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch metrics: %w", err)
@@ -266,7 +318,7 @@ func (p *prometheusService) GetMetricValue(ctx context.Context, metrics *Prometh
 	return sum / float64(len(matchingMetrics)), nil
 }
 
-// assessHealth analyzes metrics and determines overall health status
+// assessHealth analyzes metrics and determines overall health status.
 func (p *prometheusService) assessHealth(metrics *PrometheusHealthMetrics) string {
 	status := "healthy"
 

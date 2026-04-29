@@ -11,15 +11,86 @@ import (
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
 
-// GDS Sessions
-// gDSSessionService handles GDS Session operations
+// ============================================================================
+// Types
+// ============================================================================
+
+// GetGDSSessionListResponse contains a list of GDS sessions.
+type GetGDSSessionListResponse struct {
+	Data []GetGDSSessionData `json:"data"`
+}
+
+// GetGDSSessionResponse contains information about a single GDS session.
+type GetGDSSessionResponse struct {
+	Data []GetGDSSessionData `json:"data"`
+}
+
+type GetGDSSessionData struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Memory        string `json:"memory"`
+	InstanceID    string `json:"instance_id"`
+	DatabaseID    string `json:"database_uuid"`
+	Status        string `json:"status"`
+	Create        string `json:"created_at"`
+	Host          string `json:"host"`
+	Expiry        string `json:"expiry_date"`
+	Ttl           string `json:"ttl"`
+	UserID        string `json:"user_id"`
+	TenantID      string `json:"tenant_id"`
+	CloudProvider string `json:"cloud_provider"`
+	Region        string `json:"region"`
+}
+
+type CreateGDSSessionConfigData struct {
+	Name          string `json:"name"`
+	Ttl           string `json:"ttl"`
+	TenantID      string `json:"tenant_id"`
+	InstanceID    string `json:"instance_id"`
+	DatabaseID    string `json:"database_uuid"`
+	CloudProvider string `json:"cloud_provider"`
+	Region        string `json:"region"`
+	Memory        string `json:"memory"`
+}
+
+type GetGDSSessionSizeEstimation struct {
+	NodeCount                 int      `json:"node_count"`
+	NodePropertyCount         int      `json:"node_property_count"`
+	NodeLabelCount            int      `json:"node_label_count"`
+	RelationshipCount         int      `json:"relationship_count"`
+	RelationshipPropertyCount int      `json:"relationship_property_count"`
+	AlgorithmCategories       []string `json:"algorithm_categories"`
+}
+
+type GDSSessionSizeEstimationResponse struct {
+	Data GDSSessionSizeEstimationData `json:"data"`
+}
+
+type GDSSessionSizeEstimationData struct {
+	EstimatedMemory string `json:"estimated_memory"`
+	RecommendedSize string `json:"recommended_size"`
+}
+
+type DeleteGDSSessionResponse struct {
+	Data DeleteGDSSession `json:"data"`
+}
+
+type DeleteGDSSession struct {
+	ID string `json:"id"`
+}
+
+// ============================================================================
+// Service
+// ============================================================================
+
+// gDSSessionService handles Graph Data Science session operations.
 type gDSSessionService struct {
 	api     api.RequestService
 	timeout time.Duration
 	logger  *slog.Logger
 }
 
-// List returns all GDS sessions accessible to the authenticated user
+// List returns all GDS sessions accessible to the authenticated user.
 func (g *gDSSessionService) List(ctx context.Context) (*GetGDSSessionListResponse, error) {
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -46,7 +117,7 @@ func (g *gDSSessionService) List(ctx context.Context) (*GetGDSSessionListRespons
 	return &result, nil
 }
 
-// Get returns information on a single GDS session
+// Get returns information on a single GDS session.
 func (g *gDSSessionService) Get(ctx context.Context, gdsSessionID string) (*GetGDSSessionResponse, error) {
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -77,7 +148,7 @@ func (g *gDSSessionService) Get(ctx context.Context, gdsSessionID string) (*GetG
 	return &result, nil
 }
 
-// Create creates a new GDS session
+// Create creates a new GDS session.
 func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest *CreateGDSSessionConfigData) (*GetGDSSessionResponse, error) {
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -114,7 +185,7 @@ func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest 
 	return &result, nil
 }
 
-// Estimate estimates the size of a new GDS session
+// Estimate estimates the size of a new GDS session.
 func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimateRequest *GetGDSSessionSizeEstimation) (*GDSSessionSizeEstimationResponse, error) {
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
@@ -151,7 +222,7 @@ func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimate
 	return &result, nil
 }
 
-// Delete deletes a GDS session
+// Delete deletes a GDS session.
 func (g *gDSSessionService) Delete(ctx context.Context, gdsSessionID string) (*DeleteGDSSessionResponse, error) {
 	if err := ctx.Err(); err != nil {
 		g.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))

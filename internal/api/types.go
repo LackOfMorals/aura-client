@@ -6,30 +6,30 @@ import (
 	"sync"
 	"time"
 
-	"github.com/LackOfMorals/aura-client/internal/httpClient"
+	"github.com/LackOfMorals/aura-client/internal/httpclient"
 )
 
-// Response represents a response from the Aura API
+// Response represents a response from the Aura API.
 type Response struct {
 	StatusCode int
 	Body       []byte
 }
 
-// Error represents an error response from the Aura API
+// Error represents an error response from the Aura API.
 type Error struct {
 	StatusCode int           `json:"status_code"`
 	Message    string        `json:"message"`
 	Details    []ErrorDetail `json:"details,omitempty"`
 }
 
-// ErrorDetail represents individual error details
+// ErrorDetail represents individual error details.
 type ErrorDetail struct {
 	Message string `json:"message"`
 	Reason  string `json:"reason,omitempty"`
 	Field   string `json:"field,omitempty"`
 }
 
-// Config holds configuration for the API service
+// Config holds configuration for the API service.
 type Config struct {
 	ClientID     string
 	ClientSecret string
@@ -40,9 +40,9 @@ type Config struct {
 	UserAgent    string // e.g. "aura-go-client/v1.8.0"; defaults to "aura-go-client" if empty
 }
 
-// apiRequestService is the concrete implementation of RequestService
+// apiRequestService is the concrete implementation of RequestService.
 type apiRequestService struct {
-	httpClient   httpClient.HTTPService
+	httpClient   httpclient.HTTPService
 	authMgr      *authManager
 	baseURL      string
 	endpointBase string
@@ -50,19 +50,18 @@ type apiRequestService struct {
 	logger       *slog.Logger
 }
 
-// authManager handles token management for the API
+// authManager handles token management for the API.
 type authManager struct {
 	clientID     string
 	clientSecret string
 	tokenType    string
 	token        string
-
-	expiresAt int64
-	logger    *slog.Logger
-	mu        sync.RWMutex
+	expiresAt    int64
+	logger       *slog.Logger
+	mu           sync.RWMutex
 }
 
-// tokenResponse represents the OAuth token response
+// tokenResponse represents the OAuth token response.
 type tokenResponse struct {
 	TokenType   string `json:"token_type"`
 	AccessToken string `json:"access_token"`

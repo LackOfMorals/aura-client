@@ -1,9 +1,7 @@
 .DS_Store
 internal/utils/env.go
-internal/httpClient/coverage.out
-internal/auraClient/coverage.out
+internal/httpclient/coverage.out
 .env
 example/
 
 coverage.out
-

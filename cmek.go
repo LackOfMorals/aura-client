@@ -10,17 +10,34 @@ import (
 	"github.com/LackOfMorals/aura-client/internal/utils"
 )
 
-// cmekService handles customer managed encryption key operations
+// ============================================================================
+// Types
+// ============================================================================
+
+// GetCmeksResponse contains a list of customer managed encryption keys.
+type GetCmeksResponse struct {
+	Data []GetCmeksData `json:"data"`
+}
+
+type GetCmeksData struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	TenantID string `json:"tenant_id"`
+}
+
+// ============================================================================
+// Service
+// ============================================================================
+
+// cmekService handles customer managed encryption key operations.
 type cmekService struct {
 	api     api.RequestService
 	timeout time.Duration
 	logger  *slog.Logger
 }
 
-// List returns all customer-managed encryption keys, optionally filtered by tenant
+// List returns all customer-managed encryption keys, optionally filtered by tenant.
 func (c *cmekService) List(ctx context.Context, tenantID string) (*GetCmeksResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		c.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -31,7 +48,6 @@ func (c *cmekService) List(ctx context.Context, tenantID string) (*GetCmeksRespo
 	c.logger.DebugContext(ctx, "listing customer managed keys")
 
 	endpoint := "customer-managed-keys"
-
 	if tenantID != "" {
 		if err := utils.ValidateTenantID(tenantID); err != nil {
 			return nil, err

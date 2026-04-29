@@ -1,114 +1,254 @@
-// Package httpClient_test contains tests of the testutil.MockHTTPService that
-// are kept here rather than in the httpClient package itself to avoid an
-// import cycle:
-//
-//   httpClient (white-box test) → testutil → httpClient   ← cycle
-//   httpClient_test (external)  → testutil → httpClient   ← no cycle
-package httpClient_test
+// Package httpclient_test contains black-box behavioral tests for the httpclient
+// package. These tests exercise the package through its exported interface only,
+// using real httptest servers so the full HTTP path is exercised without any
+// network access.
+package httpclient_test
 
 import (
 	"context"
-	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"sync/atomic"
 	"testing"
+	"time"
 
-	"github.com/LackOfMorals/aura-client/internal/testutil"
+	"log/slog"
+
+	"github.com/LackOfMorals/aura-client/internal/httpclient"
 )
 
-func TestMockHTTPService_Get(t *testing.T) {
-	mock := testutil.NewMockHTTPService()
-	mock.WithResponse(200, `{"status":"ok"}`)
+// newSvc creates an HTTPService suitable for behavioral tests.
+func newSvc(timeout time.Duration) httpclient.HTTPService {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	return httpclient.NewHTTPService(timeout, 0, logger)
+}
 
-	resp, err := mock.Get(context.Background(), "/test", map[string]string{"X-Test": "value"})
+// ─── Basic method dispatch ────────────────────────────────────────────────────
 
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestBehavior_AllMethodsDispatchCorrectly(t *testing.T) {
+	methods := []struct {
+		method string
+		call   func(svc httpclient.HTTPService, url string) (*httpclient.HTTPResponse, error)
+	}{
+		{"GET", func(svc httpclient.HTTPService, url string) (*httpclient.HTTPResponse, error) {
+			return svc.Get(context.Background(), url, nil)
+		}},
+		{"POST", func(svc httpclient.HTTPService, url string) (*httpclient.HTTPResponse, error) {
+			return svc.Post(context.Background(), url, nil, "")
+		}},
+		{"PUT", func(svc httpclient.HTTPService, url string) (*httpclient.HTTPResponse, error) {
+			return svc.Put(context.Background(), url, nil, "")
+		}},
+		{"PATCH", func(svc httpclient.HTTPService, url string) (*httpclient.HTTPResponse, error) {
+			return svc.Patch(context.Background(), url, nil, "")
+		}},
+		{"DELETE", func(svc httpclient.HTTPService, url string) (*httpclient.HTTPResponse, error) {
+			return svc.Delete(context.Background(), url, nil)
+		}},
 	}
-	if resp.StatusCode != 200 {
-		t.Errorf("expected status 200, got %d", resp.StatusCode)
-	}
-	if mock.LastMethod != "GET" {
-		t.Errorf("expected method GET, got %s", mock.LastMethod)
-	}
-	if mock.LastURL != "/test" {
-		t.Errorf("expected URL /test, got %s", mock.LastURL)
-	}
-	if mock.CallCount != 1 {
-		t.Errorf("expected call count 1, got %d", mock.CallCount)
+
+	for _, m := range methods {
+		t.Run(m.method, func(t *testing.T) {
+			var gotMethod string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotMethod = r.Method
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer srv.Close()
+
+			svc := newSvc(5 * time.Second)
+			_, err := m.call(svc, srv.URL)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if gotMethod != m.method {
+				t.Errorf("expected %s, got %s", m.method, gotMethod)
+			}
+		})
 	}
 }
 
-func TestMockHTTPService_Post(t *testing.T) {
-	mock := testutil.NewMockHTTPService()
-	mock.WithPostResponse(201, `{"id":"123"}`)
+// ─── Headers ──────────────────────────────────────────────────────────────────
 
-	resp, err := mock.Post(context.Background(), "/test", nil, `{"name":"test"}`)
+func TestBehavior_HeadersForwardedToServer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Custom-Header") != "custom-value" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if r.Header.Get("Authorization") != "Bearer my-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
 
+	svc := newSvc(5 * time.Second)
+	resp, err := svc.Get(context.Background(), srv.URL, map[string]string{
+		"X-Custom-Header": "custom-value",
+		"Authorization":   "Bearer my-token",
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.StatusCode != 201 {
-		t.Errorf("expected status 201, got %d", resp.StatusCode)
-	}
-	if mock.LastBody != `{"name":"test"}` {
-		t.Errorf("expected body, got '%s'", mock.LastBody)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, server rejected headers with status %d", resp.StatusCode)
 	}
 }
 
-func TestMockHTTPService_Error(t *testing.T) {
-	mock := testutil.NewMockHTTPService()
-	expected := fmt.Errorf("network error")
-	mock.WithError(expected)
+// ─── Request body ─────────────────────────────────────────────────────────────
 
-	_, err := mock.Get(context.Background(), "/test", nil)
+func TestBehavior_RequestBodyForwarded(t *testing.T) {
+	const expectedBody = `{"key":"value"}`
+	var gotBody string
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	svc := newSvc(5 * time.Second)
+	_, err := svc.Post(context.Background(), srv.URL, nil, expectedBody)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotBody != expectedBody {
+		t.Errorf("expected body '%s', got '%s'", expectedBody, gotBody)
+	}
+}
+
+// ─── Response body ────────────────────────────────────────────────────────────
+
+func TestBehavior_ResponseBodyReturned(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"id":"abc123"}`)) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	svc := newSvc(5 * time.Second)
+	resp, err := svc.Get(context.Background(), srv.URL, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(resp.Body) != `{"id":"abc123"}` {
+		t.Errorf("unexpected body: %s", resp.Body)
+	}
+}
+
+// ─── HTTPResponse interface fields ────────────────────────────────────────────
+
+func TestBehavior_ResponseContainsStatusCodeBodyAndHeaders(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Trace-ID", "trace-999")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte(`{"created":true}`)) //nolint:errcheck
+	}))
+	defer srv.Close()
+
+	svc := newSvc(5 * time.Second)
+	resp, err := svc.Post(context.Background(), srv.URL, nil, `{}`)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected 201, got %d", resp.StatusCode)
+	}
+	if string(resp.Body) != `{"created":true}` {
+		t.Errorf("unexpected body: %s", resp.Body)
+	}
+	if resp.Headers.Get("X-Trace-ID") != "trace-999" {
+		t.Errorf("expected X-Trace-ID header, got '%s'", resp.Headers.Get("X-Trace-ID"))
+	}
+}
+
+// ─── Context propagation ──────────────────────────────────────────────────────
+
+func TestBehavior_ContextCancellation_StopsInFlightRequest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(300 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	svc := newSvc(10 * time.Second) // service timeout much larger than test deadline
+	start := time.Now()
+	_, err := svc.Get(ctx, srv.URL, nil)
+	elapsed := time.Since(start)
 
 	if err == nil {
-		t.Fatal("expected error, got nil")
+		t.Fatal("expected context cancellation error")
 	}
-	if err != expected {
-		t.Errorf("expected %v, got %v", expected, err)
-	}
-}
-
-func TestMockHTTPService_Reset(t *testing.T) {
-	mock := testutil.NewMockHTTPService()
-	mock.WithResponse(200, "test")
-	mock.Get(context.Background(), "/test", nil) //nolint:errcheck
-
-	mock.Reset()
-
-	if mock.CallCount != 0 {
-		t.Errorf("expected call count 0 after reset, got %d", mock.CallCount)
-	}
-	if mock.Response != nil {
-		t.Error("expected nil response after reset")
-	}
-	if len(mock.CallHistory) != 0 {
-		t.Errorf("expected empty call history after reset, got %d", len(mock.CallHistory))
+	if elapsed > 200*time.Millisecond {
+		t.Errorf("cancellation took too long: %v (expected <200ms)", elapsed)
 	}
 }
 
-func TestMockHTTPService_CallHistory(t *testing.T) {
-	mock := testutil.NewMockHTTPService()
-	mock.WithResponse(200, "ok")
+// ─── Non-2xx statuses ─────────────────────────────────────────────────────────
 
-	ctx := context.Background()
-	mock.Get(ctx, "/test1", map[string]string{"X-Test": "1"})    //nolint:errcheck
-	mock.Post(ctx, "/test2", map[string]string{"X-Test": "2"}, "body") //nolint:errcheck
-	mock.Delete(ctx, "/test3", nil)                              //nolint:errcheck
+func TestBehavior_NonSuccessStatusCodes_NotErrors(t *testing.T) {
+	// The httpclient layer returns non-2xx responses as-is.
+	// Only the api layer interprets them as errors.
+	statuses := []int{400, 401, 403, 404, 422, 500, 503}
 
-	if len(mock.CallHistory) != 3 {
-		t.Fatalf("expected 3 calls in history, got %d", len(mock.CallHistory))
+	for _, code := range statuses {
+		code := code
+		t.Run(http.StatusText(code), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(code)
+			}))
+			defer srv.Close()
+
+			svc := newSvc(5 * time.Second)
+			resp, err := svc.Get(context.Background(), srv.URL, nil)
+			if err != nil {
+				t.Fatalf("status %d: expected no error at httpclient layer, got: %v", code, err)
+			}
+			if resp.StatusCode != code {
+				t.Errorf("expected status %d, got %d", code, resp.StatusCode)
+			}
+		})
 	}
-	if mock.CallHistory[0].Method != "GET" {
-		t.Errorf("expected first call GET, got %s", mock.CallHistory[0].Method)
+}
+
+// ─── Concurrent requests ──────────────────────────────────────────────────────
+
+func TestBehavior_ConcurrentRequests_AllSucceed(t *testing.T) {
+	const concurrent = 20
+	var callCount atomic.Int64
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	svc := newSvc(5 * time.Second)
+	done := make(chan error, concurrent)
+
+	for range concurrent {
+		go func() {
+			_, err := svc.Get(context.Background(), srv.URL, nil)
+			done <- err
+		}()
 	}
-	if mock.CallHistory[1].Method != "POST" {
-		t.Errorf("expected second call POST, got %s", mock.CallHistory[1].Method)
+
+	for range concurrent {
+		if err := <-done; err != nil {
+			t.Errorf("concurrent request failed: %v", err)
+		}
 	}
-	if mock.CallHistory[1].Body != "body" {
-		t.Errorf("expected second call body 'body', got '%s'", mock.CallHistory[1].Body)
-	}
-	if mock.CallHistory[2].Method != "DELETE" {
-		t.Errorf("expected third call DELETE, got %s", mock.CallHistory[2].Method)
+
+	if count := callCount.Load(); count != concurrent {
+		t.Errorf("expected %d calls, got %d", concurrent, count)
 	}
 }

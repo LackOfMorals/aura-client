@@ -12,18 +12,139 @@ import (
 	utils "github.com/LackOfMorals/aura-client/internal/utils"
 )
 
-// Instances
-// instanceService handles instance operations
+// ============================================================================
+// Types
+// ============================================================================
+
+// InstanceStatus is the status of an Aura instance as returned by the API.
+type InstanceStatus string
+
+const (
+	StatusRunning       InstanceStatus = "running"
+	StatusStopped       InstanceStatus = "stopped"
+	StatusPaused        InstanceStatus = "paused"
+	StatusAvailable     InstanceStatus = "available"
+	StatusCreating      InstanceStatus = "creating"
+	StatusDestroying    InstanceStatus = "destroying"
+	StatusPausing       InstanceStatus = "pausing"
+	StatusSuspending    InstanceStatus = "suspending"
+	StatusSuspended     InstanceStatus = "suspended"
+	StatusResuming      InstanceStatus = "resuming"
+	StatusLoading       InstanceStatus = "loading"
+	StatusLoadingFailed InstanceStatus = "loading failed"
+	StatusRestoring     InstanceStatus = "restoring"
+	StatusUpdating      InstanceStatus = "updating"
+	StatusOverwriting   InstanceStatus = "overwriting"
+
+	// Deprecated: StatusRestroying was a misspelling. Use StatusRestoring.
+	StatusRestroying = StatusRestoring
+)
+
+// ListInstancesResponse contains a list of instances in a tenant.
+type ListInstancesResponse struct {
+	Data []ListInstanceData `json:"data"`
+}
+
+type ListInstanceData struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Created       string `json:"created_at"`
+	TenantID      string `json:"tenant_id"`
+	CloudProvider string `json:"cloud_provider"`
+}
+
+type CreateInstanceConfigData struct {
+	Name          string `json:"name"`
+	TenantID      string `json:"tenant_id"`
+	CloudProvider string `json:"cloud_provider"`
+	Region        string `json:"region"`
+	Type          string `json:"type"`
+	Version       string `json:"version,omitempty"`
+	Memory        string `json:"memory"`
+}
+
+type CreateInstanceResponse struct {
+	Data CreateInstanceData `json:"data"`
+}
+
+// CreateInstanceData holds the response fields for a newly provisioned instance.
+// It contains the database password returned by the API — treat this value as a
+// secret and avoid logging or serialising the struct directly. The String()
+// method redacts the password for safe use in log output.
+type CreateInstanceData struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	TenantID      string `json:"tenant_id"`
+	CloudProvider string `json:"cloud_provider"`
+	ConnectionURL string `json:"connection_url"`
+	Region        string `json:"region"`
+	Type          string `json:"type"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+}
+
+// String implements fmt.Stringer and redacts the Password field so that
+// accidentally logging or printing this struct never exposes credentials.
+func (c CreateInstanceData) String() string {
+	return fmt.Sprintf(
+		"CreateInstanceData{ID:%s Name:%s TenantID:%s CloudProvider:%s Region:%s Type:%s Username:%s Password:[redacted]}",
+		c.ID, c.Name, c.TenantID, c.CloudProvider, c.Region, c.Type, c.Username,
+	)
+}
+
+type UpdateInstanceData struct {
+	Name   string `json:"name,omitempty"`
+	Memory string `json:"memory,omitempty"`
+}
+
+type GetInstanceResponse struct {
+	Data InstanceData `json:"data"`
+}
+
+type DeleteInstanceResponse struct {
+	Data InstanceData `json:"data"`
+}
+
+type InstanceData struct {
+	ID              string         `json:"id"`
+	Name            string         `json:"name"`
+	Status          InstanceStatus `json:"status"`
+	TenantID        string         `json:"tenant_id"`
+	CloudProvider   string         `json:"cloud_provider"`
+	ConnectionURL   string         `json:"connection_url"`
+	Region          string         `json:"region"`
+	Type            string         `json:"type"`
+	Memory          string         `json:"memory"`
+	Storage         *string        `json:"storage"`
+	CDCEnrichment   string         `json:"cdc_enrichment_mode"`
+	GDSPlugin       bool           `json:"graph_analytics_plugin"`
+	MetricsURL      string         `json:"metrics_integration_url"`
+	Secondaries     int            `json:"secondaries_count"`
+	VectorOptimized bool           `json:"vector_optimized"`
+}
+
+type overwriteInstanceRequest struct {
+	SourceInstanceID string `json:"source_instance_id,omitempty"`
+	SourceSnapshotID string `json:"source_snapshot_id,omitempty"`
+}
+
+type OverwriteInstanceResponse struct {
+	Data string `json:"data"`
+}
+
+// ============================================================================
+// Service
+// ============================================================================
+
+// instanceService handles instance operations.
 type instanceService struct {
 	api     api.RequestService
 	timeout time.Duration
 	logger  *slog.Logger
 }
 
-// List returns all instances accessible to the authenticated user
+// List returns all instances accessible to the authenticated user.
 func (i *instanceService) List(ctx context.Context) (*ListInstancesResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -50,10 +171,8 @@ func (i *instanceService) List(ctx context.Context) (*ListInstancesResponse, err
 	return &result, nil
 }
 
-// Get retrieves details for a specific instance by ID
+// Get retrieves details for a specific instance by ID.
 func (i *instanceService) Get(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -65,7 +184,7 @@ func (i *instanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 	i.logger.DebugContext(ctx, "getting instance details", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -85,10 +204,8 @@ func (i *instanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 	return &result, nil
 }
 
-// Create provisions a new database instance
+// Create provisions a new database instance.
 func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateInstanceConfigData) (*CreateInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -97,23 +214,20 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	ctx, cancel := context.WithTimeout(ctx, i.timeout)
 	defer cancel()
 
-	// Guard against instanceRequest being nil
 	if instanceRequest == nil {
 		err := errors.New("instanceRequest must not be nil")
-		i.logger.ErrorContext(ctx, "instanceRequest must not be nil ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "instanceRequest must not be nil", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	// Check configuration has min number of parameters set
-	err := validateCreateInstanceConfig(instanceRequest)
-	if err != nil {
+	if err := validateCreateInstanceConfig(instanceRequest); err != nil {
 		i.logger.ErrorContext(ctx, "failed to validate instance configuration", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	i.logger.DebugContext(ctx, "creating instance", slog.String("name", instanceRequest.Name), slog.String("tenantID", instanceRequest.TenantID))
 
-	body, err := utils.Marshal(instanceRequest)
+	body, err := json.Marshal(instanceRequest)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
@@ -135,10 +249,8 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	return &result, nil
 }
 
-// Delete removes an instance by ID
+// Delete removes an instance by ID.
 func (i *instanceService) Delete(ctx context.Context, instanceID string) (*DeleteInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -149,7 +261,7 @@ func (i *instanceService) Delete(ctx context.Context, instanceID string) (*Delet
 	i.logger.DebugContext(ctx, "deleting instance", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -169,10 +281,8 @@ func (i *instanceService) Delete(ctx context.Context, instanceID string) (*Delet
 	return &result, nil
 }
 
-// Pause suspends an instance by ID
+// Pause suspends an instance by ID.
 func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -183,7 +293,7 @@ func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 	i.logger.DebugContext(ctx, "pausing instance", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -203,10 +313,8 @@ func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 	return &result, nil
 }
 
-// Resume restarts a paused instance by ID
+// Resume restarts a paused instance by ID.
 func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -217,7 +325,7 @@ func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 	i.logger.DebugContext(ctx, "resuming instance", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -237,10 +345,8 @@ func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 	return &result, nil
 }
 
-// Update modifies an instance's configuration
+// Update modifies an instance's configuration.
 func (i *instanceService) Update(ctx context.Context, instanceID string, instanceRequest *UpdateInstanceData) (*GetInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -251,19 +357,18 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 
 	i.logger.DebugContext(ctx, "updating instance", slog.String("instanceID", instanceID))
 
-	// Guard against instanceRequest being nil
 	if instanceRequest == nil {
 		err := errors.New("instanceRequest must not be nil")
-		i.logger.ErrorContext(ctx, "instanceRequest must not be nil ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "instanceRequest must not be nil", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
-	body, err := utils.Marshal(instanceRequest)
+	body, err := json.Marshal(instanceRequest)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
@@ -285,10 +390,8 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 	return &result, nil
 }
 
-// Overwrite replaces instance data from another instance
+// OverwriteFromInstance replaces instance data from another instance.
 func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID string, sourceInstanceID string) (*OverwriteInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -299,7 +402,7 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 	i.logger.DebugContext(ctx, "overwriting instance", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -315,7 +418,7 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 		SourceInstanceID: sourceInstanceID,
 	}
 
-	body, err := utils.Marshal(requestBody)
+	body, err := json.Marshal(requestBody)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
@@ -323,7 +426,7 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 
 	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/overwrite", instanceID), string(body))
 	if err != nil {
-		i.logger.ErrorContext(ctx, "failed to overwrite instance from another instance ", slog.String("instanceID", instanceID), slog.String("sourceInstanceID", sourceInstanceID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "failed to overwrite instance from another instance", slog.String("instanceID", instanceID), slog.String("sourceInstanceID", sourceInstanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -337,57 +440,8 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 	return &result, nil
 }
 
-// ValidateCreateInstanceConfig performs basic checks that the min number
-// configuration options have been supplied when creating an instance
-func validateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) error {
-
-	// Region name cannot be empty
-	if instanceConfig.Region == "" {
-		return fmt.Errorf("region must not be empty")
-	}
-
-	// Memroy cannot be empty
-	if instanceConfig.Memory == "" {
-		return fmt.Errorf("memory must not be empty")
-	}
-
-	// Type cannot be empty
-	if instanceConfig.Type == "" {
-		return fmt.Errorf("instance type must not be empty")
-	}
-
-	// Cloud provider cannot be empty
-	if instanceConfig.CloudProvider == "" {
-		return fmt.Errorf("cloud provider must not be empty")
-	}
-
-	// Instance name cannot be empty or greater than 30 characters
-	if instanceConfig.Name == "" {
-		return fmt.Errorf("instance name must not be empty")
-	}
-
-	if len(instanceConfig.Name) > 30 {
-		return fmt.Errorf("instance name must be less than 30 characters long")
-
-	}
-	// TenantID cannot be empty
-	if instanceConfig.TenantID == "" {
-		return fmt.Errorf("tenant ID must not be empty")
-	}
-
-	// Check the format of the TenantID
-	err := utils.ValidateTenantID(instanceConfig.TenantID)
-	if err != nil {
-		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
-	}
-
-	return nil
-}
-
-// Overwrite replaces instance data from a snapshot
+// OverwriteFromSnapshot replaces instance data from a snapshot.
 func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
-	// Guard against the caller passing a cancelled context
-	// Check ctx.Err() at entry and return early:
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -398,7 +452,7 @@ func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID 
 	i.logger.DebugContext(ctx, "overwriting instance", slog.String("instanceID", instanceID))
 
 	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance Id ", slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -410,7 +464,7 @@ func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID 
 		SourceSnapshotID: sourceSnapshotID,
 	}
 
-	body, err := utils.Marshal(requestBody)
+	body, err := json.Marshal(requestBody)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
 		return nil, err
@@ -430,4 +484,34 @@ func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID 
 
 	i.logger.InfoContext(ctx, "instance overwrite started", slog.String("instanceID", instanceID))
 	return &result, nil
+}
+
+// validateCreateInstanceConfig performs basic checks that the minimum number
+// of configuration options have been supplied when creating an instance.
+func validateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) error {
+	if instanceConfig.Region == "" {
+		return fmt.Errorf("region must not be empty")
+	}
+	if instanceConfig.Memory == "" {
+		return fmt.Errorf("memory must not be empty")
+	}
+	if instanceConfig.Type == "" {
+		return fmt.Errorf("instance type must not be empty")
+	}
+	if instanceConfig.CloudProvider == "" {
+		return fmt.Errorf("cloud provider must not be empty")
+	}
+	if instanceConfig.Name == "" {
+		return fmt.Errorf("instance name must not be empty")
+	}
+	if len(instanceConfig.Name) > 30 {
+		return fmt.Errorf("instance name must be less than 30 characters long")
+	}
+	if instanceConfig.TenantID == "" {
+		return fmt.Errorf("tenant ID must not be empty")
+	}
+	if err := utils.ValidateTenantID(instanceConfig.TenantID); err != nil {
+		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
+	}
+	return nil
 }

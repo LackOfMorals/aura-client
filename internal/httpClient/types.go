@@ -1,4 +1,4 @@
-package httpClient
+package httpclient
 
 import (
 	"context"
@@ -10,11 +10,11 @@ import (
 )
 
 const (
-	// DefaultMaxResponseSize is the maximum size of response body to read (10MB)
+	// DefaultMaxResponseSize is the maximum size of response body to read (10MB).
 	DefaultMaxResponseSize = 10 * 1024 * 1024
 )
 
-// HTTPResponse stores the response from a request, including the payload and original response.
+// HTTPResponse stores the response from a request, including the payload and headers.
 type HTTPResponse struct {
 	StatusCode int
 	Body       []byte
@@ -32,9 +32,9 @@ type HTTPService interface {
 }
 
 // httpService is the concrete implementation of HTTPService.
-// It handles HTTP requests with configurable timeouts, retries, and connection pooling.
-// All URLs are passed in fully-formed by the caller — this layer has no knowledge of
-// base URLs, API versions, or any other higher-level routing concerns.
+// It handles HTTP requests with configurable timeouts, retries, and connection
+// pooling. All URLs are passed in fully-formed by the caller — this layer has
+// no knowledge of base URLs, API versions, or any other higher-level routing.
 type httpService struct {
 	timeout time.Duration
 	client  *retryablehttp.Client

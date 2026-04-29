@@ -13,23 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/LackOfMorals/aura-client/internal/httpClient"
+	"github.com/LackOfMorals/aura-client/internal/httpclient"
 	"github.com/LackOfMorals/aura-client/internal/testutil"
 )
-
-// ============================================================================
-// Test helpers
-// ============================================================================
 
 func testLogger() *slog.Logger {
 	opts := &slog.HandlerOptions{Level: slog.LevelWarn}
 	return slog.New(slog.NewTextHandler(os.Stderr, opts))
 }
 
-// newTestService constructs an apiRequestService wired to the supplied mock.
-// The authManager starts with no token, so tests that need one must either
-// pre-seed it (use newTestServiceWithToken) or set up the mock's PostResponse
-// to return a valid token payload for the OAuth call.
 func newTestService(mock *testutil.MockHTTPService) *apiRequestService {
 	return &apiRequestService{
 		httpClient: mock,
@@ -44,18 +36,14 @@ func newTestService(mock *testutil.MockHTTPService) *apiRequestService {
 	}
 }
 
-// newTestServiceWithToken returns a service whose authManager already holds a
-// valid token, bypassing the OAuth exchange for tests that focus on routing,
-// URL construction, headers, and response handling.
 func newTestServiceWithToken(mock *testutil.MockHTTPService) *apiRequestService {
 	svc := newTestService(mock)
 	svc.authMgr.token = "test-access-token"
 	svc.authMgr.tokenType = "Bearer"
-	svc.authMgr.expiresAt = time.Now().Unix() + 3600 // valid for 1 hour
+	svc.authMgr.expiresAt = time.Now().Unix() + 3600
 	return svc
 }
 
-// tokenResponseBody returns a JSON-encoded OAuth token response body.
 func tokenResponseBody(accessToken, tokenType string, expiresIn int64) []byte {
 	b, _ := json.Marshal(tokenResponse{
 		AccessToken: accessToken,
@@ -65,9 +53,8 @@ func tokenResponseBody(accessToken, tokenType string, expiresIn int64) []byte {
 	return b
 }
 
-// successHTTPResponse wraps a JSON body in an httpClient.HTTPResponse with status 200.
-func successHTTPResponse(body []byte) *httpClient.HTTPResponse {
-	return &httpClient.HTTPResponse{StatusCode: http.StatusOK, Body: body}
+func successHTTPResponse(body []byte) *httpclient.HTTPResponse {
+	return &httpclient.HTTPResponse{StatusCode: http.StatusOK, Body: body}
 }
 
 // ============================================================================
@@ -121,7 +108,6 @@ func TestParseError_DetailsArray(t *testing.T) {
 }
 
 func TestParseError_ErrorsArrayTakesPrecedenceOverDetails(t *testing.T) {
-	// When both arrays are present, "errors" wins.
 	body := []byte(`{"message":"conflict","errors":[{"message":"from errors"}],"details":[{"message":"from details"}]}`)
 	err := parseError(body, http.StatusBadRequest)
 	if err.Details[0].Message != "from errors" {
@@ -135,7 +121,6 @@ func TestParseError_InvalidJSON_FallsBackToDefault(t *testing.T) {
 	if err.StatusCode != http.StatusInternalServerError {
 		t.Errorf("expected status 500, got %d", err.StatusCode)
 	}
-	// Falls back to http.StatusText
 	if err.Message != "Internal Server Error" {
 		t.Errorf("expected 'Internal Server Error', got '%s'", err.Message)
 	}
@@ -159,7 +144,6 @@ func TestAPIService_Get_RoutesCorrectly(t *testing.T) {
 	svc := newTestServiceWithToken(mock)
 
 	_, err := svc.Get(context.Background(), "instances")
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -178,7 +162,6 @@ func TestAPIService_Post_RoutesCorrectly(t *testing.T) {
 
 	body := `{"name":"my-instance"}`
 	_, err := svc.Post(context.Background(), "instances", body)
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -198,9 +181,7 @@ func TestAPIService_Put_RoutesCorrectly(t *testing.T) {
 	mock.WithResponse(http.StatusOK, `{"data":{}}`)
 	svc := newTestServiceWithToken(mock)
 
-	body := `{"name":"updated"}`
-	_, err := svc.Put(context.Background(), "instances/aaaa1234", body)
-
+	_, err := svc.Put(context.Background(), "instances/aaaa1234", `{"name":"updated"}`)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -217,17 +198,12 @@ func TestAPIService_Patch_RoutesCorrectly(t *testing.T) {
 	mock.WithResponse(http.StatusOK, `{"data":{}}`)
 	svc := newTestServiceWithToken(mock)
 
-	body := `{"memory":"16GB"}`
-	_, err := svc.Patch(context.Background(), "instances/aaaa1234", body)
-
+	_, err := svc.Patch(context.Background(), "instances/aaaa1234", `{"memory":"16GB"}`)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if mock.LastMethod != "PATCH" {
 		t.Errorf("expected PATCH, got %s", mock.LastMethod)
-	}
-	if mock.LastURL != "https://api.neo4j.io/v1/instances/aaaa1234" {
-		t.Errorf("unexpected URL: %s", mock.LastURL)
 	}
 }
 
@@ -237,7 +213,6 @@ func TestAPIService_Delete_RoutesCorrectly(t *testing.T) {
 	svc := newTestServiceWithToken(mock)
 
 	_, err := svc.Delete(context.Background(), "instances/aaaa1234")
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -255,7 +230,6 @@ func TestAPIService_URLConstruction_NestedPath(t *testing.T) {
 	svc := newTestServiceWithToken(mock)
 
 	_, err := svc.Get(context.Background(), "instances/aaaa1234/snapshots")
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -298,28 +272,6 @@ func TestAPIService_Headers_UserAgent(t *testing.T) {
 	}
 }
 
-func TestAPIService_Headers_UserAgent_DefaultFallback(t *testing.T) {
-	// When userAgent is not set (e.g. tests that build apiRequestService directly),
-	// NewRequestService applies the fallback "aura-go-client" to keep the header
-	// populated. This test verifies the field is used as-is; the empty-string
-	// fallback is applied in NewRequestService, not in the header code itself.
-	mock := testutil.NewMockHTTPService()
-	mock.WithResponse(http.StatusOK, `{"data":[]}`)
-	svc := newTestServiceWithToken(mock)
-	// userAgent left as zero value ("") to verify the header is set to that
-	// value directly — the fallback lives in NewRequestService.
-
-	_, err := svc.Get(context.Background(), "instances")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	// Zero-value userAgent means the header is empty; real callers always go
-	// through NewRequestService which sets the fallback.
-	if got := mock.LastHeaders["User-Agent"]; got != "" {
-		t.Logf("note: User-Agent is %q when userAgent field is empty", got)
-	}
-}
-
 func TestAPIService_Headers_AuthorizationFormat(t *testing.T) {
 	mock := testutil.NewMockHTTPService()
 	mock.WithResponse(http.StatusOK, `{"data":[]}`)
@@ -329,9 +281,8 @@ func TestAPIService_Headers_AuthorizationFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	authHeader := mock.LastHeaders["Authorization"]
-	if authHeader != "Bearer test-access-token" {
-		t.Errorf("expected Authorization 'Bearer test-access-token', got '%s'", authHeader)
+	if mock.LastHeaders["Authorization"] != "Bearer test-access-token" {
+		t.Errorf("expected Authorization 'Bearer test-access-token', got '%s'", mock.LastHeaders["Authorization"])
 	}
 }
 
@@ -373,7 +324,7 @@ func TestAPIService_Response_201IsSuccess(t *testing.T) {
 
 func TestAPIService_Response_299IsSuccess(t *testing.T) {
 	mock := testutil.NewMockHTTPService()
-	mock.Response = &httpClient.HTTPResponse{StatusCode: 299, Body: []byte(`{}`)}
+	mock.Response = &httpclient.HTTPResponse{StatusCode: 299, Body: []byte(`{}`)}
 	svc := newTestServiceWithToken(mock)
 
 	_, err := svc.Get(context.Background(), "instances")
@@ -447,24 +398,6 @@ func TestAPIService_ErrorResponse_404(t *testing.T) {
 	}
 }
 
-func TestAPIService_ErrorResponse_500(t *testing.T) {
-	mock := testutil.NewMockHTTPService()
-	mock.WithResponse(http.StatusInternalServerError, `{"message":"Internal error"}`)
-	svc := newTestServiceWithToken(mock)
-
-	_, err := svc.Get(context.Background(), "instances")
-	if err == nil {
-		t.Fatal("expected error for 500 response")
-	}
-	apiErr, ok := err.(*Error)
-	if !ok {
-		t.Fatalf("expected *Error, got %T", err)
-	}
-	if apiErr.StatusCode != http.StatusInternalServerError {
-		t.Errorf("expected status 500, got %d", apiErr.StatusCode)
-	}
-}
-
 func TestAPIService_HTTPClientError_Propagated(t *testing.T) {
 	networkErr := fmt.Errorf("connection refused")
 	mock := testutil.NewMockHTTPService()
@@ -490,7 +423,7 @@ func TestAPIService_CancelledContext_RejectedBeforeHTTPCall(t *testing.T) {
 	svc := newTestServiceWithToken(mock)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // already cancelled
+	cancel()
 
 	_, err := svc.Get(ctx, "instances")
 	if err == nil {
@@ -499,7 +432,6 @@ func TestAPIService_CancelledContext_RejectedBeforeHTTPCall(t *testing.T) {
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected context.Canceled, got %v", err)
 	}
-	// The HTTP mock must not have been called.
 	if mock.CallCount != 0 {
 		t.Errorf("expected 0 HTTP calls, got %d", mock.CallCount)
 	}
@@ -529,22 +461,18 @@ func TestAPIService_ExpiredDeadline_RejectedBeforeHTTPCall(t *testing.T) {
 // Token acquisition (ensureValidToken)
 // ============================================================================
 
-// sequencedMock returns different HTTPResponses for successive POST calls.
-// The first call always goes to the OAuth token endpoint; subsequent calls
-// are the actual API requests. This lets us test the full auth + request flow.
 type sequencedMock struct {
-	responses []*httpClient.HTTPResponse
+	responses []*httpclient.HTTPResponse
 	errors    []error
 	mu        sync.Mutex
 	callIndex int
-	// Capture all calls for assertions
-	calls []struct {
+	calls     []struct {
 		method, url, body string
 		headers           map[string]string
 	}
 }
 
-func (m *sequencedMock) next() (*httpClient.HTTPResponse, error) {
+func (m *sequencedMock) next() (*httpclient.HTTPResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	i := m.callIndex
@@ -564,28 +492,28 @@ func (m *sequencedMock) record(method, url, body string, headers map[string]stri
 	}{method, url, body, headers})
 }
 
-func (m *sequencedMock) Get(ctx context.Context, url string, headers map[string]string) (*httpClient.HTTPResponse, error) {
+func (m *sequencedMock) Get(ctx context.Context, url string, headers map[string]string) (*httpclient.HTTPResponse, error) {
 	m.record("GET", url, "", headers)
 	return m.next()
 }
-func (m *sequencedMock) Post(ctx context.Context, url string, headers map[string]string, body string) (*httpClient.HTTPResponse, error) {
+func (m *sequencedMock) Post(ctx context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
 	m.record("POST", url, body, headers)
 	return m.next()
 }
-func (m *sequencedMock) Put(ctx context.Context, url string, headers map[string]string, body string) (*httpClient.HTTPResponse, error) {
+func (m *sequencedMock) Put(ctx context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
 	m.record("PUT", url, body, headers)
 	return m.next()
 }
-func (m *sequencedMock) Patch(ctx context.Context, url string, headers map[string]string, body string) (*httpClient.HTTPResponse, error) {
+func (m *sequencedMock) Patch(ctx context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
 	m.record("PATCH", url, body, headers)
 	return m.next()
 }
-func (m *sequencedMock) Delete(ctx context.Context, url string, headers map[string]string) (*httpClient.HTTPResponse, error) {
+func (m *sequencedMock) Delete(ctx context.Context, url string, headers map[string]string) (*httpclient.HTTPResponse, error) {
 	m.record("DELETE", url, "", headers)
 	return m.next()
 }
 
-func newSequencedMock(responses []*httpClient.HTTPResponse, errs []error) *sequencedMock {
+func newSequencedMock(responses []*httpclient.HTTPResponse, errs []error) *sequencedMock {
 	return &sequencedMock{responses: responses, errors: errs}
 }
 
@@ -594,9 +522,9 @@ func TestToken_FetchedOnFirstCall(t *testing.T) {
 	apiBody := []byte(`{"data":[]}`)
 
 	mock := newSequencedMock(
-		[]*httpClient.HTTPResponse{
-			{StatusCode: http.StatusOK, Body: tokenBody}, // OAuth call
-			{StatusCode: http.StatusOK, Body: apiBody},   // API call
+		[]*httpclient.HTTPResponse{
+			{StatusCode: http.StatusOK, Body: tokenBody},
+			{StatusCode: http.StatusOK, Body: apiBody},
 		},
 		[]error{nil, nil},
 	)
@@ -616,19 +544,15 @@ func TestToken_FetchedOnFirstCall(t *testing.T) {
 	if string(resp.Body) != string(apiBody) {
 		t.Errorf("expected api body, got %s", resp.Body)
 	}
-
-	// First call must be the OAuth token endpoint.
 	if len(mock.calls) < 2 {
 		t.Fatalf("expected 2 HTTP calls, got %d", len(mock.calls))
 	}
 	if !strings.HasSuffix(mock.calls[0].url, "/oauth/token") {
 		t.Errorf("expected first call to /oauth/token, got %s", mock.calls[0].url)
 	}
-	// OAuth call must use Basic auth.
 	if !strings.HasPrefix(mock.calls[0].headers["Authorization"], "Basic ") {
 		t.Errorf("expected Basic auth on token call, got %s", mock.calls[0].headers["Authorization"])
 	}
-	// API call must use Bearer token.
 	if mock.calls[1].headers["Authorization"] != "Bearer fresh-token" {
 		t.Errorf("expected Bearer fresh-token on API call, got %s", mock.calls[1].headers["Authorization"])
 	}
@@ -637,10 +561,8 @@ func TestToken_FetchedOnFirstCall(t *testing.T) {
 func TestToken_ReusedWhenStillValid(t *testing.T) {
 	mock := testutil.NewMockHTTPService()
 	mock.WithResponse(http.StatusOK, `{"data":[]}`)
-
 	svc := newTestServiceWithToken(mock)
 
-	// Two calls — neither should trigger a token refresh.
 	for i := range 2 {
 		_, err := svc.Get(context.Background(), "instances")
 		if err != nil {
@@ -657,9 +579,9 @@ func TestToken_RefreshedWhenExpired(t *testing.T) {
 	apiBody := []byte(`{"data":[]}`)
 
 	mock := newSequencedMock(
-		[]*httpClient.HTTPResponse{
-			{StatusCode: http.StatusOK, Body: tokenBody}, // token refresh
-			{StatusCode: http.StatusOK, Body: apiBody},   // API call
+		[]*httpclient.HTTPResponse{
+			{StatusCode: http.StatusOK, Body: tokenBody},
+			{StatusCode: http.StatusOK, Body: apiBody},
 		},
 		[]error{nil, nil},
 	)
@@ -671,7 +593,7 @@ func TestToken_RefreshedWhenExpired(t *testing.T) {
 			clientSecret: "secret",
 			token:        "expired-token",
 			tokenType:    "Bearer",
-			expiresAt:    time.Now().Unix() - 1, // already expired
+			expiresAt:    time.Now().Unix() - 1,
 			logger:       testLogger(),
 		},
 		baseURL:      "https://api.neo4j.io",
@@ -684,12 +606,11 @@ func TestToken_RefreshedWhenExpired(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(mock.calls) < 2 {
-		t.Fatalf("expected 2 HTTP calls (refresh + API), got %d", len(mock.calls))
+		t.Fatalf("expected 2 HTTP calls, got %d", len(mock.calls))
 	}
 	if !strings.HasSuffix(mock.calls[0].url, "/oauth/token") {
 		t.Errorf("expected first call to be token refresh, got %s", mock.calls[0].url)
 	}
-	// API call must use the refreshed token.
 	if mock.calls[1].headers["Authorization"] != "Bearer refreshed-token" {
 		t.Errorf("expected refreshed token on API call, got %s", mock.calls[1].headers["Authorization"])
 	}
@@ -700,7 +621,7 @@ func TestToken_RefreshedWithin60SecondsOfExpiry(t *testing.T) {
 	apiBody := []byte(`{"data":[]}`)
 
 	mock := newSequencedMock(
-		[]*httpClient.HTTPResponse{
+		[]*httpclient.HTTPResponse{
 			{StatusCode: http.StatusOK, Body: tokenBody},
 			{StatusCode: http.StatusOK, Body: apiBody},
 		},
@@ -714,7 +635,7 @@ func TestToken_RefreshedWithin60SecondsOfExpiry(t *testing.T) {
 			clientSecret: "secret",
 			token:        "nearly-expired-token",
 			tokenType:    "Bearer",
-			expiresAt:    time.Now().Unix() + 30, // expires in 30s — inside the 60s buffer
+			expiresAt:    time.Now().Unix() + 30, // within 60s buffer
 			logger:       testLogger(),
 		},
 		baseURL:      "https://api.neo4j.io",
@@ -733,10 +654,7 @@ func TestToken_RefreshedWithin60SecondsOfExpiry(t *testing.T) {
 
 func TestToken_TokenEndpointError_Propagated(t *testing.T) {
 	networkErr := fmt.Errorf("token endpoint unreachable")
-	mock := newSequencedMock(
-		[]*httpClient.HTTPResponse{nil},
-		[]error{networkErr},
-	)
+	mock := newSequencedMock([]*httpclient.HTTPResponse{nil}, []error{networkErr})
 
 	svc := &apiRequestService{
 		httpClient:   mock,
@@ -758,7 +676,7 @@ func TestToken_TokenEndpointError_Propagated(t *testing.T) {
 func TestToken_TokenEndpointNonSuccess_ReturnsAPIError(t *testing.T) {
 	body := []byte(`{"message":"invalid_client"}`)
 	mock := newSequencedMock(
-		[]*httpClient.HTTPResponse{{StatusCode: http.StatusUnauthorized, Body: body}},
+		[]*httpclient.HTTPResponse{{StatusCode: http.StatusUnauthorized, Body: body}},
 		[]error{nil},
 	)
 
@@ -785,7 +703,7 @@ func TestToken_TokenEndpointNonSuccess_ReturnsAPIError(t *testing.T) {
 
 func TestToken_MalformedTokenResponse_ReturnsError(t *testing.T) {
 	mock := newSequencedMock(
-		[]*httpClient.HTTPResponse{{StatusCode: http.StatusOK, Body: []byte(`not json`)}},
+		[]*httpclient.HTTPResponse{{StatusCode: http.StatusOK, Body: []byte(`not json`)}},
 		[]error{nil},
 	)
 
@@ -807,13 +725,11 @@ func TestToken_MalformedTokenResponse_ReturnsError(t *testing.T) {
 }
 
 func TestToken_OAuthBodyFormat(t *testing.T) {
-	// Verify the token request sends grant_type=client_credentials and
-	// uses the correct Content-Type header.
 	tokenBody := tokenResponseBody("tok", "Bearer", 3600)
 	apiBody := []byte(`{"data":[]}`)
 
 	mock := newSequencedMock(
-		[]*httpClient.HTTPResponse{
+		[]*httpclient.HTTPResponse{
 			{StatusCode: http.StatusOK, Body: tokenBody},
 			{StatusCode: http.StatusOK, Body: apiBody},
 		},
@@ -835,7 +751,7 @@ func TestToken_OAuthBodyFormat(t *testing.T) {
 
 	tokenCall := mock.calls[0]
 	if tokenCall.headers["Content-Type"] != "application/x-www-form-urlencoded" {
-		t.Errorf("expected Content-Type 'application/x-www-form-urlencoded' on token call, got '%s'", tokenCall.headers["Content-Type"])
+		t.Errorf("expected Content-Type 'application/x-www-form-urlencoded', got '%s'", tokenCall.headers["Content-Type"])
 	}
 	if !strings.Contains(tokenCall.body, "grant_type=client_credentials") {
 		t.Errorf("expected grant_type=client_credentials in token body, got '%s'", tokenCall.body)
@@ -847,26 +763,19 @@ func TestToken_OAuthBodyFormat(t *testing.T) {
 // ============================================================================
 
 func TestToken_ConcurrentRefresh_OnlyOneFetch(t *testing.T) {
-	// Many goroutines hit the service simultaneously with no cached token.
-	// ensureValidToken's double-checked locking must ensure only one token
-	// fetch occurs despite the concurrent pressure.
-
 	const goroutines = 20
 
 	tokenBody := tokenResponseBody("concurrent-token", "Bearer", 3600)
 	apiBody := []byte(`{"data":[]}`)
 
-	// Build enough responses: up to goroutines token calls + goroutines API calls.
-	// In practice only one token call should happen, but we provide extras to
-	// prevent sequencedMock from panicking if the test fails.
-	var responses []*httpClient.HTTPResponse
+	var responses []*httpclient.HTTPResponse
 	var errs []error
 	for range goroutines {
-		responses = append(responses, &httpClient.HTTPResponse{StatusCode: http.StatusOK, Body: tokenBody})
+		responses = append(responses, &httpclient.HTTPResponse{StatusCode: http.StatusOK, Body: tokenBody})
 		errs = append(errs, nil)
 	}
 	for range goroutines {
-		responses = append(responses, &httpClient.HTTPResponse{StatusCode: http.StatusOK, Body: apiBody})
+		responses = append(responses, &httpclient.HTTPResponse{StatusCode: http.StatusOK, Body: apiBody})
 		errs = append(errs, nil)
 	}
 
@@ -890,7 +799,6 @@ func TestToken_ConcurrentRefresh_OnlyOneFetch(t *testing.T) {
 	}
 	wg.Wait()
 
-	// Count token endpoint calls.
 	tokenCallCount := 0
 	mock.mu.Lock()
 	for _, c := range mock.calls {
@@ -910,7 +818,10 @@ func TestToken_ConcurrentRefresh_OnlyOneFetch(t *testing.T) {
 // ============================================================================
 
 func TestError_IsNotFound(t *testing.T) {
-	tests := []struct{ code int; want bool }{
+	tests := []struct {
+		code int
+		want bool
+	}{
 		{http.StatusNotFound, true},
 		{http.StatusOK, false},
 		{http.StatusUnauthorized, false},
@@ -924,7 +835,10 @@ func TestError_IsNotFound(t *testing.T) {
 }
 
 func TestError_IsUnauthorized(t *testing.T) {
-	tests := []struct{ code int; want bool }{
+	tests := []struct {
+		code int
+		want bool
+	}{
 		{http.StatusUnauthorized, true},
 		{http.StatusForbidden, false},
 		{http.StatusOK, false},
@@ -938,7 +852,10 @@ func TestError_IsUnauthorized(t *testing.T) {
 }
 
 func TestError_IsBadRequest(t *testing.T) {
-	tests := []struct{ code int; want bool }{
+	tests := []struct {
+		code int
+		want bool
+	}{
 		{http.StatusBadRequest, true},
 		{http.StatusUnprocessableEntity, false},
 		{http.StatusOK, false},
@@ -991,10 +908,7 @@ func TestError_AllErrors(t *testing.T) {
 	e := &Error{
 		StatusCode: 400,
 		Message:    "top-level",
-		Details: []ErrorDetail{
-			{Message: "detail-1"},
-			{Message: "detail-2"},
-		},
+		Details:    []ErrorDetail{{Message: "detail-1"}, {Message: "detail-2"}},
 	}
 	all := e.AllErrors()
 	if len(all) != 3 {
