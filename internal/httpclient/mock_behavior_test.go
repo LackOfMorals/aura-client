@@ -125,10 +125,10 @@ func TestBehavior_RequestBodyForwarded(t *testing.T) {
 // ─── Response body ────────────────────────────────────────────────────────────
 
 func TestBehavior_ResponseBodyReturned(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"id":"abc123"}`)) //nolint:errcheck
+		_, _ = w.Write([]byte(`{"id":"abc123"}`)) // response body
 	}))
 	defer srv.Close()
 
@@ -145,10 +145,10 @@ func TestBehavior_ResponseBodyReturned(t *testing.T) {
 // ─── HTTPResponse interface fields ────────────────────────────────────────────
 
 func TestBehavior_ResponseContainsStatusCodeBodyAndHeaders(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Trace-ID", "trace-999")
 		w.WriteHeader(http.StatusCreated)
-		w.Write([]byte(`{"created":true}`)) //nolint:errcheck
+		_, _ = w.Write([]byte(`{"created":true}`)) // response body
 	}))
 	defer srv.Close()
 
@@ -171,7 +171,7 @@ func TestBehavior_ResponseContainsStatusCodeBodyAndHeaders(t *testing.T) {
 // ─── Context propagation ──────────────────────────────────────────────────────
 
 func TestBehavior_ContextCancellation_StopsInFlightRequest(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(300 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -203,7 +203,7 @@ func TestBehavior_NonSuccessStatusCodes_NotErrors(t *testing.T) {
 	for _, code := range statuses {
 		code := code
 		t.Run(http.StatusText(code), func(t *testing.T) {
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(code)
 			}))
 			defer srv.Close()
@@ -226,7 +226,7 @@ func TestBehavior_ConcurrentRequests_AllSucceed(t *testing.T) {
 	const concurrent = 20
 	var callCount atomic.Int64
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		callCount.Add(1)
 		w.WriteHeader(http.StatusOK)
 	}))

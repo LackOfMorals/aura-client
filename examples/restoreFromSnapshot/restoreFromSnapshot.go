@@ -1,3 +1,4 @@
+// Package main demonstrates restoring an Aura instance from a snapshot.
 package main
 
 import (

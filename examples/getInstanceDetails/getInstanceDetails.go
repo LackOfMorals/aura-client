@@ -1,3 +1,4 @@
+// Package main demonstrates retrieving details for a specific Aura instance.
 package main
 
 import (
@@ -25,9 +26,9 @@ func main() {
 		log.Fatal("Missing required environment variables")
 	}
 
-	// Acquire the instance id to take snapshot of
+	// Acquire the instance id to get details for
 	fmt.Println("===  Enter instance id ===")
-	fmt.Printf("input the ID of the instance to snapshot:")
+	fmt.Printf("input the ID of the instance to inspect:")
 	var instanceID string
 	n, err := fmt.Scanln(&instanceID)
 	if err != nil {
@@ -59,7 +60,10 @@ func main() {
 	// Each call gets its own context so it can be individually cancelled or traced.
 	ctx := context.Background()
 
-	instanceDetails, err := client.Instances.Get(ctx, string(instanceID))
+	instanceDetails, err := client.Instances.Get(ctx, instanceID)
+	if err != nil {
+		log.Fatalf("Failed to get instance details: %v", err)
+	}
 
 	fmt.Printf("Name: %s\n Id: %s\n Status: %s\n Cloud Provider: %s\n Memory: %s\n Tier: %s\n Connection URL: %s\n",
 		instanceDetails.Data.Name,
@@ -70,5 +74,4 @@ func main() {
 		instanceDetails.Data.Type,
 		instanceDetails.Data.ConnectionURL,
 	)
-
 }

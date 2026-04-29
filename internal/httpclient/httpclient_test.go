@@ -32,7 +32,7 @@ func TestGet_Success(t *testing.T) {
 			t.Errorf("expected GET, got %s", r.Method)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data":"ok"}`)) //nolint:errcheck
+		_, _ = w.Write([]byte(`{"data":"ok"}`))
 	}))
 	defer srv.Close()
 
@@ -73,7 +73,7 @@ func TestGet_Headers_Forwarded(t *testing.T) {
 }
 
 func TestGet_ReturnsResponseHeaders(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("X-Request-ID", "req-12345")
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -92,9 +92,9 @@ func TestGet_ReturnsResponseHeaders(t *testing.T) {
 func TestGet_404NotError(t *testing.T) {
 	// The HTTP layer should return status 404 without wrapping it as an error.
 	// Error interpretation is the responsibility of the api layer above.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"message":"not found"}`)) //nolint:errcheck
+		_, _ = w.Write([]byte(`{"message":"not found"}`)) 
 	}))
 	defer srv.Close()
 
@@ -121,7 +121,7 @@ func TestPost_BodyForwarded(t *testing.T) {
 			t.Errorf("expected body '%s', got '%s'", expectedBody, body)
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"data":{}}`)) //nolint:errcheck
+		_, _ = w.Write([]byte(`{"data":{}}`))  // POST test
 	}))
 	defer srv.Close()
 
@@ -205,7 +205,7 @@ func TestDelete_MethodForwarded(t *testing.T) {
 // ─── Response body ────────────────────────────────────────────────────────────
 
 func TestResponse_EmptyBody(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer srv.Close()
@@ -222,9 +222,9 @@ func TestResponse_EmptyBody(t *testing.T) {
 
 func TestResponse_LargeBody_ReadFully(t *testing.T) {
 	const size = 1024 * 100 // 100KB — well under the 10MB limit
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(strings.Repeat("x", size))) //nolint:errcheck
+		_, _ = w.Write([]byte(strings.Repeat("x", size)))
 	}))
 	defer srv.Close()
 
@@ -242,7 +242,7 @@ func TestResponse_LargeBody_ReadFully(t *testing.T) {
 
 func TestGet_CancelledContext(t *testing.T) {
 	// Server that sleeps longer than we allow.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(500 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -259,7 +259,7 @@ func TestGet_CancelledContext(t *testing.T) {
 }
 
 func TestGet_AlreadyCancelledContext(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()

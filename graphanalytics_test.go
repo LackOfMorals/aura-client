@@ -38,7 +38,7 @@ func TestGDSSessionService_List_Success(t *testing.T) {
 				ID: "session-1", Name: "analytics-session-1", Memory: "8GB",
 				InstanceID: "instance-1", DatabaseID: "db-uuid-1", Status: "running",
 				Create: "2024-01-01T00:00:00Z", Host: "session1.gds.neo4j.io",
-				Expiry: "2024-01-02T00:00:00Z", Ttl: "24h", UserID: "user-1",
+				Expiry: "2024-01-02T00:00:00Z", TTL: "24h", UserID: "user-1",
 				TenantID: "tenant-1", CloudProvider: "gcp", Region: "us-central1",
 			},
 			{
@@ -160,7 +160,7 @@ func TestGDSSessionService_List_FullSessionDetails(t *testing.T) {
 		ID: "session-full", Name: "complete-session", Memory: "16GB",
 		InstanceID: "instance-abc123", DatabaseID: "db-uuid-xyz789", Status: "running",
 		Create: "2024-01-15T10:30:00Z", Host: "session-full.gds.neo4j.io",
-		Expiry: "2024-01-22T10:30:00Z", Ttl: "7d", UserID: "user-abc",
+		Expiry: "2024-01-22T10:30:00Z", TTL: "7d", UserID: "user-abc",
 		TenantID: "tenant-xyz", CloudProvider: "gcp", Region: "europe-west2",
 	}
 

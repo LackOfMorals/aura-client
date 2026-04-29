@@ -20,10 +20,12 @@ type GetSnapshotsResponse struct {
 	Data []GetSnapshotData `json:"data"`
 }
 
+// GetSnapshotDataResponse wraps the response for a single snapshot lookup.
 type GetSnapshotDataResponse struct {
 	Data GetSnapshotData `json:"data"`
 }
 
+// GetSnapshotData holds the fields returned for a single snapshot.
 type GetSnapshotData struct {
 	InstanceID string `json:"instance_id"`
 	SnapshotID string `json:"snapshot_id"`
@@ -38,6 +40,7 @@ type CreateSnapshotResponse struct {
 	Data CreateSnapshotData `json:"data"`
 }
 
+// CreateSnapshotData holds the snapshot ID returned after a snapshot is created.
 type CreateSnapshotData struct {
 	SnapshotID string `json:"snapshot_id"`
 }

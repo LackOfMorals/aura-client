@@ -1,3 +1,5 @@
+// Package utils provides shared internal helpers for the aura-client module.
+// Nothing in this package is part of the public API.
 package utils
 
 import (
@@ -8,7 +10,8 @@ import (
 	"time"
 )
 
-// Returns base64 encoding of two strings for use with Basic Auth.
+// Base64Encode returns the standard base64 encoding of "s1:s2", suitable for
+// use as the credential in an HTTP Basic Authorization header.
 func Base64Encode(s1, s2 string) string {
 	auth := s1 + ":" + s2
 	return base64.StdEncoding.EncodeToString([]byte(auth))
@@ -71,12 +74,12 @@ func ValidateSnapshotID(snapshotID string) error {
 // uuidInstanceIDRegex matches an 8-character hex instance ID.
 var uuidInstanceIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}$`)
 
-// ValidateInstanceID returns an error if InstanceID is empty or not an 8-character hex string.
-func ValidateInstanceID(InstanceID string) error {
-	if InstanceID == "" {
+// ValidateInstanceID returns an error if instanceID is empty or not an 8-character hex string.
+func ValidateInstanceID(instanceID string) error {
+	if instanceID == "" {
 		return fmt.Errorf("instance ID must not be empty")
 	}
-	if !uuidInstanceIDRegex.MatchString(InstanceID) {
+	if !uuidInstanceIDRegex.MatchString(instanceID) {
 		return fmt.Errorf("instance ID must be in the format of a 8-character hex string (xxxxxxxx)")
 	}
 	return nil

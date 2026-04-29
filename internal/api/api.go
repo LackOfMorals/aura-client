@@ -1,3 +1,5 @@
+// Package api implements the authenticated HTTP request layer for the Aura API.
+// It handles OAuth token acquisition and refresh, URL construction, and error parsing.
 package api
 
 import (

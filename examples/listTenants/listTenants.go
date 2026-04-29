@@ -1,3 +1,4 @@
+// Package main demonstrates listing all tenants in an Aura organisation.
 package main
 
 import (
@@ -39,6 +40,9 @@ func main() {
 	ctx := context.Background()
 
 	listOfTenants, err := client.Tenants.List(ctx)
+	if err != nil {
+		log.Fatalf("Failed to list tenants: %v", err)
+	}
 
 	fmt.Println("=== Current Tenants ===")
 	for _, tenant := range listOfTenants.Data {

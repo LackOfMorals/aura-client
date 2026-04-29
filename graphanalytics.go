@@ -25,6 +25,7 @@ type GetGDSSessionResponse struct {
 	Data []GetGDSSessionData `json:"data"`
 }
 
+// GetGDSSessionData holds the fields returned for a single GDS session.
 type GetGDSSessionData struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
@@ -35,16 +36,17 @@ type GetGDSSessionData struct {
 	Create        string `json:"created_at"`
 	Host          string `json:"host"`
 	Expiry        string `json:"expiry_date"`
-	Ttl           string `json:"ttl"`
+	TTL           string `json:"ttl"`
 	UserID        string `json:"user_id"`
 	TenantID      string `json:"tenant_id"`
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
 }
 
+// CreateGDSSessionConfigData holds the configuration required to create a new GDS session.
 type CreateGDSSessionConfigData struct {
 	Name          string `json:"name"`
-	Ttl           string `json:"ttl"`
+	TTL           string `json:"ttl"`
 	TenantID      string `json:"tenant_id"`
 	InstanceID    string `json:"instance_id"`
 	DatabaseID    string `json:"database_uuid"`
@@ -53,6 +55,8 @@ type CreateGDSSessionConfigData struct {
 	Memory        string `json:"memory"`
 }
 
+// GetGDSSessionSizeEstimation holds graph statistics used to estimate the memory
+// requirements for a new GDS session.
 type GetGDSSessionSizeEstimation struct {
 	NodeCount                 int      `json:"node_count"`
 	NodePropertyCount         int      `json:"node_property_count"`
@@ -62,19 +66,23 @@ type GetGDSSessionSizeEstimation struct {
 	AlgorithmCategories       []string `json:"algorithm_categories"`
 }
 
+// GDSSessionSizeEstimationResponse wraps the size estimation result.
 type GDSSessionSizeEstimationResponse struct {
 	Data GDSSessionSizeEstimationData `json:"data"`
 }
 
+// GDSSessionSizeEstimationData holds the estimated memory and recommended size tier.
 type GDSSessionSizeEstimationData struct {
 	EstimatedMemory string `json:"estimated_memory"`
 	RecommendedSize string `json:"recommended_size"`
 }
 
+// DeleteGDSSessionResponse wraps the response returned when a GDS session is deleted.
 type DeleteGDSSessionResponse struct {
 	Data DeleteGDSSession `json:"data"`
 }
 
+// DeleteGDSSession holds the ID of the deleted session.
 type DeleteGDSSession struct {
 	ID string `json:"id"`
 }

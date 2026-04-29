@@ -1,3 +1,6 @@
+// Package httpclient provides a low-level HTTP client with configurable retry
+// behaviour. It is the transport layer beneath internal/api and has no knowledge
+// of Aura-specific concepts such as base URLs, API versions, or authentication.
 package httpclient
 
 import (
@@ -105,7 +108,7 @@ func (s *httpService) doRequest(ctx context.Context, method, url string, headers
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	limitedReader := io.LimitReader(resp.Body, DefaultMaxResponseSize)
 	responseBody, err := io.ReadAll(limitedReader)

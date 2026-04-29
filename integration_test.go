@@ -376,7 +376,7 @@ func TestInstances_List_Success(t *testing.T) {
 func TestInstances_List_Empty(t *testing.T) {
 	payload := map[string]any{"data": []any{}}
 
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
@@ -390,7 +390,7 @@ func TestInstances_List_Empty(t *testing.T) {
 }
 
 func TestInstances_List_APIReturns401(t *testing.T) {
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusUnauthorized, map[string]any{"message": "Unauthorized"})
 	}))
 
@@ -409,7 +409,7 @@ func TestInstances_List_APIReturns401(t *testing.T) {
 }
 
 func TestInstances_List_APIReturns404(t *testing.T) {
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]any{"message": "Not Found"})
 	}))
 
@@ -492,7 +492,7 @@ func TestInstances_Get_InvalidID_IllegalChars(t *testing.T) {
 }
 
 func TestInstances_Get_NotFound(t *testing.T) {
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]any{"message": "Instance not found"})
 	}))
 
@@ -796,7 +796,7 @@ func TestTenants_List_Success(t *testing.T) {
 func TestTenants_List_Empty(t *testing.T) {
 	payload := map[string]any{"data": []any{}}
 
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
@@ -868,7 +868,7 @@ func TestTenants_Get_InvalidID_NotUUID(t *testing.T) {
 }
 
 func TestTenants_Get_NotFound(t *testing.T) {
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]any{"message": "Tenant not found"})
 	}))
 
@@ -1027,7 +1027,7 @@ func TestSnapshots_Get_Success(t *testing.T) {
 		},
 	}
 
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
@@ -1053,7 +1053,7 @@ func TestCmek_List_NoTenantFilter(t *testing.T) {
 		},
 	}
 
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, payload)
 	}))
 
@@ -1102,7 +1102,7 @@ func TestCmek_List_InvalidTenantID(t *testing.T) {
 // ─── Context cancellation (observable from outside) ──────────────────────────
 
 func TestInstances_List_SlowServer_ContextTimeout(t *testing.T) {
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// Simulate a slow API that takes longer than the caller's deadline.
 		time.Sleep(300 * time.Millisecond)
 		writeJSON(w, http.StatusOK, map[string]any{"data": []any{}})
@@ -1124,7 +1124,7 @@ func TestInstances_List_SlowServer_ContextTimeout(t *testing.T) {
 }
 
 func TestInstances_Get_CancelledContext(t *testing.T) {
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(300 * time.Millisecond)
 		writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{}})
 	}))
@@ -1153,7 +1153,7 @@ func TestInstances_Get_CancelledContext(t *testing.T) {
 }
 
 func TestInstances_Create_PreCancelledContext(t *testing.T) {
-	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := newTestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{}})
 	}))
 

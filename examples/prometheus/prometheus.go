@@ -1,3 +1,4 @@
+// Package main demonstrates querying Prometheus metrics for an Aura instance.
 package main
 
 import (

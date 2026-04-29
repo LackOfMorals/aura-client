@@ -43,6 +43,8 @@ const AuraAPIClientVersion = "v1.9.0"
 // ============================================================================
 
 // AuraAPIClient is the main client for interacting with the Neo4j Aura API.
+//
+//nolint:revive // AuraAPIClient is intentional: the package is named aura and the type name is established in v1.
 type AuraAPIClient struct {
 	api    api.RequestService // Handles authenticated API requests
 	logger *slog.Logger       // Structured logger

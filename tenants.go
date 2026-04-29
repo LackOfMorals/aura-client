@@ -20,6 +20,7 @@ type ListTenantsResponse struct {
 	Data []TenantsResponseData `json:"data"`
 }
 
+// TenantsResponseData holds the summary fields for a single tenant in a list response.
 type TenantsResponseData struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -30,12 +31,14 @@ type GetTenantResponse struct {
 	Data TenantResponseData `json:"data"`
 }
 
+// TenantResponseData holds the full details returned for a single tenant.
 type TenantResponseData struct {
 	ID                     string                        `json:"id"`
 	Name                   string                        `json:"name"`
 	InstanceConfigurations []TenantInstanceConfiguration `json:"instance_configurations"`
 }
 
+// TenantInstanceConfiguration describes one available instance configuration for a tenant.
 type TenantInstanceConfiguration struct {
 	CloudProvider string `json:"cloud_provider"`
 	Region        string `json:"region"`
@@ -46,10 +49,12 @@ type TenantInstanceConfiguration struct {
 	Version       string `json:"version"`
 }
 
+// GetTenantMetricsURLResponse wraps the Prometheus metrics endpoint URL for a tenant.
 type GetTenantMetricsURLResponse struct {
 	Data GetTenantMetricsURLData `json:"data"`
 }
 
+// GetTenantMetricsURLData holds the Prometheus endpoint URL.
 type GetTenantMetricsURLData struct {
 	Endpoint string `json:"endpoint"`
 }

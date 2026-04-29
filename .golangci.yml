@@ -1,3 +1,5 @@
+version: "2"
+
 run:
   timeout: 5m
 
@@ -11,20 +13,24 @@ linters:
     - nakedret
     - revive
     - errcheck
-
-linters-settings:
-  staticcheck:
-    checks:
-      - "all"
-      - "-QF1008"
-      - "-ST1000"
+  settings:
+    staticcheck:
+      checks:
+        - "all"
+        - "-QF1008"
+        - "-ST1000"
 
 issues:
-  exclude-dirs:
-    - examples/
   exclude-rules:
     # Don't require error checks or security linting in test files
     - path: _test\.go
       linters:
         - gosec
         - errcheck
+    # Examples are runnable demos, not production code
+    - path: ^examples/
+      linters:
+        - revive
+        - errcheck
+        - gosec
+        - ineffassign

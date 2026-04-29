@@ -65,34 +65,34 @@ type mockAPIServiceWithCallback struct {
 // mockAPIService — simple mock, does not check context
 // ============================================================================
 
-func (m *mockAPIService) Get(ctx context.Context, endpoint string) (*api.Response, error) {
+func (m *mockAPIService) Get(_ context.Context, endpoint string) (*api.Response, error) {
 	m.lastMethod = "GET"
 	m.lastPath = endpoint
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Post(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+func (m *mockAPIService) Post(_ context.Context, endpoint string, body string) (*api.Response, error) {
 	m.lastMethod = "POST"
 	m.lastPath = endpoint
 	m.lastBody = body
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Put(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+func (m *mockAPIService) Put(_ context.Context, endpoint string, body string) (*api.Response, error) {
 	m.lastMethod = "PUT"
 	m.lastPath = endpoint
 	m.lastBody = body
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Patch(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+func (m *mockAPIService) Patch(_ context.Context, endpoint string, body string) (*api.Response, error) {
 	m.lastMethod = "PATCH"
 	m.lastPath = endpoint
 	m.lastBody = body
 	return m.response, m.err
 }
 
-func (m *mockAPIService) Delete(ctx context.Context, endpoint string) (*api.Response, error) {
+func (m *mockAPIService) Delete(_ context.Context, endpoint string) (*api.Response, error) {
 	m.lastMethod = "DELETE"
 	m.lastPath = endpoint
 	return m.response, m.err

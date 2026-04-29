@@ -1,3 +1,4 @@
+// Package main demonstrates creating and inspecting a snapshot for an Aura instance.
 package main
 
 import (

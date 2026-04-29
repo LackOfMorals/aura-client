@@ -1,4 +1,4 @@
-// interfaces.go
+// Package aura provides a Go client library for the Neo4j Aura API.
 package aura
 
 import "context"

@@ -16,9 +16,10 @@ import (
 // Types
 // ============================================================================
 
-// InstanceStatus is the status of an Aura instance as returned by the API.
+// InstanceStatus represents the lifecycle state of an Aura database instance.
 type InstanceStatus string
 
+// Instance status constants returned by the Aura API.
 const (
 	StatusRunning       InstanceStatus = "running"
 	StatusStopped       InstanceStatus = "stopped"
@@ -45,6 +46,7 @@ type ListInstancesResponse struct {
 	Data []ListInstanceData `json:"data"`
 }
 
+// ListInstanceData holds the summary fields returned for each instance in a list response.
 type ListInstanceData struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
@@ -53,6 +55,7 @@ type ListInstanceData struct {
 	CloudProvider string `json:"cloud_provider"`
 }
 
+// CreateInstanceConfigData holds the configuration required to provision a new instance.
 type CreateInstanceConfigData struct {
 	Name          string `json:"name"`
 	TenantID      string `json:"tenant_id"`
@@ -63,6 +66,7 @@ type CreateInstanceConfigData struct {
 	Memory        string `json:"memory"`
 }
 
+// CreateInstanceResponse wraps the response from a successful instance creation.
 type CreateInstanceResponse struct {
 	Data CreateInstanceData `json:"data"`
 }
@@ -92,19 +96,23 @@ func (c CreateInstanceData) String() string {
 	)
 }
 
+// UpdateInstanceData holds the fields that can be modified on an existing instance.
 type UpdateInstanceData struct {
 	Name   string `json:"name,omitempty"`
 	Memory string `json:"memory,omitempty"`
 }
 
+// GetInstanceResponse wraps the response for a single instance lookup.
 type GetInstanceResponse struct {
 	Data InstanceData `json:"data"`
 }
 
+// DeleteInstanceResponse wraps the response returned when an instance is deleted.
 type DeleteInstanceResponse struct {
 	Data InstanceData `json:"data"`
 }
 
+// InstanceData holds the full set of fields returned for a single instance.
 type InstanceData struct {
 	ID              string         `json:"id"`
 	Name            string         `json:"name"`
@@ -128,6 +136,7 @@ type overwriteInstanceRequest struct {
 	SourceSnapshotID string `json:"source_snapshot_id,omitempty"`
 }
 
+// OverwriteInstanceResponse wraps the job ID returned when an overwrite operation is started.
 type OverwriteInstanceResponse struct {
 	Data string `json:"data"`
 }

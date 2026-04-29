@@ -59,49 +59,49 @@ type mockInstanceService struct {
 	CallCount            int
 }
 
-func (m *mockInstanceService) List(ctx context.Context) (*aura.ListInstancesResponse, error) {
+func (m *mockInstanceService) List(_ context.Context) (*aura.ListInstancesResponse, error) {
 	m.LastMethod = "List"
 	m.CallCount++
 	return m.ListResp, m.ListErr
 }
-func (m *mockInstanceService) Get(ctx context.Context, id string) (*aura.GetInstanceResponse, error) {
+func (m *mockInstanceService) Get(_ context.Context, id string) (*aura.GetInstanceResponse, error) {
 	m.LastMethod = "Get"
 	m.LastInstanceID = id
 	m.CallCount++
 	return m.GetResp, m.GetErr
 }
-func (m *mockInstanceService) Create(ctx context.Context, req *aura.CreateInstanceConfigData) (*aura.CreateInstanceResponse, error) {
+func (m *mockInstanceService) Create(_ context.Context, req *aura.CreateInstanceConfigData) (*aura.CreateInstanceResponse, error) {
 	m.LastMethod = "Create"
 	m.LastCreateReq = req
 	m.CallCount++
 	return m.CreateResp, m.CreateErr
 }
-func (m *mockInstanceService) Delete(ctx context.Context, id string) (*aura.DeleteInstanceResponse, error) {
+func (m *mockInstanceService) Delete(_ context.Context, id string) (*aura.DeleteInstanceResponse, error) {
 	m.LastMethod = "Delete"
 	m.LastInstanceID = id
 	m.CallCount++
 	return m.DeleteResp, m.DeleteErr
 }
-func (m *mockInstanceService) Pause(ctx context.Context, id string) (*aura.GetInstanceResponse, error) {
+func (m *mockInstanceService) Pause(_ context.Context, id string) (*aura.GetInstanceResponse, error) {
 	m.LastMethod = "Pause"
 	m.LastInstanceID = id
 	m.CallCount++
 	return m.PauseResp, m.PauseErr
 }
-func (m *mockInstanceService) Resume(ctx context.Context, id string) (*aura.GetInstanceResponse, error) {
+func (m *mockInstanceService) Resume(_ context.Context, id string) (*aura.GetInstanceResponse, error) {
 	m.LastMethod = "Resume"
 	m.LastInstanceID = id
 	m.CallCount++
 	return m.ResumeResp, m.ResumeErr
 }
-func (m *mockInstanceService) Update(ctx context.Context, id string, req *aura.UpdateInstanceData) (*aura.GetInstanceResponse, error) {
+func (m *mockInstanceService) Update(_ context.Context, id string, req *aura.UpdateInstanceData) (*aura.GetInstanceResponse, error) {
 	m.LastMethod = "Update"
 	m.LastInstanceID = id
 	m.LastUpdateReq = req
 	m.CallCount++
 	return m.UpdateResp, m.UpdateErr
 }
-func (m *mockInstanceService) OverwriteFromInstance(ctx context.Context, id, srcInst string) (*aura.OverwriteInstanceResponse, error) {
+func (m *mockInstanceService) OverwriteFromInstance(_ context.Context, id, srcInst string) (*aura.OverwriteInstanceResponse, error) {
 	m.LastMethod = "Overwrite"
 	m.LastInstanceID = id
 	m.LastSourceInstanceID = srcInst
@@ -109,7 +109,7 @@ func (m *mockInstanceService) OverwriteFromInstance(ctx context.Context, id, src
 	return m.OverwriteResp, m.OverwriteErr
 }
 
-func (m *mockInstanceService) OverwriteFromSnapshot(ctx context.Context, id, srcSnap string) (*aura.OverwriteInstanceResponse, error) {
+func (m *mockInstanceService) OverwriteFromSnapshot(_ context.Context, id, srcSnap string) (*aura.OverwriteInstanceResponse, error) {
 	m.LastMethod = "Overwrite"
 	m.LastInstanceID = id
 	m.LastSourceSnapshotID = srcSnap
@@ -132,18 +132,18 @@ type mockTenantService struct {
 	CallCount    int
 }
 
-func (m *mockTenantService) List(ctx context.Context) (*aura.ListTenantsResponse, error) {
+func (m *mockTenantService) List(_ context.Context) (*aura.ListTenantsResponse, error) {
 	m.LastMethod = "List"
 	m.CallCount++
 	return m.ListResp, m.ListErr
 }
-func (m *mockTenantService) Get(ctx context.Context, id string) (*aura.GetTenantResponse, error) {
+func (m *mockTenantService) Get(_ context.Context, id string) (*aura.GetTenantResponse, error) {
 	m.LastMethod = "Get"
 	m.LastTenantID = id
 	m.CallCount++
 	return m.GetResp, m.GetErr
 }
-func (m *mockTenantService) GetMetrics(ctx context.Context, id string) (*aura.GetTenantMetricsURLResponse, error) {
+func (m *mockTenantService) GetMetrics(_ context.Context, id string) (*aura.GetTenantMetricsURLResponse, error) {
 	m.LastMethod = "GetMetrics"
 	m.LastTenantID = id
 	m.CallCount++
@@ -169,27 +169,27 @@ type mockSnapshotService struct {
 	CallCount      int
 }
 
-func (m *mockSnapshotService) List(ctx context.Context, instanceID string, date *aura.SnapshotDate) (*aura.GetSnapshotsResponse, error) {
+func (m *mockSnapshotService) List(_ context.Context, instanceID string, date *aura.SnapshotDate) (*aura.GetSnapshotsResponse, error) {
 	m.LastMethod = "List"
 	m.LastInstanceID = instanceID
 	m.LastDate = date
 	m.CallCount++
 	return m.ListResp, m.ListErr
 }
-func (m *mockSnapshotService) Create(ctx context.Context, instanceID string) (*aura.CreateSnapshotResponse, error) {
+func (m *mockSnapshotService) Create(_ context.Context, instanceID string) (*aura.CreateSnapshotResponse, error) {
 	m.LastMethod = "Create"
 	m.LastInstanceID = instanceID
 	m.CallCount++
 	return m.CreateResp, m.CreateErr
 }
-func (m *mockSnapshotService) Get(ctx context.Context, instanceID, snapshotID string) (*aura.GetSnapshotDataResponse, error) {
+func (m *mockSnapshotService) Get(_ context.Context, instanceID, snapshotID string) (*aura.GetSnapshotDataResponse, error) {
 	m.LastMethod = "Get"
 	m.LastInstanceID = instanceID
 	m.LastSnapshotID = snapshotID
 	m.CallCount++
 	return m.GetResp, m.GetErr
 }
-func (m *mockSnapshotService) Restore(ctx context.Context, instanceID, snapshotID string) (*aura.RestoreSnapshotResponse, error) {
+func (m *mockSnapshotService) Restore(_ context.Context, instanceID, snapshotID string) (*aura.RestoreSnapshotResponse, error) {
 	m.LastMethod = "Restore"
 	m.LastInstanceID = instanceID
 	m.LastSnapshotID = snapshotID
@@ -207,7 +207,7 @@ type mockCmekService struct {
 	CallCount    int
 }
 
-func (m *mockCmekService) List(ctx context.Context, tenantID string) (*aura.GetCmeksResponse, error) {
+func (m *mockCmekService) List(_ context.Context, tenantID string) (*aura.GetCmeksResponse, error) {
 	m.LastTenantID = tenantID
 	m.CallCount++
 	return m.ListResp, m.ListErr
@@ -232,28 +232,28 @@ type mockGDSSessionService struct {
 	CallCount     int
 }
 
-func (m *mockGDSSessionService) List(ctx context.Context) (*aura.GetGDSSessionListResponse, error) {
+func (m *mockGDSSessionService) List(_ context.Context) (*aura.GetGDSSessionListResponse, error) {
 	m.LastMethod = "List"
 	m.CallCount++
 	return m.ListResp, m.ListErr
 }
-func (m *mockGDSSessionService) Estimate(ctx context.Context, req *aura.GetGDSSessionSizeEstimation) (*aura.GDSSessionSizeEstimationResponse, error) {
+func (m *mockGDSSessionService) Estimate(_ context.Context, _ *aura.GetGDSSessionSizeEstimation) (*aura.GDSSessionSizeEstimationResponse, error) {
 	m.LastMethod = "Estimate"
 	m.CallCount++
 	return m.EstimateResp, m.EstimateErr
 }
-func (m *mockGDSSessionService) Create(ctx context.Context, req *aura.CreateGDSSessionConfigData) (*aura.GetGDSSessionResponse, error) {
+func (m *mockGDSSessionService) Create(_ context.Context, _ *aura.CreateGDSSessionConfigData) (*aura.GetGDSSessionResponse, error) {
 	m.LastMethod = "Create"
 	m.CallCount++
 	return m.CreateResp, m.CreateErr
 }
-func (m *mockGDSSessionService) Get(ctx context.Context, id string) (*aura.GetGDSSessionResponse, error) {
+func (m *mockGDSSessionService) Get(_ context.Context, id string) (*aura.GetGDSSessionResponse, error) {
 	m.LastMethod = "Get"
 	m.LastSessionID = id
 	m.CallCount++
 	return m.GetResp, m.GetErr
 }
-func (m *mockGDSSessionService) Delete(ctx context.Context, id string) (*aura.DeleteGDSSessionResponse, error) {
+func (m *mockGDSSessionService) Delete(_ context.Context, id string) (*aura.DeleteGDSSessionResponse, error) {
 	m.LastMethod = "Delete"
 	m.LastSessionID = id
 	m.CallCount++
@@ -276,18 +276,18 @@ type mockPrometheusService struct {
 	CallCount      int
 }
 
-func (m *mockPrometheusService) FetchRawMetrics(ctx context.Context, url string) (*aura.PrometheusMetricsResponse, error) {
+func (m *mockPrometheusService) FetchRawMetrics(_ context.Context, _ string) (*aura.PrometheusMetricsResponse, error) {
 	m.LastMethod = "FetchRawMetrics"
 	m.CallCount++
 	return m.FetchResp, m.FetchErr
 }
-func (m *mockPrometheusService) GetMetricValue(ctx context.Context, metrics *aura.PrometheusMetricsResponse, name string, filters map[string]string) (float64, error) {
+func (m *mockPrometheusService) GetMetricValue(_ context.Context, _ *aura.PrometheusMetricsResponse, name string, _ map[string]string) (float64, error) {
 	m.LastMethod = "GetMetricValue"
 	m.LastMetricName = name
 	m.CallCount++
 	return m.GetValResp, m.GetValErr
 }
-func (m *mockPrometheusService) GetInstanceHealth(ctx context.Context, instanceID, url string) (*aura.PrometheusHealthMetrics, error) {
+func (m *mockPrometheusService) GetInstanceHealth(_ context.Context, instanceID, _ string) (*aura.PrometheusHealthMetrics, error) {
 	m.LastMethod = "GetInstanceHealth"
 	m.LastInstanceID = instanceID
 	m.CallCount++

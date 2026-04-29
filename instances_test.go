@@ -193,7 +193,9 @@ func TestInstanceService_Create_Success(t *testing.T) {
 	}
 
 	var sentRequest CreateInstanceConfigData
-	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
+	if err := json.Unmarshal([]byte(mock.lastBody), &sentRequest); err != nil {
+		t.Fatalf("failed to unmarshal request body: %v", err)
+	}
 	if sentRequest.Name != createRequest.Name {
 		t.Errorf("expected sent name '%s', got '%s'", createRequest.Name, sentRequest.Name)
 	}
@@ -328,7 +330,9 @@ func TestInstanceService_Overwrite_Success(t *testing.T) {
 	}
 
 	var sentRequest overwriteInstanceRequest
-	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
+	if err := json.Unmarshal([]byte(mock.lastBody), &sentRequest); err != nil {
+		t.Fatalf("failed to unmarshal request body: %v", err)
+	}
 	if sentRequest.SourceInstanceID != sourceInstanceID {
 		t.Errorf("expected source instance '%s', got '%s'", sourceInstanceID, sentRequest.SourceInstanceID)
 	}
@@ -354,7 +358,9 @@ func TestInstanceService_Overwrite_WithSnapshot(t *testing.T) {
 	}
 
 	var sentRequest overwriteInstanceRequest
-	json.Unmarshal([]byte(mock.lastBody), &sentRequest)
+	if err := json.Unmarshal([]byte(mock.lastBody), &sentRequest); err != nil {
+		t.Fatalf("failed to unmarshal request body: %v", err)
+	}
 	if sentRequest.SourceSnapshotID != snapshotID {
 		t.Errorf("expected snapshot '%s', got '%s'", snapshotID, sentRequest.SourceSnapshotID)
 	}
@@ -705,7 +711,7 @@ type mockAPIServiceContextCheck struct {
 	onGet    func(context.Context)
 }
 
-func (m *mockAPIServiceContextCheck) Get(ctx context.Context, endpoint string) (*api.Response, error) {
+func (m *mockAPIServiceContextCheck) Get(ctx context.Context, _ string) (*api.Response, error) {
 	if m.onGet != nil {
 		m.onGet(ctx)
 	}
@@ -715,28 +721,28 @@ func (m *mockAPIServiceContextCheck) Get(ctx context.Context, endpoint string) (
 	return m.response, m.err
 }
 
-func (m *mockAPIServiceContextCheck) Post(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+func (m *mockAPIServiceContextCheck) Post(ctx context.Context, _ string, _ string) (*api.Response, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 	return m.response, m.err
 }
 
-func (m *mockAPIServiceContextCheck) Put(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+func (m *mockAPIServiceContextCheck) Put(ctx context.Context, _ string, _ string) (*api.Response, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 	return m.response, m.err
 }
 
-func (m *mockAPIServiceContextCheck) Patch(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+func (m *mockAPIServiceContextCheck) Patch(ctx context.Context, _ string, _ string) (*api.Response, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 	return m.response, m.err
 }
 
-func (m *mockAPIServiceContextCheck) Delete(ctx context.Context, endpoint string) (*api.Response, error) {
+func (m *mockAPIServiceContextCheck) Delete(ctx context.Context, _ string) (*api.Response, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}

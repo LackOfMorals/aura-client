@@ -373,7 +373,7 @@ func TestContextValues_Propagation(t *testing.T) {
 			valueChecked := false
 			mock := &mockAPIServiceWithCallback{
 				response: &api.Response{StatusCode: 200, Body: responseBody},
-				OnGet: func(receivedCtx context.Context, endpoint string) error {
+				OnGet: func(receivedCtx context.Context, _ string) error {
 					if val := receivedCtx.Value(tt.key); val == tt.value {
 						valueChecked = true
 					}
@@ -583,7 +583,7 @@ func TestContextPropagation_ThroughServiceLayers(t *testing.T) {
 	contextValueFound := false
 	mock := &mockAPIServiceWithCallback{
 		response: &api.Response{StatusCode: 200, Body: responseBody},
-		OnGet: func(receivedCtx context.Context, endpoint string) error {
+		OnGet: func(receivedCtx context.Context, _ string) error {
 			if val := receivedCtx.Value(testKey); val == testValue {
 				contextValueFound = true
 			}

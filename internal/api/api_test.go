@@ -45,16 +45,12 @@ func newTestServiceWithToken(mock *testutil.MockHTTPService) *apiRequestService 
 }
 
 func tokenResponseBody(accessToken, tokenType string, expiresIn int64) []byte {
-	b, _ := json.Marshal(tokenResponse{
+	b, _ := json.Marshal(tokenResponse{ //nolint:gosec
 		AccessToken: accessToken,
 		TokenType:   tokenType,
 		ExpiresIn:   expiresIn,
 	})
 	return b
-}
-
-func successHTTPResponse(body []byte) *httpclient.HTTPResponse {
-	return &httpclient.HTTPResponse{StatusCode: http.StatusOK, Body: body}
 }
 
 // ============================================================================
@@ -492,23 +488,23 @@ func (m *sequencedMock) record(method, url, body string, headers map[string]stri
 	}{method, url, body, headers})
 }
 
-func (m *sequencedMock) Get(ctx context.Context, url string, headers map[string]string) (*httpclient.HTTPResponse, error) {
+func (m *sequencedMock) Get(_ context.Context, url string, headers map[string]string) (*httpclient.HTTPResponse, error) {
 	m.record("GET", url, "", headers)
 	return m.next()
 }
-func (m *sequencedMock) Post(ctx context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
+func (m *sequencedMock) Post(_ context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
 	m.record("POST", url, body, headers)
 	return m.next()
 }
-func (m *sequencedMock) Put(ctx context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
+func (m *sequencedMock) Put(_ context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
 	m.record("PUT", url, body, headers)
 	return m.next()
 }
-func (m *sequencedMock) Patch(ctx context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
+func (m *sequencedMock) Patch(_ context.Context, url string, headers map[string]string, body string) (*httpclient.HTTPResponse, error) {
 	m.record("PATCH", url, body, headers)
 	return m.next()
 }
-func (m *sequencedMock) Delete(ctx context.Context, url string, headers map[string]string) (*httpclient.HTTPResponse, error) {
+func (m *sequencedMock) Delete(_ context.Context, url string, headers map[string]string) (*httpclient.HTTPResponse, error) {
 	m.record("DELETE", url, "", headers)
 	return m.next()
 }
@@ -794,7 +790,7 @@ func TestToken_ConcurrentRefresh_OnlyOneFetch(t *testing.T) {
 	for range goroutines {
 		go func() {
 			defer wg.Done()
-			svc.Get(context.Background(), "instances") //nolint:errcheck
+			svc.Get(context.Background(), "instances") //nolint:errcheck,gosec
 		}()
 	}
 	wg.Wait()

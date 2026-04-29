@@ -19,6 +19,7 @@ type GetCmeksResponse struct {
 	Data []GetCmeksData `json:"data"`
 }
 
+// GetCmeksData holds the fields for a single customer-managed encryption key entry.
 type GetCmeksData struct {
 	ID       string `json:"id"`
 	Name     string `json:"name"`

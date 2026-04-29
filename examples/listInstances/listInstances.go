@@ -1,3 +1,4 @@
+// Package main demonstrates listing all Aura instances.
 package main
 
 import (
