@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/LackOfMorals/aura-client/internal/api"
@@ -31,11 +32,15 @@ type mockAPIService struct {
 }
 
 // mockAPIServiceWithDelay is a mock that can simulate slow responses and respects
-// context cancellation / deadlines.
+// context cancellation / deadlines. mu guards the recording fields so the mock
+// is safe to share across goroutines in concurrent tests.
 type mockAPIServiceWithDelay struct {
-	response   *api.Response
-	err        error
-	delay      time.Duration
+	mu       sync.Mutex
+	response *api.Response
+	err      error
+	delay    time.Duration
+
+	// Fields below are written on every call; protect with mu.
 	lastMethod string
 	lastPath   string
 	lastBody   string
@@ -103,40 +108,50 @@ func (m *mockAPIService) Delete(_ context.Context, endpoint string) (*api.Respon
 // ============================================================================
 
 func (m *mockAPIServiceWithDelay) Get(ctx context.Context, endpoint string) (*api.Response, error) {
+	m.mu.Lock()
 	m.lastMethod = "GET"
 	m.lastPath = endpoint
 	m.callCount++
+	m.mu.Unlock()
 	return m.executeWithDelay(ctx)
 }
 
 func (m *mockAPIServiceWithDelay) Post(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+	m.mu.Lock()
 	m.lastMethod = "POST"
 	m.lastPath = endpoint
 	m.lastBody = body
 	m.callCount++
+	m.mu.Unlock()
 	return m.executeWithDelay(ctx)
 }
 
 func (m *mockAPIServiceWithDelay) Put(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+	m.mu.Lock()
 	m.lastMethod = "PUT"
 	m.lastPath = endpoint
 	m.lastBody = body
 	m.callCount++
+	m.mu.Unlock()
 	return m.executeWithDelay(ctx)
 }
 
 func (m *mockAPIServiceWithDelay) Patch(ctx context.Context, endpoint string, body string) (*api.Response, error) {
+	m.mu.Lock()
 	m.lastMethod = "PATCH"
 	m.lastPath = endpoint
 	m.lastBody = body
 	m.callCount++
+	m.mu.Unlock()
 	return m.executeWithDelay(ctx)
 }
 
 func (m *mockAPIServiceWithDelay) Delete(ctx context.Context, endpoint string) (*api.Response, error) {
+	m.mu.Lock()
 	m.lastMethod = "DELETE"
 	m.lastPath = endpoint
 	m.callCount++
+	m.mu.Unlock()
 	return m.executeWithDelay(ctx)
 }
 
