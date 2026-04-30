@@ -1,5 +1,3 @@
-version: "2"
-
 run:
   timeout: 5m
 
@@ -13,12 +11,13 @@ linters:
     - nakedret
     - revive
     - errcheck
-  settings:
-    staticcheck:
-      checks:
-        - "all"
-        - "-QF1008"
-        - "-ST1000"
+
+linters-settings:
+  staticcheck:
+    checks:
+      - "all"
+      - "-QF1008"
+      - "-ST1000"
 
 issues:
   exclude-rules:
