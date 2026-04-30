@@ -322,36 +322,65 @@ func (p *prometheusService) GetMetricValue(ctx context.Context, metrics *Prometh
 }
 
 // assessHealth analyzes metrics and determines overall health status.
+// Severity increases monotonically: healthy → warning → critical.
+// A higher-severity condition always wins over a lower one.
 func (p *prometheusService) assessHealth(metrics *PrometheusHealthMetrics) string {
 	status := "healthy"
 
-	if metrics.Resources.CPUUsagePercent > 80 {
+	// elevate raises status to the requested level only if it is a higher
+	// severity than the current one. This ensures critical is never downgraded
+	// to warning even when multiple conditions are evaluated.
+	elevate := func(to string) {
+		if to == "critical" || (to == "warning" && status == "healthy") {
+			status = to
+		}
+	}
+
+	switch {
+	case metrics.Resources.CPUUsagePercent > 95:
+		metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical CPU usage: %.1f%%", metrics.Resources.CPUUsagePercent))
+		metrics.Recommendations = append(metrics.Recommendations, "Scale to a larger instance size immediately")
+		elevate("critical")
+	case metrics.Resources.CPUUsagePercent > 80:
 		metrics.Issues = append(metrics.Issues, fmt.Sprintf("High CPU usage: %.1f%%", metrics.Resources.CPUUsagePercent))
 		metrics.Recommendations = append(metrics.Recommendations, "Consider scaling to a larger instance size")
-		status = "warning"
+		elevate("warning")
 	}
 
-	if metrics.Resources.MemoryUsagePercent > 85 {
+	switch {
+	case metrics.Resources.MemoryUsagePercent > 95:
+		metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical memory usage: %.1f%%", metrics.Resources.MemoryUsagePercent))
+		metrics.Recommendations = append(metrics.Recommendations, "Scale to a larger memory instance immediately")
+		elevate("critical")
+	case metrics.Resources.MemoryUsagePercent > 85:
 		metrics.Issues = append(metrics.Issues, fmt.Sprintf("High memory usage: %.1f%%", metrics.Resources.MemoryUsagePercent))
 		metrics.Recommendations = append(metrics.Recommendations, "Consider scaling to a larger memory instance")
-		if status == "healthy" {
-			status = "warning"
+		elevate("warning")
+	}
+
+	if metrics.Connections.MaxConnections > 0 {
+		switch {
+		case metrics.Connections.UsagePercent > 95:
+			metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical connection usage: %.1f%%", metrics.Connections.UsagePercent))
+			metrics.Recommendations = append(metrics.Recommendations, "Reduce active connections immediately; review connection pooling")
+			elevate("critical")
+		case metrics.Connections.UsagePercent > 80:
+			metrics.Issues = append(metrics.Issues, fmt.Sprintf("High connection usage: %.1f%%", metrics.Connections.UsagePercent))
+			metrics.Recommendations = append(metrics.Recommendations, "Review connection pooling configuration in your application")
+			elevate("warning")
 		}
 	}
 
-	if metrics.Connections.UsagePercent > 80 && metrics.Connections.MaxConnections > 0 {
-		metrics.Issues = append(metrics.Issues, fmt.Sprintf("High connection usage: %.1f%%", metrics.Connections.UsagePercent))
-		metrics.Recommendations = append(metrics.Recommendations, "Review connection pooling configuration in your application")
-		if status == "healthy" {
-			status = "warning"
-		}
-	}
-
-	if metrics.Storage.PageCacheHitRate < 50 && metrics.Storage.PageCacheHitRate > 0 {
-		metrics.Issues = append(metrics.Issues, fmt.Sprintf("Low page cache hit rate: %.1f%%", metrics.Storage.PageCacheHitRate))
-		metrics.Recommendations = append(metrics.Recommendations, "Consider increasing page cache size for better performance")
-		if status == "healthy" {
-			status = "warning"
+	if metrics.Storage.PageCacheHitRate > 0 {
+		switch {
+		case metrics.Storage.PageCacheHitRate < 20:
+			metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical page cache hit rate: %.1f%%", metrics.Storage.PageCacheHitRate))
+			metrics.Recommendations = append(metrics.Recommendations, "Increase page cache size immediately; query performance is severely degraded")
+			elevate("critical")
+		case metrics.Storage.PageCacheHitRate < 50:
+			metrics.Issues = append(metrics.Issues, fmt.Sprintf("Low page cache hit rate: %.1f%%", metrics.Storage.PageCacheHitRate))
+			metrics.Recommendations = append(metrics.Recommendations, "Consider increasing page cache size for better performance")
+			elevate("warning")
 		}
 	}
 

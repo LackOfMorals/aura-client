@@ -36,7 +36,7 @@ const auraAPIVersion = "v1"
 
 // AuraAPIClientVersion is the current release version of this library.
 // Updated via changie on each release.
-const AuraAPIClientVersion = "v1.9.0"
+const AuraAPIClientVersion = "v1.10.0"
 
 // ============================================================================
 // Client types

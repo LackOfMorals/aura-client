@@ -227,6 +227,16 @@ func TestAssessHealth(t *testing.T) {
 			expectIssues:   true,
 		},
 		{
+			name: "Critical CPU",
+			metrics: &PrometheusHealthMetrics{
+				Resources:   ResourceMetrics{CPUUsagePercent: 97, MemoryUsagePercent: 60},
+				Connections: ConnectionMetrics{ActiveConnections: 30, MaxConnections: 100, UsagePercent: 30},
+				Storage:     StorageMetrics{PageCacheHitRate: 90},
+			},
+			expectedStatus: "critical",
+			expectIssues:   true,
+		},
+		{
 			name: "High Memory",
 			metrics: &PrometheusHealthMetrics{
 				Resources:   ResourceMetrics{CPUUsagePercent: 50, MemoryUsagePercent: 90},
@@ -234,6 +244,16 @@ func TestAssessHealth(t *testing.T) {
 				Storage:     StorageMetrics{PageCacheHitRate: 90},
 			},
 			expectedStatus: "warning",
+			expectIssues:   true,
+		},
+		{
+			name: "Critical Memory",
+			metrics: &PrometheusHealthMetrics{
+				Resources:   ResourceMetrics{CPUUsagePercent: 50, MemoryUsagePercent: 97},
+				Connections: ConnectionMetrics{ActiveConnections: 30, MaxConnections: 100, UsagePercent: 30},
+				Storage:     StorageMetrics{PageCacheHitRate: 90},
+			},
+			expectedStatus: "critical",
 			expectIssues:   true,
 		},
 		{
@@ -245,6 +265,59 @@ func TestAssessHealth(t *testing.T) {
 			},
 			expectedStatus: "warning",
 			expectIssues:   true,
+		},
+		{
+			name: "Critical Page Cache",
+			metrics: &PrometheusHealthMetrics{
+				Resources:   ResourceMetrics{CPUUsagePercent: 50, MemoryUsagePercent: 60},
+				Connections: ConnectionMetrics{ActiveConnections: 30, MaxConnections: 100, UsagePercent: 30},
+				Storage:     StorageMetrics{PageCacheHitRate: 10},
+			},
+			expectedStatus: "critical",
+			expectIssues:   true,
+		},
+		{
+			name: "High connections warning",
+			metrics: &PrometheusHealthMetrics{
+				Resources:   ResourceMetrics{CPUUsagePercent: 50, MemoryUsagePercent: 60},
+				Connections: ConnectionMetrics{ActiveConnections: 85, MaxConnections: 100, UsagePercent: 85},
+				Storage:     StorageMetrics{PageCacheHitRate: 90},
+			},
+			expectedStatus: "warning",
+			expectIssues:   true,
+		},
+		{
+			name: "Critical connections",
+			metrics: &PrometheusHealthMetrics{
+				Resources:   ResourceMetrics{CPUUsagePercent: 50, MemoryUsagePercent: 60},
+				Connections: ConnectionMetrics{ActiveConnections: 97, MaxConnections: 100, UsagePercent: 97},
+				Storage:     StorageMetrics{PageCacheHitRate: 90},
+			},
+			expectedStatus: "critical",
+			expectIssues:   true,
+		},
+		{
+			// A critical condition must not be downgraded to warning by a subsequent
+			// lower-severity condition. This exercises the elevate() monotonicity.
+			name: "Critical beats warning — CPU critical, memory warning",
+			metrics: &PrometheusHealthMetrics{
+				Resources:   ResourceMetrics{CPUUsagePercent: 97, MemoryUsagePercent: 90},
+				Connections: ConnectionMetrics{ActiveConnections: 30, MaxConnections: 100, UsagePercent: 30},
+				Storage:     StorageMetrics{PageCacheHitRate: 90},
+			},
+			expectedStatus: "critical",
+			expectIssues:   true,
+		},
+		{
+			// Connections unknown (MaxConnections == 0) — threshold must be skipped.
+			name: "High connections skipped when MaxConnections unknown",
+			metrics: &PrometheusHealthMetrics{
+				Resources:   ResourceMetrics{CPUUsagePercent: 50, MemoryUsagePercent: 60},
+				Connections: ConnectionMetrics{ActiveConnections: 97, MaxConnections: 0, UsagePercent: 97},
+				Storage:     StorageMetrics{PageCacheHitRate: 90},
+			},
+			expectedStatus: "healthy",
+			expectIssues:   false,
 		},
 	}
 

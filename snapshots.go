@@ -27,12 +27,43 @@ type GetSnapshotDataResponse struct {
 
 // GetSnapshotData holds the fields returned for a single snapshot.
 type GetSnapshotData struct {
-	InstanceID string `json:"instance_id"`
-	SnapshotID string `json:"snapshot_id"`
-	Profile    string `json:"profile"`
-	Status     string `json:"status"`
-	Timestamp  string `json:"timestamp"`
-	Exportable bool   `json:"exportable"`
+	InstanceID string    `json:"instance_id"`
+	SnapshotID string    `json:"snapshot_id"`
+	Profile    string    `json:"profile"`
+	Status     string    `json:"status"`
+	Timestamp  time.Time `json:"timestamp"`
+	Exportable bool      `json:"exportable"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler for GetSnapshotData. It parses the
+// Timestamp field from the RFC3339 string format returned by the Aura API into
+// a time.Time value. An empty timestamp string is silently ignored and leaves
+// the field at its zero value.
+func (s *GetSnapshotData) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		InstanceID string `json:"instance_id"`
+		SnapshotID string `json:"snapshot_id"`
+		Profile    string `json:"profile"`
+		Status     string `json:"status"`
+		Timestamp  string `json:"timestamp"`
+		Exportable bool   `json:"exportable"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	s.InstanceID = raw.InstanceID
+	s.SnapshotID = raw.SnapshotID
+	s.Profile = raw.Profile
+	s.Status = raw.Status
+	s.Exportable = raw.Exportable
+	if raw.Timestamp != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw.Timestamp)
+		if err != nil {
+			return fmt.Errorf("invalid snapshot timestamp %q: %w", raw.Timestamp, err)
+		}
+		s.Timestamp = t
+	}
+	return nil
 }
 
 // CreateSnapshotResponse contains the result of creating a snapshot.

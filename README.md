@@ -256,7 +256,7 @@ ctx := context.Background()
 
 config := &aura.CreateInstanceConfigData{
     Name:          "my-neo4j-db",
-    TenantId:      "your-tenant-id",
+    TenantID:      "your-tenant-id",
     CloudProvider: "gcp",
     Region:        "europe-west1",
     Type:          "enterprise-db",
@@ -359,7 +359,7 @@ fmt.Printf("Overwrite initiated: %s\n", result.Data)
 ```go
 ctx := context.Background()
 
-result, err := client.Instances.OverwriteFromSnapShot(ctx, "target-instance-id", "snapshot-id")
+result, err := client.Instances.OverwriteFromSnapshot(ctx, "target-instance-id", "snapshot-id")
 if err != nil {
     log.Fatalf("Error: %v", err)
 }
@@ -395,7 +395,7 @@ if err != nil {
 fmt.Printf("Found %d snapshots:\n", len(snapshots.Data))
 for _, snapshot := range snapshots.Data {
     fmt.Printf("  - ID: %s, Profile: %s, Status: %s\n",
-        snapshot.SnapshotId,
+        snapshot.SnapshotID,
         snapshot.Profile,
         snapshot.Status,
     )
@@ -413,7 +413,7 @@ if err != nil {
 }
 
 for _, snapshot := range snapshots.Data {
-    fmt.Printf("  - %s at %s\n", snapshot.SnapshotId, snapshot.Timestamp)
+    fmt.Printf("  - %s at %s\n", snapshot.SnapshotID, snapshot.Timestamp.Format(time.RFC3339))
 }
 ```
 
@@ -428,10 +428,10 @@ if err != nil {
 }
 
 fmt.Printf("Instance ID: %s\nSnapshot ID: %s\nStatus: %s\nTimestamp: %s\n",
-    snapshot.Data.InstanceId,
-    snapshot.Data.SnapshotId,
+    snapshot.Data.InstanceID,
+    snapshot.Data.SnapshotID,
     snapshot.Data.Status,
-    snapshot.Data.Timestamp,
+    snapshot.Data.Timestamp.Format(time.RFC3339),
 )
 ```
 
@@ -445,7 +445,7 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Snapshot creation initiated. Snapshot ID: %s\n", snapshot.Data.SnapshotId)
+fmt.Printf("Snapshot creation initiated. Snapshot ID: %s\n", snapshot.Data.SnapshotID)
 // Note: Snapshot creation is asynchronous. Poll List() to check completion status.
 ```
 
@@ -478,7 +478,7 @@ if err != nil {
 }
 
 for _, cmek := range cmeks.Data {
-    fmt.Printf("  - %s (ID: %s) in tenant %s\n", cmek.Name, cmek.ID, cmek.TenantId)
+    fmt.Printf("  - %s (ID: %s) in tenant %s\n", cmek.Name, cmek.ID, cmek.TenantID)
 }
 ```
 
@@ -514,7 +514,7 @@ if err != nil {
 for _, session := range sessions.Data {
     fmt.Printf("  - %s (ID: %s)\n", session.Name, session.ID)
     fmt.Printf("    Memory: %s, Status: %s\n", session.Memory, session.Status)
-    fmt.Printf("    Instance: %s, Expires: %s\n", session.InstanceId, session.Expiry)
+    fmt.Printf("    Instance: %s, Expires: %s\n", session.InstanceID, session.ExpiresAt.Format(time.RFC3339))
 }
 ```
 
@@ -547,15 +547,26 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
+// OverallStatus is one of: "healthy", "warning", or "critical".
+// "warning"  — one or more metrics are elevated; monitor closely.
+// "critical" — one or more metrics have breached a severe threshold
+//              and immediate action is recommended.
 fmt.Printf("Health Status: %s\n", health.OverallStatus)
 fmt.Printf("CPU Usage: %.2f%%\n", health.Resources.CPUUsagePercent)
 fmt.Printf("Memory Usage: %.2f%%\n", health.Resources.MemoryUsagePercent)
 fmt.Printf("Queries/sec: %.2f\n", health.Query.QueriesPerSecond)
-fmt.Printf("Active Connections: %d/%d (%.1f%%)\n",
-    health.Connections.ActiveConnections,
-    health.Connections.MaxConnections,
-    health.Connections.UsagePercent,
-)
+
+if health.Connections.MaxConnections > 0 {
+    fmt.Printf("Active Connections: %d/%d (%.1f%%)\n",
+        health.Connections.ActiveConnections,
+        health.Connections.MaxConnections,
+        health.Connections.UsagePercent,
+    )
+} else {
+    fmt.Printf("Active Connections: %d (max unknown for this plan)\n",
+        health.Connections.ActiveConnections,
+    )
+}
 
 if len(health.Issues) > 0 {
     fmt.Println("\nIssues detected:")
@@ -860,7 +871,7 @@ changie merge   # folds that file into CHANGELOG.md
 
 **2. Bump the version constant**
 
-Edit `client_types.go` and update `AuraAPIClientVersion` to match the version changie just created:
+Edit `client.go` and update `AuraAPIClientVersion` to match the version changie just created:
 
 ```go
 const AuraAPIClientVersion = "v1.9.0"  // ← update this
