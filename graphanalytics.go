@@ -22,7 +22,7 @@ type GetGDSSessionListResponse struct {
 
 // GetGDSSessionResponse contains information about a single GDS session.
 type GetGDSSessionResponse struct {
-	Data []GetGDSSessionData `json:"data"`
+	Data GetGDSSessionData `json:"data"`
 }
 
 // GetGDSSessionData holds the fields returned for a single GDS session.

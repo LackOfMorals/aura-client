@@ -1182,7 +1182,7 @@ func TestBlackBox_GraphAnalytics_Create_Success(t *testing.T) {
 	client := newTestClient(t)
 	client.GraphAnalytics = &mockGDSSessionService{
 		CreateResp: &aura.GetGDSSessionResponse{
-			Data: []aura.GetGDSSessionData{{ID: "sess-new", Status: "Creating"}},
+			Data: aura.GetGDSSessionData{ID: "sess-new", Status: "Creating"},
 		},
 	}
 
@@ -1194,7 +1194,7 @@ func TestBlackBox_GraphAnalytics_Create_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Data) == 0 || result.Data[0].ID != "sess-new" {
+	if result.Data.ID != "sess-new" {
 		t.Errorf("unexpected create response: %+v", result)
 	}
 }
@@ -1203,7 +1203,7 @@ func TestBlackBox_GraphAnalytics_Get_Success(t *testing.T) {
 	client := newTestClient(t)
 	mock := &mockGDSSessionService{
 		GetResp: &aura.GetGDSSessionResponse{
-			Data: []aura.GetGDSSessionData{{ID: "sess-1", Status: "Ready"}},
+			Data: aura.GetGDSSessionData{ID: "sess-1", Status: "Ready"},
 		},
 	}
 	client.GraphAnalytics = mock
@@ -1212,7 +1212,7 @@ func TestBlackBox_GraphAnalytics_Get_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(result.Data) == 0 || result.Data[0].Status != "Ready" {
+	if result.Data.Status != "Ready" {
 		t.Errorf("unexpected session status: %+v", result)
 	}
 	if mock.LastSessionID != "sess-1" {

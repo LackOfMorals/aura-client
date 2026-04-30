@@ -243,10 +243,13 @@ func (p *prometheusService) GetInstanceHealth(ctx context.Context, instanceID st
 		}
 	}
 
-	// MaxConnections assumes the standard Aura limit; this may vary by plan.
-	metrics.Connections.MaxConnections = 100
-	if metrics.Connections.MaxConnections > 0 {
-		metrics.Connections.UsagePercent = float64(metrics.Connections.ActiveConnections) / float64(metrics.Connections.MaxConnections) * 100
+	// Attempt to read the configured maximum from a Prometheus metric.
+	// If the metric is not available (varies by Aura plan / Neo4j version)
+	// MaxConnections stays at 0 and UsagePercent is left at 0 (unknown);
+	// the connection threshold check in assessHealth is skipped in that case.
+	if maxConns, err := p.GetMetricValue(ctx, rawMetrics, "neo4j_dbms_bolt_connections_max_count", nil); err == nil && maxConns > 0 {
+		metrics.Connections.MaxConnections = int(maxConns)
+		metrics.Connections.UsagePercent = float64(metrics.Connections.ActiveConnections) / maxConns * 100
 	}
 
 	if hitRate, err := p.GetMetricValue(ctx, rawMetrics, "neo4j_dbms_page_cache_hit_ratio_per_minute", nil); err == nil {
@@ -336,7 +339,7 @@ func (p *prometheusService) assessHealth(metrics *PrometheusHealthMetrics) strin
 		}
 	}
 
-	if metrics.Connections.UsagePercent > 80 {
+	if metrics.Connections.UsagePercent > 80 && metrics.Connections.MaxConnections > 0 {
 		metrics.Issues = append(metrics.Issues, fmt.Sprintf("High connection usage: %.1f%%", metrics.Connections.UsagePercent))
 		metrics.Recommendations = append(metrics.Recommendations, "Review connection pooling configuration in your application")
 		if status == "healthy" {

@@ -44,8 +44,20 @@ func NewHTTPService(timeout time.Duration, maxRetry int, logger *slog.Logger) HT
 	retryClient.Logger = nil // suppress retryablehttp's own logger; we use slog
 	retryClient.CheckRetry = networkOnlyRetryPolicy
 
+	// Configure an explicit transport with production-suitable connection pool
+	// settings. Go's default transport caps MaxIdleConnsPerHost at 2, which
+	// causes connection exhaustion under concurrent load since all requests go
+	// to the same host. These values are sized for a typical management-plane
+	// workload; tune MaxIdleConnsPerHost upward if you issue many parallel calls.
 	retryClient.HTTPClient = &http.Client{
 		Timeout: timeout,
+		Transport: &http.Transport{
+			MaxIdleConns:          100,
+			MaxIdleConnsPerHost:   20,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
 	}
 
 	return &httpService{
