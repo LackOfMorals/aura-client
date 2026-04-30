@@ -520,7 +520,7 @@ func validateCreateInstanceConfig(instanceConfig *CreateInstanceConfigData) erro
 		return fmt.Errorf("tenant ID must not be empty")
 	}
 	if err := utils.ValidateTenantID(instanceConfig.TenantID); err != nil {
-		return fmt.Errorf("tenant ID must be a valid UUID format (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)")
+		return fmt.Errorf("invalid tenant ID: %w", err)
 	}
 	return nil
 }

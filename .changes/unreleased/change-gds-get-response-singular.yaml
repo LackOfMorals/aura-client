@@ -1,0 +1,2 @@
+kind: Changed
+body: "GetGDSSessionResponse.Data changed from []GetGDSSessionData to GetGDSSessionData — the GDS Get and Create endpoints return a single session object, not an array; callers accessing result.Data[0] should update to result.Data"

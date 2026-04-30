@@ -1,0 +1,2 @@
+kind: Fixed
+body: "prometheus: removed hardcoded MaxConnections=100 assumption — connection usage is now derived from the neo4j_dbms_bolt_connections_max_count metric; when the metric is absent (plan-dependent) MaxConnections and UsagePercent stay at 0 and the connection threshold check is skipped"
