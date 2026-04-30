@@ -34,8 +34,8 @@ func TestSnapshotService_List_Success(t *testing.T) {
 	instanceID := "aaaa1234"
 	expectedResponse := GetSnapshotsResponse{
 		Data: []GetSnapshotData{
-			{InstanceID: instanceID, SnapshotID: "snapshot-1", Profile: "daily", Status: "completed", Timestamp: "2024-01-01T00:00:00Z"},
-			{InstanceID: instanceID, SnapshotID: "snapshot-2", Profile: "hourly", Status: "completed", Timestamp: "2024-01-01T12:00:00Z"},
+			{InstanceID: instanceID, SnapshotID: "snapshot-1", Profile: "daily", Status: "completed", Timestamp: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+			{InstanceID: instanceID, SnapshotID: "snapshot-2", Profile: "hourly", Status: "completed", Timestamp: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)},
 		},
 	}
 
@@ -68,7 +68,7 @@ func TestSnapshotService_Get_Success(t *testing.T) {
 	expectedResponse := GetSnapshotDataResponse{
 		Data: GetSnapshotData{
 			InstanceID: instanceID, SnapshotID: snapshotID,
-			Profile: "daily", Status: "completed", Timestamp: "2024-01-01T00:00:00Z", Exportable: true,
+			Profile: "daily", Status: "completed", Timestamp: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), Exportable: true,
 		},
 	}
 
@@ -89,7 +89,12 @@ func TestSnapshotService_Get_Success(t *testing.T) {
 	if mock.lastPath != "instances/"+instanceID+"/snapshots/"+snapshotID {
 		t.Errorf("expected path 'instances/%s/snapshots/%s', got '%s'", instanceID, snapshotID, mock.lastPath)
 	}
-	if result.Data != expectedResponse.Data {
+	if result.Data.SnapshotID != expectedResponse.Data.SnapshotID ||
+		result.Data.InstanceID != expectedResponse.Data.InstanceID ||
+		result.Data.Profile != expectedResponse.Data.Profile ||
+		result.Data.Status != expectedResponse.Data.Status ||
+		result.Data.Exportable != expectedResponse.Data.Exportable ||
+		!result.Data.Timestamp.Equal(expectedResponse.Data.Timestamp) {
 		t.Errorf("result does not match expected response, got '%v'", result)
 	}
 }
@@ -100,7 +105,7 @@ func TestSnapshotService_List_WithDate(t *testing.T) {
 	snapshotDate := "2024-01-15"
 	responseBody, _ := json.Marshal(GetSnapshotsResponse{
 		Data: []GetSnapshotData{
-			{InstanceID: instanceID, SnapshotID: "snapshot-date-1", Status: "completed", Timestamp: "2024-01-15T00:00:00Z"},
+			{InstanceID: instanceID, SnapshotID: "snapshot-date-1", Status: "completed", Timestamp: time.Date(2024, 1, 15, 0, 0, 0, 0, time.UTC)},
 		},
 	})
 	mock := &mockAPIService{

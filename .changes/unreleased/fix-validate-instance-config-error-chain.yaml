@@ -1,2 +1,0 @@
-kind: Fixed
-body: "validateCreateInstanceConfig now wraps the error from ValidateTenantID using %w, preserving the error chain for callers using errors.Is / errors.As"

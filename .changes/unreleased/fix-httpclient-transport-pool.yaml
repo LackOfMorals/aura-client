@@ -1,2 +1,0 @@
-kind: Fixed
-body: "httpclient: configure explicit http.Transport with production-suitable connection pool settings — MaxIdleConnsPerHost raised from Go default of 2 to 20, preventing connection exhaustion under concurrent load to the same host; TLS and continue timeouts also set explicitly"

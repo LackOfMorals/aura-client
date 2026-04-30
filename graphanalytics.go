@@ -27,20 +27,73 @@ type GetGDSSessionResponse struct {
 
 // GetGDSSessionData holds the fields returned for a single GDS session.
 type GetGDSSessionData struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	Memory        string `json:"memory"`
-	InstanceID    string `json:"instance_id"`
-	DatabaseID    string `json:"database_uuid"`
-	Status        string `json:"status"`
-	Create        string `json:"created_at"`
-	Host          string `json:"host"`
-	Expiry        string `json:"expiry_date"`
-	TTL           string `json:"ttl"`
-	UserID        string `json:"user_id"`
-	TenantID      string `json:"tenant_id"`
-	CloudProvider string `json:"cloud_provider"`
-	Region        string `json:"region"`
+	ID            string    `json:"id"`
+	Name          string    `json:"name"`
+	Memory        string    `json:"memory"`
+	InstanceID    string    `json:"instance_id"`
+	DatabaseID    string    `json:"database_uuid"`
+	Status        string    `json:"status"`
+	CreatedAt     time.Time `json:"created_at"`
+	Host          string    `json:"host"`
+	ExpiresAt     time.Time `json:"expiry_date"`
+	TTL           string    `json:"ttl"`
+	UserID        string    `json:"user_id"`
+	TenantID      string    `json:"tenant_id"`
+	CloudProvider string    `json:"cloud_provider"`
+	Region        string    `json:"region"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler for GetGDSSessionData. It parses
+// the CreatedAt and ExpiresAt fields from the RFC3339 string format returned
+// by the Aura API into time.Time values. Empty timestamp strings are silently
+// ignored and leave the field at its zero value.
+func (g *GetGDSSessionData) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ID            string `json:"id"`
+		Name          string `json:"name"`
+		Memory        string `json:"memory"`
+		InstanceID    string `json:"instance_id"`
+		DatabaseID    string `json:"database_uuid"`
+		Status        string `json:"status"`
+		CreatedAt     string `json:"created_at"`
+		Host          string `json:"host"`
+		ExpiresAt     string `json:"expiry_date"`
+		TTL           string `json:"ttl"`
+		UserID        string `json:"user_id"`
+		TenantID      string `json:"tenant_id"`
+		CloudProvider string `json:"cloud_provider"`
+		Region        string `json:"region"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	g.ID = raw.ID
+	g.Name = raw.Name
+	g.Memory = raw.Memory
+	g.InstanceID = raw.InstanceID
+	g.DatabaseID = raw.DatabaseID
+	g.Status = raw.Status
+	g.Host = raw.Host
+	g.TTL = raw.TTL
+	g.UserID = raw.UserID
+	g.TenantID = raw.TenantID
+	g.CloudProvider = raw.CloudProvider
+	g.Region = raw.Region
+	if raw.CreatedAt != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("invalid GDS session created_at %q: %w", raw.CreatedAt, err)
+		}
+		g.CreatedAt = t
+	}
+	if raw.ExpiresAt != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw.ExpiresAt)
+		if err != nil {
+			return fmt.Errorf("invalid GDS session expiry_date %q: %w", raw.ExpiresAt, err)
+		}
+		g.ExpiresAt = t
+	}
+	return nil
 }
 
 // CreateGDSSessionConfigData holds the configuration required to create a new GDS session.
