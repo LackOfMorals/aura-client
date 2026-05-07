@@ -1,0 +1,2 @@
+kind: Changed
+body: "AuraAPIClientVersion is now read from the embedded module metadata via runtime/debug.ReadBuildInfo at startup so it always reflects the version actually imported; falls back to the literal constant only in development builds"

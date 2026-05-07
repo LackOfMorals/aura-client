@@ -21,6 +21,7 @@ import (
 	"maps"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -36,9 +37,18 @@ import (
 // will be delivered as a separate module (e.g. aura-api-client/v2).
 const auraAPIVersion = "v1"
 
-// AuraAPIClientVersion is the current release version of this library.
-// Updated via changie on each release.
-const AuraAPIClientVersion = "v1.10.0"
+// AuraAPIClientVersion is the version of this library. At runtime it is read
+// from the embedded module metadata via debug.ReadBuildInfo so it always
+// matches the version that was actually imported. The fallback literal is used
+// only in development builds (go run / go test outside a module).
+var AuraAPIClientVersion = func() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		if v := info.Main.Version; v != "" && v != "(devel)" {
+			return v
+		}
+	}
+	return "v1.10.0"
+}()
 
 // ============================================================================
 // Client types
@@ -55,7 +65,7 @@ type AuraAPIClient struct {
 	Tenants        TenantService
 	Instances      InstanceService
 	Snapshots      SnapshotService
-	Cmek           CmekService
+	CMEK           CMEKService
 	GraphAnalytics GDSSessionService
 	Prometheus     PrometheusService
 }
@@ -331,7 +341,7 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		timeout: o.config.apiTimeout,
 		logger:  clientLogger.With(slog.String("service", "snapshotService")),
 	}
-	service.Cmek = &cmekService{
+	service.CMEK = &cmekService{
 		api:     apiSvc,
 		timeout: o.config.apiTimeout,
 		logger:  clientLogger.With(slog.String("service", "cmekService")),
@@ -355,4 +365,16 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 	)
 
 	return service, nil
+}
+
+// Close drains idle connections from the underlying HTTP connection pool.
+// Call it when the client is no longer needed, typically via defer:
+//
+//	client, err := aura.NewClient(...)
+//	if err != nil { ... }
+//	defer client.Close()
+//
+// It is safe to call from any goroutine and may be called more than once.
+func (c *AuraAPIClient) Close() {
+	c.api.Close()
 }

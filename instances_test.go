@@ -748,3 +748,5 @@ func (m *mockAPIServiceContextCheck) Delete(ctx context.Context, _ string) (*api
 	}
 	return m.response, m.err
 }
+
+func (m *mockAPIServiceContextCheck) Close() {}

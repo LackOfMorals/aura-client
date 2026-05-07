@@ -103,6 +103,12 @@ func NewHTTPService(timeout time.Duration, maxRetry int, logger *slog.Logger, ht
 	}
 }
 
+// Close drains idle connections from the underlying HTTP connection pool.
+// Safe to call from multiple goroutines and may be called more than once.
+func (s *httpService) Close() {
+	s.client.HTTPClient.CloseIdleConnections()
+}
+
 // Get performs an HTTP GET request with the provided headers.
 func (s *httpService) Get(ctx context.Context, url string, headers map[string]string) (*HTTPResponse, error) {
 	return s.doRequest(ctx, http.MethodGet, url, headers, "")

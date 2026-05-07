@@ -14,7 +14,7 @@ var (
 	_ aura.TenantService     = (*auratest.FakeTenantService)(nil)
 	_ aura.InstanceService   = (*auratest.FakeInstanceService)(nil)
 	_ aura.SnapshotService   = (*auratest.FakeSnapshotService)(nil)
-	_ aura.CmekService       = (*auratest.FakeCmekService)(nil)
+	_ aura.CMEKService       = (*auratest.FakeCMEKService)(nil)
 	_ aura.GDSSessionService = (*auratest.FakeGDSSessionService)(nil)
 	_ aura.PrometheusService = (*auratest.FakePrometheusService)(nil)
 )
@@ -52,8 +52,8 @@ func TestFake_NilFunc_ReturnsZeroValue(t *testing.T) {
 		}
 	})
 
-	t.Run("FakeCmekService", func(t *testing.T) {
-		svc := &auratest.FakeCmekService{}
+	t.Run("FakeCMEKService", func(t *testing.T) {
+		svc := &auratest.FakeCMEKService{}
 		if _, err := svc.List(ctx, ""); err != nil {
 			t.Errorf("List: %v", err)
 		}

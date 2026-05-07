@@ -80,4 +80,6 @@ type RequestService interface {
 	Put(ctx context.Context, endpoint string, body string) (*Response, error)
 	Patch(ctx context.Context, endpoint string, body string) (*Response, error)
 	Delete(ctx context.Context, endpoint string) (*Response, error)
+	// Close drains idle connections from the underlying HTTP connection pool.
+	Close()
 }

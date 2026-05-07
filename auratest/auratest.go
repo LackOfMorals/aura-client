@@ -177,17 +177,17 @@ func (f *FakeSnapshotService) Restore(ctx context.Context, instanceID string, sn
 	return &aura.RestoreSnapshotResponse{}, nil
 }
 
-// FakeCmekService is a configurable test double for aura.CmekService.
-type FakeCmekService struct {
-	ListFunc func(ctx context.Context, tenantID string) (*aura.GetCmeksResponse, error)
+// FakeCMEKService is a configurable test double for aura.CMEKService.
+type FakeCMEKService struct {
+	ListFunc func(ctx context.Context, tenantID string) (*aura.GetCMEKsResponse, error)
 }
 
 // List calls ListFunc if set, otherwise returns a zero-value response.
-func (f *FakeCmekService) List(ctx context.Context, tenantID string) (*aura.GetCmeksResponse, error) {
+func (f *FakeCMEKService) List(ctx context.Context, tenantID string) (*aura.GetCMEKsResponse, error) {
 	if f.ListFunc != nil {
 		return f.ListFunc(ctx, tenantID)
 	}
-	return &aura.GetCmeksResponse{}, nil
+	return &aura.GetCMEKsResponse{}, nil
 }
 
 // FakeGDSSessionService is a configurable test double for aura.GDSSessionService.

@@ -1,0 +1,2 @@
+kind: Changed
+body: "BREAKING: CmekService renamed to CMEKService, AuraAPIClient.Cmek field renamed to CMEK, GetCmeksResponse to GetCMEKsResponse, and GetCmeksData to GetCMEKsData to match Go acronym conventions; update any references in calling code"

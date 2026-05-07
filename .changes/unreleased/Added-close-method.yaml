@@ -1,0 +1,2 @@
+kind: Added
+body: "AuraAPIClient.Close() drains idle connections from the underlying HTTP connection pool; recommended pattern is defer client.Close() immediately after construction"

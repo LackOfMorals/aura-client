@@ -29,6 +29,8 @@ type HTTPService interface {
 	Put(ctx context.Context, url string, headers map[string]string, body string) (*HTTPResponse, error)
 	Patch(ctx context.Context, url string, headers map[string]string, body string) (*HTTPResponse, error)
 	Delete(ctx context.Context, url string, headers map[string]string) (*HTTPResponse, error)
+	// Close drains idle connections from the underlying connection pool.
+	Close()
 }
 
 // httpService is the concrete implementation of HTTPService.

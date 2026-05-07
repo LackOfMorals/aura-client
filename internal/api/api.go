@@ -128,6 +128,11 @@ func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
 	}
 }
 
+// Close drains idle connections from the underlying HTTP connection pool.
+func (s *apiRequestService) Close() {
+	s.httpClient.Close()
+}
+
 // Get performs an authenticated GET request.
 func (s *apiRequestService) Get(ctx context.Context, endpoint string) (*Response, error) {
 	return s.doAuthenticatedRequest(ctx, http.MethodGet, endpoint, "")
