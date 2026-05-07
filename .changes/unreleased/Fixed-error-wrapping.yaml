@@ -1,0 +1,2 @@
+kind: Fixed
+body: "All JSON marshal/unmarshal errors across service files (instances, snapshots, tenants, cmek, graphanalytics) are now wrapped with fmt.Errorf and %w, giving callers full context when errors.As or errors.Unwrap traverses the chain"

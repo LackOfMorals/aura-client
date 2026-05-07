@@ -173,7 +173,7 @@ func (i *instanceService) List(ctx context.Context) (*ListInstancesResponse, err
 	var result ListInstancesResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal instances response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal list instances response: %w", err)
 	}
 
 	i.logger.DebugContext(ctx, "instances listed successfully", slog.Int("count", len(result.Data)))
@@ -206,7 +206,7 @@ func (i *instanceService) Get(ctx context.Context, instanceID string) (*GetInsta
 	var result GetInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal get instance response: %w", err)
 	}
 
 	i.logger.DebugContext(ctx, "instance retrieved successfully", slog.String("instanceID", instanceID), slog.String("name", result.Data.Name), slog.Any("status", result.Data.Status))
@@ -239,7 +239,7 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	body, err := json.Marshal(instanceRequest)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("marshal create instance request: %w", err)
 	}
 
 	resp, err := i.api.Post(ctx, "instances", string(body))
@@ -251,7 +251,7 @@ func (i *instanceService) Create(ctx context.Context, instanceRequest *CreateIns
 	var result CreateInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal create instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal create instance response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance created successfully", slog.String("instanceID", result.Data.ID), slog.String("name", result.Data.Name))
@@ -283,7 +283,7 @@ func (i *instanceService) Delete(ctx context.Context, instanceID string) (*Delet
 	var result DeleteInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal delete instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal delete instance response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance deleted successfully", slog.String("instanceID", instanceID))
@@ -315,7 +315,7 @@ func (i *instanceService) Pause(ctx context.Context, instanceID string) (*GetIns
 	var result GetInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal pause instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal pause instance response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance paused successfully", slog.String("instanceID", instanceID))
@@ -347,7 +347,7 @@ func (i *instanceService) Resume(ctx context.Context, instanceID string) (*GetIn
 	var result GetInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal resume instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal resume instance response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance resumed successfully", slog.String("instanceID", instanceID))
@@ -380,7 +380,7 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 	body, err := json.Marshal(instanceRequest)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("marshal update instance request: %w", err)
 	}
 
 	resp, err := i.api.Patch(ctx, fmt.Sprintf("instances/%s", instanceID), string(body))
@@ -392,7 +392,7 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 	var result GetInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal update instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal update instance response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance updated successfully", slog.String("instanceID", instanceID), slog.String("name", result.Data.Name))
@@ -430,7 +430,7 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 	body, err := json.Marshal(requestBody)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("marshal overwrite-from-instance request: %w", err)
 	}
 
 	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/overwrite", instanceID), string(body))
@@ -442,7 +442,7 @@ func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID 
 	var result OverwriteInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal overwrite instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal overwrite-from-instance response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance overwrite started", slog.String("instanceID", instanceID))
@@ -476,7 +476,7 @@ func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID 
 	body, err := json.Marshal(requestBody)
 	if err != nil {
 		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("marshal overwrite-from-snapshot request: %w", err)
 	}
 
 	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/overwrite", instanceID), string(body))
@@ -488,7 +488,7 @@ func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID 
 	var result OverwriteInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		i.logger.ErrorContext(ctx, "failed to unmarshal overwrite instance response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal overwrite-from-snapshot response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance overwrite started", slog.String("instanceID", instanceID))

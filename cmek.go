@@ -3,6 +3,7 @@ package aura
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -65,7 +66,7 @@ func (c *cmekService) List(ctx context.Context, tenantID string) (*GetCmeksRespo
 	var result GetCmeksResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		c.logger.ErrorContext(ctx, "failed to unmarshal cmek response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal list CMEKs response: %w", err)
 	}
 
 	c.logger.DebugContext(ctx, "obtained customer managed keys", slog.Int("count", len(result.Data)))

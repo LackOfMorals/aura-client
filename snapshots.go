@@ -138,7 +138,7 @@ func (s *snapshotService) List(ctx context.Context, instanceID string, snapshotD
 	var result GetSnapshotsResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		s.logger.ErrorContext(ctx, "failed to unmarshal snapshots response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal list snapshots response: %w", err)
 	}
 
 	s.logger.DebugContext(ctx, "snapshots listed successfully", slog.Int("count", len(result.Data)))
@@ -174,7 +174,7 @@ func (s *snapshotService) Get(ctx context.Context, instanceID string, snapshotID
 	var result GetSnapshotDataResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		s.logger.ErrorContext(ctx, "failed to unmarshal snapshots response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal get snapshot response: %w", err)
 	}
 
 	s.logger.DebugContext(ctx, "snapshot details obtained")
@@ -206,7 +206,7 @@ func (s *snapshotService) Create(ctx context.Context, instanceID string) (*Creat
 	var result CreateSnapshotResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		s.logger.ErrorContext(ctx, "failed to unmarshal snapshot response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal create snapshot response: %w", err)
 	}
 
 	s.logger.DebugContext(ctx, "snapshot created", slog.String("snapshotId", result.Data.SnapshotID))
@@ -242,7 +242,7 @@ func (s *snapshotService) Restore(ctx context.Context, instanceID string, snapsh
 	var result RestoreSnapshotResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		s.logger.ErrorContext(ctx, "failed to unmarshal snapshots restore response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal restore snapshot response: %w", err)
 	}
 
 	s.logger.DebugContext(ctx, "snapshot restore started")

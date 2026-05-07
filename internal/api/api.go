@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -14,6 +15,21 @@ import (
 
 	"github.com/LackOfMorals/aura-client/internal/httpclient"
 	"github.com/LackOfMorals/aura-client/internal/utils"
+)
+
+// Sentinel errors for common API failure modes. They are matched by status
+// code via Error.Is, so callers can write:
+//
+//	if errors.Is(err, api.ErrNotFound) { ... }
+var (
+	ErrBadRequest       = errors.New("bad request")
+	ErrUnauthorized     = errors.New("unauthorized")
+	ErrForbidden        = errors.New("forbidden")
+	ErrNotFound         = errors.New("not found")
+	ErrConflict         = errors.New("conflict")
+	ErrTooManyRequests  = errors.New("too many requests")
+	ErrInternalServer   = errors.New("internal server error")
+	ErrServiceUnavail   = errors.New("service unavailable")
 )
 
 // Error implements the error interface.
@@ -59,11 +75,38 @@ func (e *Error) IsBadRequest() bool {
 	return e.StatusCode == http.StatusBadRequest
 }
 
+// Is reports whether the receiver matches one of the package's sentinel
+// errors based on the HTTP status code. This makes errors.Is(err, ErrNotFound)
+// work for callers who prefer sentinel-error style over the IsXxx helpers.
+func (e *Error) Is(target error) bool {
+	switch target {
+	case ErrBadRequest:
+		return e.StatusCode == http.StatusBadRequest
+	case ErrUnauthorized:
+		return e.StatusCode == http.StatusUnauthorized
+	case ErrForbidden:
+		return e.StatusCode == http.StatusForbidden
+	case ErrNotFound:
+		return e.StatusCode == http.StatusNotFound
+	case ErrConflict:
+		return e.StatusCode == http.StatusConflict
+	case ErrTooManyRequests:
+		return e.StatusCode == http.StatusTooManyRequests
+	case ErrInternalServer:
+		return e.StatusCode == http.StatusInternalServerError
+	case ErrServiceUnavail:
+		return e.StatusCode == http.StatusServiceUnavailable
+	}
+	return false
+}
+
 // NewRequestService creates a new RequestService. It constructs its own HTTP
 // transport layer internally — callers do not need to know about or create an
-// httpclient.
+// httpclient. If cfg.HTTPClient is non-nil, it is used as the underlying
+// http.Client; otherwise a default transport with production-suitable
+// connection pool settings is constructed.
 func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
-	httpSvc := httpclient.NewHTTPService(cfg.Timeout, cfg.MaxRetry, logger)
+	httpSvc := httpclient.NewHTTPService(cfg.Timeout, cfg.MaxRetry, logger, cfg.HTTPClient)
 
 	userAgent := cfg.UserAgent
 	if userAgent == "" {
@@ -77,10 +120,11 @@ func NewRequestService(cfg Config, logger *slog.Logger) RequestService {
 			clientSecret: cfg.ClientSecret,
 			logger:       logger,
 		},
-		baseURL:      cfg.BaseURL,
-		endpointBase: cfg.BaseURL + "/" + cfg.APIVersion,
-		userAgent:    userAgent,
-		logger:       logger,
+		baseURL:        cfg.BaseURL,
+		endpointBase:   cfg.BaseURL + "/" + cfg.APIVersion,
+		userAgent:      userAgent,
+		defaultHeaders: cfg.DefaultHeaders,
+		logger:         logger,
 	}
 }
 
@@ -139,6 +183,17 @@ func (s *apiRequestService) doAuthenticatedRequest(ctx context.Context, method, 
 		"Content-Type":  "application/json",
 		"User-Agent":    s.userAgent,
 		"Authorization": tokenType + " " + token,
+	}
+
+	// Apply caller-supplied default headers, but never let them override the
+	// three headers above — Authorization in particular must not be replaceable
+	// from outside, otherwise WithDefaultHeaders becomes a credential-injection
+	// foot-gun.
+	for k, v := range s.defaultHeaders {
+		if _, reserved := headers[k]; reserved {
+			continue
+		}
+		headers[k] = v
 	}
 
 	s.logger.DebugContext(ctx, "making authenticated API request",

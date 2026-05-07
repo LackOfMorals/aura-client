@@ -110,6 +110,57 @@ client, err := aura.NewClient(
 )
 ```
 
+### Custom HTTP Client (tracing, proxies, custom TLS)
+
+`WithHTTPClient` lets you supply an `*http.Client` whose `Transport` you control —
+useful for OpenTelemetry instrumentation, corporate proxies, or alternate TLS
+configuration. Retry logic still wraps the client; the per-call timeout from
+`WithTimeout` is still applied via context deadline.
+
+```go
+import "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+httpClient := &http.Client{
+    Transport: otelhttp.NewTransport(http.DefaultTransport),
+}
+
+client, err := aura.NewClient(
+    aura.WithCredentials("client-id", "client-secret"),
+    aura.WithHTTPClient(httpClient),
+)
+```
+
+### Custom User-Agent
+
+Override the default User-Agent. Most callers should append their own product
+token rather than replace the SDK identifier outright, so server-side logs can
+still pin the SDK version when triaging issues:
+
+```go
+client, err := aura.NewClient(
+    aura.WithCredentials("client-id", "client-secret"),
+    aura.WithUserAgent("my-app/1.0 aura-go-client/v1.10.0"),
+)
+```
+
+### Default Request Headers
+
+Add headers that should be applied to every API request — typically used for
+opt-in preview flags or correlation IDs:
+
+```go
+client, err := aura.NewClient(
+    aura.WithCredentials("client-id", "client-secret"),
+    aura.WithDefaultHeaders(map[string]string{
+        "Aura-Preview": "true",
+    }),
+)
+```
+
+`Authorization`, `Content-Type`, and `User-Agent` cannot be overridden through
+this option — entries with those keys are silently ignored. Use `WithUserAgent`
+for the User-Agent.
+
 ---
 
 ## Context and Timeouts
@@ -372,21 +423,18 @@ fmt.Printf("Overwrite from snapshot initiated\n")
 ## Snapshot Operations
 
 ### List Snapshots
-Snapshots.List accepts an optional filter to return snapshots for a particular day.  If this is not given , nil is used instead, then snapshots for the current day are returned. 
 
-The date is of type SnapshotDate that holds the Year, Month and Day.  For example, to see snapshots for 23rd March 2026
+`Snapshots.List` accepts an optional `*SnapshotDate` filter:
 
-filter := aura.SnapshotDate{Year: 2026, Month: time.March, Day: 23})
-
-Then call List 
-
-snapshots, err := client.Snapshots.List(ctx, "your-instance-id", &filter )
-
+- pass `nil` to omit the date filter — the API returns its default window
+  (typically today's snapshots, server-side behaviour);
+- pass a `*SnapshotDate{Year, Month, Day}` to filter to a specific day;
+- the helper `aura.Today()` returns a `*SnapshotDate` set to the local date.
 
 ```go
 ctx := context.Background()
 
-// Empty date string returns today's snapshots
+// nil = no date filter (server default behaviour)
 snapshots, err := client.Snapshots.List(ctx, "your-instance-id", nil)
 if err != nil {
     log.Fatalf("Error: %v", err)
@@ -603,25 +651,34 @@ if err != nil {
 
 ### Typed API Errors
 
+The client returns `*aura.Error` for any non-2xx response, sometimes wrapped
+with additional context. Use `errors.Is` for sentinel matching and `errors.As`
+to inspect status code, message, or detail fields. Both patterns work
+correctly even when the error has been wrapped with `fmt.Errorf("%w", err)`
+further up the call stack.
+
 ```go
+import "errors"
+
 ctx := context.Background()
 
 instance, err := client.Instances.Get(ctx, "non-existent-id")
 if err != nil {
-    if apiErr, ok := err.(*aura.Error); ok {
-        fmt.Printf("API Error %d: %s\n", apiErr.StatusCode, apiErr.Message)
+    // Sentinel matching — preferred for control flow.
+    switch {
+    case errors.Is(err, aura.ErrNotFound):
+        fmt.Println("Instance not found")
+    case errors.Is(err, aura.ErrUnauthorized):
+        fmt.Println("Authentication failed — check credentials")
+    case errors.Is(err, aura.ErrTooManyRequests):
+        fmt.Println("Rate limited — back off and retry")
+    }
 
-        switch {
-        case apiErr.IsNotFound():
-            fmt.Println("Instance not found")
-        case apiErr.IsUnauthorized():
-            fmt.Println("Authentication failed - check credentials")
-        case apiErr.IsBadRequest():
-            fmt.Println("Invalid request parameters")
-        }
-
+    // Inspect status / message / details.
+    var apiErr *aura.Error
+    if errors.As(err, &apiErr) {
+        fmt.Printf("API error %d: %s\n", apiErr.StatusCode, apiErr.Message)
         if apiErr.HasMultipleErrors() {
-            fmt.Println("All errors:")
             for _, msg := range apiErr.AllErrors() {
                 fmt.Printf("  - %s\n", msg)
             }
@@ -633,6 +690,11 @@ if err != nil {
     return
 }
 ```
+
+Available sentinel errors: `ErrBadRequest`, `ErrUnauthorized`, `ErrForbidden`,
+`ErrNotFound`, `ErrConflict`, `ErrTooManyRequests`, `ErrInternalServer`,
+`ErrServiceUnavail`. Each matches the corresponding HTTP status code via
+`errors.Is`.
 
 ### Context Errors
 
@@ -744,8 +806,9 @@ func retryOperation(maxRetries int, fn func() error) error {
             return nil
         }
 
-        if apiErr, ok := err.(*aura.Error); ok {
-            // Don't retry client errors (4xx except 429 Too Many Requests)
+        var apiErr *aura.Error
+        if errors.As(err, &apiErr) {
+            // Don't retry client errors (4xx except 429 Too Many Requests).
             if apiErr.StatusCode >= 400 && apiErr.StatusCode < 500 && apiErr.StatusCode != 429 {
                 return err
             }

@@ -171,7 +171,7 @@ func (g *gDSSessionService) List(ctx context.Context) (*GetGDSSessionListRespons
 	var result GetGDSSessionListResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		g.logger.ErrorContext(ctx, "failed to unmarshal GDS sessions response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal list GDS sessions response: %w", err)
 	}
 
 	g.logger.DebugContext(ctx, "GDS sessions listed successfully", slog.Int("count", len(result.Data)))
@@ -202,7 +202,7 @@ func (g *gDSSessionService) Get(ctx context.Context, gdsSessionID string) (*GetG
 	var result GetGDSSessionResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		g.logger.ErrorContext(ctx, "failed to unmarshal GDS session response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal get GDS session response: %w", err)
 	}
 
 	g.logger.DebugContext(ctx, "GDS session obtained successfully")
@@ -227,7 +227,7 @@ func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest 
 	body, err := utils.Marshal(gdsSessionConfigRequest)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to marshal create gds session request", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("marshal create GDS session request: %w", err)
 	}
 
 	resp, err := g.api.Post(ctx, "graph-analytics/sessions", string(body))
@@ -239,7 +239,7 @@ func (g *gDSSessionService) Create(ctx context.Context, gdsSessionConfigRequest 
 	var result GetGDSSessionResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		g.logger.ErrorContext(ctx, "failed to unmarshal create GDS sessions response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal create GDS session response: %w", err)
 	}
 
 	g.logger.DebugContext(ctx, "GDS session created successfully")
@@ -264,7 +264,7 @@ func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimate
 	body, err := utils.Marshal(gdsSessionSizeEstimateRequest)
 	if err != nil {
 		g.logger.ErrorContext(ctx, "failed to marshal estimate gds session request", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("marshal estimate GDS session request: %w", err)
 	}
 
 	resp, err := g.api.Post(ctx, "graph-analytics/sessions/sizing", string(body))
@@ -276,7 +276,7 @@ func (g *gDSSessionService) Estimate(ctx context.Context, gdsSessionSizeEstimate
 	var result GDSSessionSizeEstimationResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		g.logger.ErrorContext(ctx, "failed to unmarshal estimate GDS sessions response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal estimate GDS session response: %w", err)
 	}
 
 	g.logger.DebugContext(ctx, "GDS session estimated successfully")
@@ -307,7 +307,7 @@ func (g *gDSSessionService) Delete(ctx context.Context, gdsSessionID string) (*D
 	var result DeleteGDSSessionResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		g.logger.ErrorContext(ctx, "failed to unmarshal GDS session delete response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal delete GDS session response: %w", err)
 	}
 
 	g.logger.DebugContext(ctx, "GDS session deleted successfully")

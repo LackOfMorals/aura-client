@@ -1,0 +1,2 @@
+kind: Added
+body: "WithHTTPClient, WithUserAgent, and WithDefaultHeaders client options — inject a custom *http.Client (e.g. with OpenTelemetry transport), override the User-Agent header, or attach per-client default headers to every request"

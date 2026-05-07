@@ -18,6 +18,8 @@ package aura
 import (
 	"errors"
 	"log/slog"
+	"maps"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -60,11 +62,14 @@ type AuraAPIClient struct {
 
 // config holds internal configuration (unexported).
 type config struct {
-	baseURL      string        // the base URL of the Aura API
-	apiTimeout   time.Duration // how long to wait for a response from an Aura API endpoint
-	apiRetryMax  int           // the number of retries to attempt
-	clientID     string        // client ID used to obtain an OAuth token
-	clientSecret string        // client secret used to obtain an OAuth token
+	baseURL        string            // the base URL of the Aura API
+	apiTimeout     time.Duration     // how long to wait for a response from an Aura API endpoint
+	apiRetryMax    int               // the number of retries to attempt
+	clientID       string            // client ID used to obtain an OAuth token
+	clientSecret   string            // client secret used to obtain an OAuth token
+	userAgent      string            // override for the User-Agent header; empty means use the default
+	httpClient     *http.Client      // optional custom HTTP client; nil means construct a default one
+	defaultHeaders map[string]string // optional headers added to every API request
 }
 
 // Option is a functional option for configuring the AuraAPIClient.
@@ -152,6 +157,58 @@ func WithBaseURL(baseURL string) Option {
 	}
 }
 
+// WithHTTPClient supplies a custom *http.Client for the underlying transport.
+// The client is wrapped with retry logic, but the caller retains responsibility
+// for any timeout, transport, TLS, or proxy configuration on the client itself.
+// When this option is set, the per-request timeout configured by WithTimeout
+// is still applied via context, but the client's own Timeout field is not
+// overridden.
+//
+// Typical use: install OpenTelemetry or other middleware via a custom Transport.
+func WithHTTPClient(c *http.Client) Option {
+	return func(o *options) error {
+		if c == nil {
+			return errors.New("http client must not be nil")
+		}
+		o.config.httpClient = c
+		return nil
+	}
+}
+
+// WithUserAgent overrides the default User-Agent header sent on every request.
+// The default is "aura-go-client/<version>". Most callers should append their
+// own product token to the default rather than replace it; e.g.
+// WithUserAgent("my-app/1.0 aura-go-client/v1.10.0") so server-side logs still
+// identify the SDK version.
+func WithUserAgent(ua string) Option {
+	return func(o *options) error {
+		if ua == "" {
+			return errors.New("user agent must not be empty")
+		}
+		o.config.userAgent = ua
+		return nil
+	}
+}
+
+// WithDefaultHeaders supplies additional headers to add to every API request.
+// Useful for opt-in feature flags or preview headers exposed by the Aura API.
+//
+// The Content-Type, User-Agent, and Authorization headers cannot be overridden
+// via this option — entries with those keys are silently ignored. Use
+// WithUserAgent to customise the User-Agent.
+func WithDefaultHeaders(headers map[string]string) Option {
+	return func(o *options) error {
+		if len(headers) == 0 {
+			return nil
+		}
+		// Copy so a later mutation of the caller's map cannot affect us.
+		copyMap := make(map[string]string, len(headers))
+		maps.Copy(copyMap, headers)
+		o.config.defaultHeaders = copyMap
+		return nil
+	}
+}
+
 // WithInsecureBaseURL overrides the base URL without enforcing HTTPS.
 // This is intended for local development and in-process testing only (e.g. httptest.Server).
 // Never use this option against a real Aura environment — OAuth tokens and API
@@ -200,14 +257,21 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		slog.Duration("apiTimeout", o.config.apiTimeout),
 	)
 
+	userAgent := o.config.userAgent
+	if userAgent == "" {
+		userAgent = "aura-go-client/" + AuraAPIClientVersion
+	}
+
 	apiSvc := api.NewRequestService(api.Config{
-		ClientID:     o.config.clientID,
-		ClientSecret: o.config.clientSecret,
-		BaseURL:      o.config.baseURL,
-		APIVersion:   auraAPIVersion,
-		Timeout:      o.config.apiTimeout,
-		MaxRetry:     o.config.apiRetryMax,
-		UserAgent:    "aura-go-client/" + AuraAPIClientVersion,
+		ClientID:       o.config.clientID,
+		ClientSecret:   o.config.clientSecret,
+		BaseURL:        o.config.baseURL,
+		APIVersion:     auraAPIVersion,
+		Timeout:        o.config.apiTimeout,
+		MaxRetry:       o.config.apiRetryMax,
+		UserAgent:      userAgent,
+		HTTPClient:     o.config.httpClient,
+		DefaultHeaders: o.config.defaultHeaders,
 	}, o.logger)
 
 	clientLogger := o.logger.With(slog.String("component", "AuraAPIClient"))

@@ -24,9 +24,9 @@ The Aura API client follows a clean, layered architecture that separates concern
 ┌─────────────────────────────────────────────────────┐
 │           HTTP Service (HTTPService)                 │
 │  - Low-level HTTP operations                         │
-│  - Retry logic and connection pooling                │
-│  - Auto-detects full URLs vs relative paths         │
-│  - Timeout management                                │
+│  - Retry logic (network errors only) and pooling    │
+│  - Honours an injected *http.Client when supplied   │
+│  - Timeout management via context deadline           │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -34,19 +34,21 @@ The Aura API client follows a clean, layered architecture that separates concern
 
 ### 1. Automatic URL Handling
 
-The HTTP service automatically detects whether an endpoint is a full URL or a relative path:
+The API service detects whether an endpoint is a full URL or a relative path
+and only joins the base URL + version when the caller passes a relative path:
 
 ```go
-// Relative path - gets base URL prepended
-resp := httpSvc.Get(ctx, "v1/instances", headers)
+// Relative path — base URL and version are prepended.
+resp := apiSvc.Get(ctx, "instances")
 // → https://api.neo4j.io/v1/instances
 
-// Full URL - used as-is
-resp := httpSvc.Get(ctx, "https://prometheus.example.com/api/v1/query", headers)
+// Full URL — used as-is, retaining authentication.
+resp := apiSvc.Get(ctx, "https://prometheus.example.com/api/v1/query")
 // → https://prometheus.example.com/api/v1/query
 ```
 
-This eliminates the need for special-case methods and keeps the API consistent.
+The HTTP service below it never reasons about base URLs — it executes whatever
+URL the API layer hands it.
 
 ### 2. Unified Authentication
 
@@ -94,32 +96,35 @@ Each service is responsible for its domain:
 When you query Prometheus metrics:
 
 ```go
-// 1. User calls Prometheus service
-health, err := client.Prometheus.GetInstanceHealth(instanceID, prometheusURL)
+// 1. Caller invokes the Prometheus service with its own context.
+ctx := context.Background()
+health, err := client.Prometheus.GetInstanceHealth(ctx, instanceID, prometheusURL)
 
-// 2. Prometheus service constructs full URL
-fullURL := prometheusURL + "/api/v1/query?query=up&time=..."
+// 2. The service applies the configured per-call timeout to ctx, validates
+//    inputs, and forwards the (possibly absolute) URL to the API service.
+resp, err := p.api.Get(ctx, prometheusURL)
 
-// 3. Calls API service with full URL
-resp, err := p.api.Get(p.ctx, fullURL)
-
-// 4. API service adds authentication
+// 3. The API service obtains/refreshes the OAuth token and attaches the
+//    Authorization header along with caller-supplied default headers.
 headers := map[string]string{
     "Authorization": "Bearer " + token,
-    ...
+    "User-Agent":    s.userAgent,
+    "Content-Type":  "application/json",
 }
 
-// 5. Calls HTTP service
+// 4. The HTTP service runs the request through the configured *http.Client
+//    (default or user-provided via WithHTTPClient) wrapped in the retry policy.
 resp, err := s.httpClient.Get(ctx, fullURL, headers)
 
-// 6. HTTP service detects full URL and uses it as-is
-if strings.HasPrefix(fullURL, "https://") {
-    // Use full URL directly
+// 5. URL detection happens in the API service: full URLs are passed through;
+//    relative endpoints are joined with the base URL plus version.
+if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+    fullURL = endpoint
 } else {
-    // Prepend base URL
+    fullURL = endpointBase + "/" + endpoint
 }
 
-// 7. Response flows back through layers
+// 6. Response flows back through the layers.
 ```
 
 ## Benefits of This Architecture
@@ -137,19 +142,30 @@ To add a new service (e.g., for a third-party API):
 
 ```go
 type MyService struct {
-    api    api.RequestService  // Use the API service
-    ctx    context.Context
-    logger *slog.Logger
+    api     api.RequestService  // shared API service, handles auth + retries
+    timeout time.Duration       // per-call timeout ceiling (from client config)
+    logger  *slog.Logger
 }
 
-func (s *MyService) CallExternalAPI() error {
-    // Just pass the full URL - authentication is automatic
-    resp, err := s.api.Get(s.ctx, "https://external-api.com/endpoint")
+// Context flows in per call. The service applies its configured timeout as
+// a ceiling — if the caller's ctx already has a shorter deadline, that wins.
+func (s *MyService) CallExternalAPI(ctx context.Context) error {
+    if err := ctx.Err(); err != nil {
+        return err
+    }
+    ctx, cancel := context.WithTimeout(ctx, s.timeout)
+    defer cancel()
+
+    // Pass the full URL — authentication and User-Agent are added by the
+    // api layer. Relative endpoints are joined to the configured base URL.
+    resp, err := s.api.Get(ctx, "https://external-api.com/endpoint")
     // ...
 }
 ```
 
-No special setup needed - authentication and URL handling work automatically!
+No special setup needed — authentication, default headers, and URL handling
+all work automatically. Context is passed per call rather than stored on the
+struct, which preserves the standard Go cancellation/tracing model.
 
 ## Backward Compatibility
 

@@ -36,7 +36,12 @@ func networkOnlyRetryPolicy(ctx context.Context, resp *http.Response, err error)
 // Retries are attempted only on network-level errors (no response received);
 // HTTP error responses (including 5xx) are always returned to the caller.
 // The caller-supplied logger is used for debug output.
-func NewHTTPService(timeout time.Duration, maxRetry int, logger *slog.Logger) HTTPService {
+//
+// If httpClient is non-nil, it is used as-is — the timeout argument is
+// ignored and the caller is responsible for any timeout, transport, and
+// connection-pool configuration. When httpClient is nil, a default client is
+// constructed with production-suitable transport settings.
+func NewHTTPService(timeout time.Duration, maxRetry int, logger *slog.Logger, httpClient *http.Client) HTTPService {
 	retryClient := retryablehttp.NewClient()
 	retryClient.RetryMax = maxRetry
 	retryClient.RetryWaitMin = 1 * time.Second
@@ -44,20 +49,24 @@ func NewHTTPService(timeout time.Duration, maxRetry int, logger *slog.Logger) HT
 	retryClient.Logger = nil // suppress retryablehttp's own logger; we use slog
 	retryClient.CheckRetry = networkOnlyRetryPolicy
 
-	// Configure an explicit transport with production-suitable connection pool
-	// settings. Go's default transport caps MaxIdleConnsPerHost at 2, which
-	// causes connection exhaustion under concurrent load since all requests go
-	// to the same host. These values are sized for a typical management-plane
-	// workload; tune MaxIdleConnsPerHost upward if you issue many parallel calls.
-	retryClient.HTTPClient = &http.Client{
-		Timeout: timeout,
-		Transport: &http.Transport{
-			MaxIdleConns:          100,
-			MaxIdleConnsPerHost:   20,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
+	if httpClient != nil {
+		retryClient.HTTPClient = httpClient
+	} else {
+		// Configure an explicit transport with production-suitable connection pool
+		// settings. Go's default transport caps MaxIdleConnsPerHost at 2, which
+		// causes connection exhaustion under concurrent load since all requests go
+		// to the same host. These values are sized for a typical management-plane
+		// workload; tune MaxIdleConnsPerHost upward if you issue many parallel calls.
+		retryClient.HTTPClient = &http.Client{
+			Timeout: timeout,
+			Transport: &http.Transport{
+				MaxIdleConns:          100,
+				MaxIdleConnsPerHost:   20,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			},
+		}
 	}
 
 	return &httpService{

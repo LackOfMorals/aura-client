@@ -1,0 +1,2 @@
+kind: Added
+body: "Sentinel errors (ErrNotFound, ErrUnauthorized, ErrForbidden, ErrBadRequest, ErrConflict, ErrTooManyRequests, ErrInternalServer, ErrServiceUnavail) with errors.Is support; *aura.Error now implements Is(target error) bool so callers can use errors.Is and errors.As instead of type assertions"

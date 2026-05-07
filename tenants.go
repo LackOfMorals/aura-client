@@ -91,7 +91,7 @@ func (t *tenantService) List(ctx context.Context) (*ListTenantsResponse, error) 
 	var result ListTenantsResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		t.logger.ErrorContext(ctx, "failed to unmarshal tenants response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal list tenants response: %w", err)
 	}
 
 	t.logger.DebugContext(ctx, "tenants listed successfully", slog.Int("count", len(result.Data)))
@@ -124,7 +124,7 @@ func (t *tenantService) Get(ctx context.Context, tenantID string) (*GetTenantRes
 	var result GetTenantResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		t.logger.ErrorContext(ctx, "failed to unmarshal tenant response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal get tenant response: %w", err)
 	}
 
 	t.logger.DebugContext(ctx, "tenant obtained successfully", slog.String("name", result.Data.Name))
@@ -156,7 +156,7 @@ func (t *tenantService) GetMetrics(ctx context.Context, tenantID string) (*GetTe
 	var result GetTenantMetricsURLResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
 		t.logger.ErrorContext(ctx, "failed to unmarshal tenant metrics url response", slog.String("error", err.Error()))
-		return nil, err
+		return nil, fmt.Errorf("unmarshal tenant metrics URL response: %w", err)
 	}
 
 	t.logger.DebugContext(ctx, "tenant metrics url obtained successfully", slog.String("endpoint", result.Data.Endpoint))
