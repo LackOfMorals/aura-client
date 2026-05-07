@@ -63,6 +63,7 @@ type AuraAPIClient struct {
 // config holds internal configuration (unexported).
 type config struct {
 	baseURL        string            // the base URL of the Aura API
+	apiVersion     string            // API version path segment (e.g. "v1"); empty means use auraAPIVersion
 	apiTimeout     time.Duration     // how long to wait for a response from an Aura API endpoint
 	apiRetryMax    int               // the number of retries to attempt
 	clientID       string            // client ID used to obtain an OAuth token
@@ -70,6 +71,7 @@ type config struct {
 	userAgent      string            // override for the User-Agent header; empty means use the default
 	httpClient     *http.Client      // optional custom HTTP client; nil means construct a default one
 	defaultHeaders map[string]string // optional headers added to every API request
+	prometheusThresholds *HealthThresholds // optional; nil means use DefaultHealthThresholds()
 }
 
 // Option is a functional option for configuring the AuraAPIClient.
@@ -209,6 +211,29 @@ func WithDefaultHeaders(headers map[string]string) Option {
 	}
 }
 
+// WithAPIVersion overrides the Aura API version path segment. Defaults to "v1".
+// Use this only when Aura releases a new major version (e.g. "v2") and you
+// need staged access before the SDK ships a new module.
+func WithAPIVersion(v string) Option {
+	return func(o *options) error {
+		if v == "" {
+			return errors.New("API version must not be empty")
+		}
+		o.config.apiVersion = v
+		return nil
+	}
+}
+
+// WithPrometheusThresholds configures the warning/critical boundaries used by
+// PrometheusService.GetInstanceHealth. Call DefaultHealthThresholds() to get
+// the built-in values and adjust only the fields you need.
+func WithPrometheusThresholds(t HealthThresholds) Option {
+	return func(o *options) error {
+		o.config.prometheusThresholds = &t
+		return nil
+	}
+}
+
 // WithInsecureBaseURL overrides the base URL without enforcing HTTPS.
 // This is intended for local development and in-process testing only (e.g. httptest.Server).
 // Never use this option against a real Aura environment — OAuth tokens and API
@@ -251,9 +276,14 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		return nil, errors.New("API timeout must be greater than zero")
 	}
 
+	apiVersion := o.config.apiVersion
+	if apiVersion == "" {
+		apiVersion = auraAPIVersion
+	}
+
 	o.logger.Debug("configuration validated",
 		slog.String("baseURL", o.config.baseURL),
-		slog.String("apiVersion", auraAPIVersion),
+		slog.String("apiVersion", apiVersion),
 		slog.Duration("apiTimeout", o.config.apiTimeout),
 	)
 
@@ -262,11 +292,16 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		userAgent = "aura-go-client/" + AuraAPIClientVersion
 	}
 
+	prometheusThresholds := DefaultHealthThresholds()
+	if o.config.prometheusThresholds != nil {
+		prometheusThresholds = *o.config.prometheusThresholds
+	}
+
 	apiSvc := api.NewRequestService(api.Config{
 		ClientID:       o.config.clientID,
 		ClientSecret:   o.config.clientSecret,
 		BaseURL:        o.config.baseURL,
-		APIVersion:     auraAPIVersion,
+		APIVersion:     apiVersion,
 		Timeout:        o.config.apiTimeout,
 		MaxRetry:       o.config.apiRetryMax,
 		UserAgent:      userAgent,
@@ -307,15 +342,16 @@ func NewClient(opts ...Option) (*AuraAPIClient, error) {
 		logger:  clientLogger.With(slog.String("service", "gDSSessionService")),
 	}
 	service.Prometheus = &prometheusService{
-		api:     apiSvc,
-		timeout: o.config.apiTimeout,
-		logger:  clientLogger.With(slog.String("service", "prometheusService")),
+		api:        apiSvc,
+		timeout:    o.config.apiTimeout,
+		logger:     clientLogger.With(slog.String("service", "prometheusService")),
+		thresholds: prometheusThresholds,
 	}
 
 	service.logger.Info("Aura API client initialized successfully",
 		slog.Int("services", 6),
 		slog.String("version", AuraAPIClientVersion),
-		slog.String("apiVersion", auraAPIVersion),
+		slog.String("apiVersion", apiVersion),
 	)
 
 	return service, nil

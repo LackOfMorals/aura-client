@@ -72,11 +72,50 @@ type PrometheusMetricsResponse struct {
 // Service
 // ============================================================================
 
+// HealthThresholds controls the warning/critical boundaries used by
+// GetInstanceHealth. All percentage fields are in the range [0, 100].
+// Use DefaultHealthThresholds to get the built-in values, then adjust
+// only the fields you care about.
+type HealthThresholds struct {
+	// CPU usage thresholds (percentage).
+	CPUWarning  float64
+	CPUCritical float64
+
+	// Heap memory usage thresholds (percentage).
+	MemoryWarning  float64
+	MemoryCritical float64
+
+	// Bolt connection pool usage thresholds (percentage).
+	ConnectionsWarning  float64
+	ConnectionsCritical float64
+
+	// Page cache hit rate thresholds: status is raised when the rate falls
+	// *below* these values.
+	PageCacheWarning  float64
+	PageCacheCritical float64
+}
+
+// DefaultHealthThresholds returns the built-in thresholds that were previously
+// hard-coded in assessHealth.
+func DefaultHealthThresholds() HealthThresholds {
+	return HealthThresholds{
+		CPUWarning:          80,
+		CPUCritical:         95,
+		MemoryWarning:       85,
+		MemoryCritical:      95,
+		ConnectionsWarning:  80,
+		ConnectionsCritical: 95,
+		PageCacheWarning:    50,
+		PageCacheCritical:   20,
+	}
+}
+
 // prometheusService handles Prometheus metrics operations.
 type prometheusService struct {
-	api     api.RequestService
-	timeout time.Duration
-	logger  *slog.Logger
+	api        api.RequestService
+	timeout    time.Duration
+	logger     *slog.Logger
+	thresholds HealthThresholds
 }
 
 // FetchRawMetrics fetches and parses raw Prometheus metrics from an Aura metrics endpoint.
@@ -336,23 +375,25 @@ func (p *prometheusService) assessHealth(metrics *PrometheusHealthMetrics) strin
 		}
 	}
 
+	t := p.thresholds
+
 	switch {
-	case metrics.Resources.CPUUsagePercent > 95:
+	case metrics.Resources.CPUUsagePercent > t.CPUCritical:
 		metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical CPU usage: %.1f%%", metrics.Resources.CPUUsagePercent))
 		metrics.Recommendations = append(metrics.Recommendations, "Scale to a larger instance size immediately")
 		elevate("critical")
-	case metrics.Resources.CPUUsagePercent > 80:
+	case metrics.Resources.CPUUsagePercent > t.CPUWarning:
 		metrics.Issues = append(metrics.Issues, fmt.Sprintf("High CPU usage: %.1f%%", metrics.Resources.CPUUsagePercent))
 		metrics.Recommendations = append(metrics.Recommendations, "Consider scaling to a larger instance size")
 		elevate("warning")
 	}
 
 	switch {
-	case metrics.Resources.MemoryUsagePercent > 95:
+	case metrics.Resources.MemoryUsagePercent > t.MemoryCritical:
 		metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical memory usage: %.1f%%", metrics.Resources.MemoryUsagePercent))
 		metrics.Recommendations = append(metrics.Recommendations, "Scale to a larger memory instance immediately")
 		elevate("critical")
-	case metrics.Resources.MemoryUsagePercent > 85:
+	case metrics.Resources.MemoryUsagePercent > t.MemoryWarning:
 		metrics.Issues = append(metrics.Issues, fmt.Sprintf("High memory usage: %.1f%%", metrics.Resources.MemoryUsagePercent))
 		metrics.Recommendations = append(metrics.Recommendations, "Consider scaling to a larger memory instance")
 		elevate("warning")
@@ -360,11 +401,11 @@ func (p *prometheusService) assessHealth(metrics *PrometheusHealthMetrics) strin
 
 	if metrics.Connections.MaxConnections > 0 {
 		switch {
-		case metrics.Connections.UsagePercent > 95:
+		case metrics.Connections.UsagePercent > t.ConnectionsCritical:
 			metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical connection usage: %.1f%%", metrics.Connections.UsagePercent))
 			metrics.Recommendations = append(metrics.Recommendations, "Reduce active connections immediately; review connection pooling")
 			elevate("critical")
-		case metrics.Connections.UsagePercent > 80:
+		case metrics.Connections.UsagePercent > t.ConnectionsWarning:
 			metrics.Issues = append(metrics.Issues, fmt.Sprintf("High connection usage: %.1f%%", metrics.Connections.UsagePercent))
 			metrics.Recommendations = append(metrics.Recommendations, "Review connection pooling configuration in your application")
 			elevate("warning")
@@ -373,11 +414,11 @@ func (p *prometheusService) assessHealth(metrics *PrometheusHealthMetrics) strin
 
 	if metrics.Storage.PageCacheHitRate > 0 {
 		switch {
-		case metrics.Storage.PageCacheHitRate < 20:
+		case metrics.Storage.PageCacheHitRate < t.PageCacheCritical:
 			metrics.Issues = append(metrics.Issues, fmt.Sprintf("Critical page cache hit rate: %.1f%%", metrics.Storage.PageCacheHitRate))
 			metrics.Recommendations = append(metrics.Recommendations, "Increase page cache size immediately; query performance is severely degraded")
 			elevate("critical")
-		case metrics.Storage.PageCacheHitRate < 50:
+		case metrics.Storage.PageCacheHitRate < t.PageCacheWarning:
 			metrics.Issues = append(metrics.Issues, fmt.Sprintf("Low page cache hit rate: %.1f%%", metrics.Storage.PageCacheHitRate))
 			metrics.Recommendations = append(metrics.Recommendations, "Consider increasing page cache size for better performance")
 			elevate("warning")

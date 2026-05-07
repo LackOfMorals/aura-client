@@ -1,0 +1,2 @@
+kind: Fixed
+body: "HTTP 429 Too Many Requests responses are now retried automatically; the Retry-After response header is honoured when present so the client waits exactly the server-requested delay before retrying"

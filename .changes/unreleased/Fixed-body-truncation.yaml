@@ -1,0 +1,2 @@
+kind: Fixed
+body: "Response bodies that exceed the 10 MB read limit now return an explicit error instead of being silently truncated"

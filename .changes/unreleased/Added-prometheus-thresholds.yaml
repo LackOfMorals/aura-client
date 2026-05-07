@@ -1,0 +1,2 @@
+kind: Added
+body: "WithPrometheusThresholds option exposes the warning/critical boundaries used by PrometheusService.GetInstanceHealth; call DefaultHealthThresholds() to get the built-in values and override only the fields you need"

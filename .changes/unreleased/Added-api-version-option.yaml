@@ -1,0 +1,2 @@
+kind: Added
+body: "WithAPIVersion option allows callers to target a non-default Aura API version (e.g. \"v2\") without waiting for a new SDK module release; defaults to \"v1\""

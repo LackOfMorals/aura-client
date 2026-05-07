@@ -26,9 +26,10 @@ func newTestPrometheusService() *prometheusService {
 	}, logger)
 
 	return &prometheusService{
-		api:     apiSvc,
-		timeout: 30 * time.Second,
-		logger:  logger,
+		api:        apiSvc,
+		timeout:    30 * time.Second,
+		logger:     logger,
+		thresholds: DefaultHealthThresholds(),
 	}
 }
 
