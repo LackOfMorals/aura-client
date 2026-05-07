@@ -1,0 +1,2 @@
+kind: Changed
+body: "Internal rename gDSSessionService -> gdsSessionService (no public API change); OverwriteFromInstance and OverwriteFromSnapshot deduplicated via shared private doOverwrite method"

@@ -1,0 +1,2 @@
+kind: Added
+body: "New auratest subpackage provides configurable test doubles (FakeInstanceService, FakeTenantService, FakeSnapshotService, FakeCmekService, FakeGDSSessionService, FakePrometheusService) for all exported service interfaces — no more writing your own mocks in downstream tests"

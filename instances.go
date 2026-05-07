@@ -401,56 +401,25 @@ func (i *instanceService) Update(ctx context.Context, instanceID string, instanc
 
 // OverwriteFromInstance replaces instance data from another instance.
 func (i *instanceService) OverwriteFromInstance(ctx context.Context, instanceID string, sourceInstanceID string) (*OverwriteInstanceResponse, error) {
-	if err := ctx.Err(); err != nil {
-		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
-		return nil, err
-	}
-	ctx, cancel := context.WithTimeout(ctx, i.timeout)
-	defer cancel()
-
-	i.logger.DebugContext(ctx, "overwriting instance", slog.String("instanceID", instanceID))
-
-	if err := utils.ValidateInstanceID(instanceID); err != nil {
-		i.logger.ErrorContext(ctx, "invalid instance ID", slog.String("error", err.Error()))
-		return nil, err
-	}
-
 	if sourceInstanceID == "" {
 		return nil, fmt.Errorf("must provide sourceInstanceID")
 	}
-
 	if err := utils.ValidateInstanceID(sourceInstanceID); err != nil {
 		return nil, fmt.Errorf("invalid source instance ID: %w", err)
 	}
-
-	requestBody := overwriteInstanceRequest{
-		SourceInstanceID: sourceInstanceID,
-	}
-
-	body, err := json.Marshal(requestBody)
-	if err != nil {
-		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("marshal overwrite-from-instance request: %w", err)
-	}
-
-	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/overwrite", instanceID), string(body))
-	if err != nil {
-		i.logger.ErrorContext(ctx, "failed to overwrite instance from another instance", slog.String("instanceID", instanceID), slog.String("sourceInstanceID", sourceInstanceID), slog.String("error", err.Error()))
-		return nil, err
-	}
-
-	var result OverwriteInstanceResponse
-	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		i.logger.ErrorContext(ctx, "failed to unmarshal overwrite instance response", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("unmarshal overwrite-from-instance response: %w", err)
-	}
-
-	i.logger.InfoContext(ctx, "instance overwrite started", slog.String("instanceID", instanceID))
-	return &result, nil
+	return i.doOverwrite(ctx, instanceID, overwriteInstanceRequest{SourceInstanceID: sourceInstanceID})
 }
 
 // OverwriteFromSnapshot replaces instance data from a snapshot.
 func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID string, sourceSnapshotID string) (*OverwriteInstanceResponse, error) {
+	if sourceSnapshotID == "" {
+		return nil, fmt.Errorf("must provide sourceSnapshotID")
+	}
+	return i.doOverwrite(ctx, instanceID, overwriteInstanceRequest{SourceSnapshotID: sourceSnapshotID})
+}
+
+// doOverwrite handles the shared HTTP post/unmarshal logic for both overwrite variants.
+func (i *instanceService) doOverwrite(ctx context.Context, instanceID string, req overwriteInstanceRequest) (*OverwriteInstanceResponse, error) {
 	if err := ctx.Err(); err != nil {
 		i.logger.ErrorContext(ctx, "context already cancelled before function", slog.String("error", err.Error()))
 		return nil, err
@@ -465,30 +434,20 @@ func (i *instanceService) OverwriteFromSnapshot(ctx context.Context, instanceID 
 		return nil, err
 	}
 
-	if sourceSnapshotID == "" {
-		return nil, fmt.Errorf("must provide sourceSnapshotID")
-	}
-
-	requestBody := overwriteInstanceRequest{
-		SourceSnapshotID: sourceSnapshotID,
-	}
-
-	body, err := json.Marshal(requestBody)
+	body, err := json.Marshal(req)
 	if err != nil {
-		i.logger.ErrorContext(ctx, "failed to marshal instance request", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("marshal overwrite-from-snapshot request: %w", err)
+		return nil, fmt.Errorf("marshal overwrite request: %w", err)
 	}
 
 	resp, err := i.api.Post(ctx, fmt.Sprintf("instances/%s/overwrite", instanceID), string(body))
 	if err != nil {
-		i.logger.ErrorContext(ctx, "failed to overwrite instance with a snapshot", slog.String("instanceID", instanceID), slog.String("snapshotID", sourceSnapshotID), slog.String("error", err.Error()))
+		i.logger.ErrorContext(ctx, "failed to overwrite instance", slog.String("instanceID", instanceID), slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	var result OverwriteInstanceResponse
 	if err := json.Unmarshal(resp.Body, &result); err != nil {
-		i.logger.ErrorContext(ctx, "failed to unmarshal overwrite instance response", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("unmarshal overwrite-from-snapshot response: %w", err)
+		return nil, fmt.Errorf("unmarshal overwrite response: %w", err)
 	}
 
 	i.logger.InfoContext(ctx, "instance overwrite started", slog.String("instanceID", instanceID))
