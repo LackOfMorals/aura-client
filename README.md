@@ -1,3 +1,7 @@
+> **This repository has moved.**
+> The canonical location is https://github.com/neo4j-contrib/aura-go-sdk.
+> This repo is archived and will not receive further updates.
+
 # Aura API Client
 
 ## Overview
@@ -58,7 +62,8 @@ func main() {
     }
 
     for _, instance := range instances.Data {
-        log.Printf("Instance: %s (ID: %s)\n", instance.Name, instance.ID)
+        log.Printf("Instance: %s (ID: %s)
+", instance.Name, instance.ID)
     }
 }
 ```
@@ -229,7 +234,8 @@ if err != nil {
 }
 
 for _, tenant := range tenants.Data {
-    fmt.Printf("Tenant: %s (ID: %s)\n", tenant.Name, tenant.ID)
+    fmt.Printf("Tenant: %s (ID: %s)
+", tenant.Name, tenant.ID)
 }
 ```
 
@@ -243,11 +249,14 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Tenant: %s\n", tenant.Data.Name)
-fmt.Printf("Available instance configurations:\n")
+fmt.Printf("Tenant: %s
+", tenant.Data.Name)
+fmt.Printf("Available instance configurations:
+")
 
 for _, config := range tenant.Data.InstanceConfigurations {
-    fmt.Printf("  - %s in %s: %s memory, Type: %s\n",
+    fmt.Printf("  - %s in %s: %s memory, Type: %s
+",
         config.CloudProvider,
         config.RegionName,
         config.Memory,
@@ -270,9 +279,11 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Found %d instances:\n", len(instances.Data))
+fmt.Printf("Found %d instances:
+", len(instances.Data))
 for _, instance := range instances.Data {
-    fmt.Printf("  - %s (ID: %s) on %s\n",
+    fmt.Printf("  - %s (ID: %s) on %s
+",
         instance.Name,
         instance.ID,
         instance.CloudProvider,
@@ -290,12 +301,18 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance: %s\n", instance.Data.Name)
-fmt.Printf("Status: %s\n", instance.Data.Status)
-fmt.Printf("Connection URL: %s\n", instance.Data.ConnectionURL)
-fmt.Printf("Memory: %s\n", instance.Data.Memory)
-fmt.Printf("Type: %s\n", instance.Data.Type)
-fmt.Printf("Region: %s\n", instance.Data.Region)
+fmt.Printf("Instance: %s
+", instance.Data.Name)
+fmt.Printf("Status: %s
+", instance.Data.Status)
+fmt.Printf("Connection URL: %s
+", instance.Data.ConnectionURL)
+fmt.Printf("Memory: %s
+", instance.Data.Memory)
+fmt.Printf("Type: %s
+", instance.Data.Type)
+fmt.Printf("Region: %s
+", instance.Data.Region)
 ```
 
 ### Create a New Instance
@@ -318,11 +335,16 @@ if err != nil {
     log.Fatalf("Error creating instance: %v", err)
 }
 
-fmt.Printf("Instance created!\n")
-fmt.Printf("  ID: %s\n", instance.Data.ID)
-fmt.Printf("  Connection URL: %s\n", instance.Data.ConnectionURL)
-fmt.Printf("  Username: %s\n", instance.Data.Username)
-fmt.Printf("  Password: %s\n", instance.Data.Password)
+fmt.Printf("Instance created!
+")
+fmt.Printf("  ID: %s
+", instance.Data.ID)
+fmt.Printf("  Connection URL: %s
+", instance.Data.ConnectionURL)
+fmt.Printf("  Username: %s
+", instance.Data.Username)
+fmt.Printf("  Password: %s
+", instance.Data.Password)
 
 // ⚠️ IMPORTANT: Save these credentials securely!
 // The password is only shown once during creation.
@@ -343,7 +365,8 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance updated: %s with %s memory\n",
+fmt.Printf("Instance updated: %s with %s memory
+",
     instance.Data.Name,
     instance.Data.Memory,
 )
@@ -359,7 +382,8 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance paused. Status: %s\n", instance.Data.Status)
+fmt.Printf("Instance paused. Status: %s
+", instance.Data.Status)
 ```
 
 ### Resume an Instance
@@ -372,7 +396,8 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance resumed. Status: %s\n", instance.Data.Status)
+fmt.Printf("Instance resumed. Status: %s
+", instance.Data.Status)
 ```
 
 ### Delete an Instance
@@ -386,7 +411,8 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance %s deleted\n", instance.Data.ID)
+fmt.Printf("Instance %s deleted
+", instance.Data.ID)
 ```
 
 ### Overwrite Instance from Another Instance
@@ -399,7 +425,8 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Overwrite initiated: %s\n", result.Data)
+fmt.Printf("Overwrite initiated: %s
+", result.Data)
 // Note: This is asynchronous. Monitor instance status.
 ```
 
@@ -413,7 +440,8 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Overwrite from snapshot initiated\n")
+fmt.Printf("Overwrite from snapshot initiated
+")
 ```
 
 ---
@@ -441,9 +469,11 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Found %d snapshots:\n", len(snapshots.Data))
+fmt.Printf("Found %d snapshots:
+", len(snapshots.Data))
 for _, snapshot := range snapshots.Data {
-    fmt.Printf("  - ID: %s, Profile: %s, Status: %s\n",
+    fmt.Printf("  - ID: %s, Profile: %s, Status: %s
+",
         snapshot.SnapshotID,
         snapshot.Profile,
         snapshot.Status,
@@ -462,7 +492,8 @@ if err != nil {
 }
 
 for _, snapshot := range snapshots.Data {
-    fmt.Printf("  - %s at %s\n", snapshot.SnapshotID, snapshot.Timestamp.Format(time.RFC3339))
+    fmt.Printf("  - %s at %s
+", snapshot.SnapshotID, snapshot.Timestamp.Format(time.RFC3339))
 }
 ```
 
@@ -476,7 +507,11 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance ID: %s\nSnapshot ID: %s\nStatus: %s\nTimestamp: %s\n",
+fmt.Printf("Instance ID: %s
+Snapshot ID: %s
+Status: %s
+Timestamp: %s
+",
     snapshot.Data.InstanceID,
     snapshot.Data.SnapshotID,
     snapshot.Data.Status,
@@ -494,7 +529,8 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Snapshot creation initiated. Snapshot ID: %s\n", snapshot.Data.SnapshotID)
+fmt.Printf("Snapshot creation initiated. Snapshot ID: %s
+", snapshot.Data.SnapshotID)
 // Note: Snapshot creation is asynchronous. Poll List() to check completion status.
 ```
 
@@ -508,7 +544,9 @@ if err != nil {
     log.Fatalf("Error: %v", err)
 }
 
-fmt.Printf("Instance ID: %s\nStatus: %s\n", result.Data.ID, result.Data.Status)
+fmt.Printf("Instance ID: %s
+Status: %s
+", result.Data.ID, result.Data.Status)
 ```
 
 ---
@@ -527,7 +565,8 @@ if err != nil {
 }
 
 for _, cmek := range cmeks.Data {
-    fmt.Printf("  - %s (ID: %s) in tenant %s\n", cmek.Name, cmek.ID, cmek.TenantID)
+    fmt.Printf("  - %s (ID: %s) in tenant %s
+", cmek.Name, cmek.ID, cmek.TenantID)
 }
 ```
 
@@ -542,7 +581,8 @@ if err != nil {
 }
 
 for _, cmek := range cmeks.Data {
-    fmt.Printf("  - %s\n", cmek.Name)
+    fmt.Printf("  - %s
+", cmek.Name)
 }
 ```
 
@@ -561,9 +601,12 @@ if err != nil {
 }
 
 for _, session := range sessions.Data {
-    fmt.Printf("  - %s (ID: %s)\n", session.Name, session.ID)
-    fmt.Printf("    Memory: %s, Status: %s\n", session.Memory, session.Status)
-    fmt.Printf("    Instance: %s, Expires: %s\n", session.InstanceID, session.ExpiresAt.Format(time.RFC3339))
+    fmt.Printf("  - %s (ID: %s)
+", session.Name, session.ID)
+    fmt.Printf("    Memory: %s, Status: %s
+", session.Memory, session.Status)
+    fmt.Printf("    Instance: %s, Expires: %s
+", session.InstanceID, session.ExpiresAt.Format(time.RFC3339))
 }
 ```
 
@@ -600,34 +643,44 @@ if err != nil {
 // "warning"  — one or more metrics are elevated; monitor closely.
 // "critical" — one or more metrics have breached a severe threshold
 //              and immediate action is recommended.
-fmt.Printf("Health Status: %s\n", health.OverallStatus)
-fmt.Printf("CPU Usage: %.2f%%\n", health.Resources.CPUUsagePercent)
-fmt.Printf("Memory Usage: %.2f%%\n", health.Resources.MemoryUsagePercent)
-fmt.Printf("Total Queries: %.0f\n", health.Query.QueryExecutionTotal)
+fmt.Printf("Health Status: %s
+", health.OverallStatus)
+fmt.Printf("CPU Usage: %.2f%%
+", health.Resources.CPUUsagePercent)
+fmt.Printf("Memory Usage: %.2f%%
+", health.Resources.MemoryUsagePercent)
+fmt.Printf("Total Queries: %.0f
+", health.Query.QueryExecutionTotal)
 
 if health.Connections.MaxConnections > 0 {
-    fmt.Printf("Active Connections: %d/%d (%.1f%%)\n",
+    fmt.Printf("Active Connections: %d/%d (%.1f%%)
+",
         health.Connections.ActiveConnections,
         health.Connections.MaxConnections,
         health.Connections.UsagePercent,
     )
 } else {
-    fmt.Printf("Active Connections: %d (max unknown for this plan)\n",
+    fmt.Printf("Active Connections: %d (max unknown for this plan)
+",
         health.Connections.ActiveConnections,
     )
 }
 
 if len(health.Issues) > 0 {
-    fmt.Println("\nIssues detected:")
+    fmt.Println("
+Issues detected:")
     for _, issue := range health.Issues {
-        fmt.Printf("  - %s\n", issue)
+        fmt.Printf("  - %s
+", issue)
     }
 }
 
 if len(health.Recommendations) > 0 {
-    fmt.Println("\nRecommendations:")
+    fmt.Println("
+Recommendations:")
     for _, rec := range health.Recommendations {
-        fmt.Printf("  - %s\n", rec)
+        fmt.Printf("  - %s
+", rec)
     }
 }
 ```
@@ -645,7 +698,8 @@ ctx := context.Background()
 
 instance, err := client.Instances.Get(ctx, "instance-id")
 if err != nil {
-    log.Printf("Error: %v\n", err)
+    log.Printf("Error: %v
+", err)
     return
 }
 ```
@@ -658,7 +712,8 @@ ctx := context.Background()
 instance, err := client.Instances.Get(ctx, "non-existent-id")
 if err != nil {
     if apiErr, ok := err.(*aura.Error); ok {
-        fmt.Printf("API Error %d: %s\n", apiErr.StatusCode, apiErr.Message)
+        fmt.Printf("API Error %d: %s
+", apiErr.StatusCode, apiErr.Message)
 
         switch {
         case apiErr.IsNotFound():
@@ -672,13 +727,15 @@ if err != nil {
         if apiErr.HasMultipleErrors() {
             fmt.Println("All errors:")
             for _, msg := range apiErr.AllErrors() {
-                fmt.Printf("  - %s\n", msg)
+                fmt.Printf("  - %s
+", msg)
             }
         }
         return
     }
 
-    log.Printf("Unexpected error: %v\n", err)
+    log.Printf("Unexpected error: %v
+", err)
     return
 }
 ```
@@ -697,7 +754,8 @@ if err != nil {
     case context.Canceled:
         log.Println("Request was cancelled")
     default:
-        log.Printf("Error: %v\n", err)
+        log.Printf("Error: %v
+", err)
     }
     return
 }
@@ -757,7 +815,8 @@ for range 30 {
         fmt.Println("Instance is ready!")
         break
     } else {
-        fmt.Printf("Status: %s, waiting...\n", inst.Data.Status)
+        fmt.Printf("Status: %s, waiting...
+", inst.Data.Status)
     }
     time.Sleep(10 * time.Second)
 }
@@ -774,7 +833,8 @@ signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 go func() {
     <-sigChan
-    fmt.Println("\nShutting down gracefully...")
+    fmt.Println("
+Shutting down gracefully...")
     cancel()
 }()
 
@@ -801,7 +861,8 @@ func retryOperation(maxRetries int, fn func() error) error {
         }
 
         wait := time.Duration(math.Pow(2, float64(i))) * time.Second
-        fmt.Printf("Attempt %d failed, retrying in %v...\n", i+1, wait)
+        fmt.Printf("Attempt %d failed, retrying in %v...
+", i+1, wait)
         time.Sleep(wait)
     }
     return fmt.Errorf("operation failed after %d retries: %w", maxRetries, err)
@@ -858,21 +919,26 @@ func main() {
     }
 
     for _, inst := range instances.Data {
-        fmt.Printf("- %s: %s (%s)\n", inst.Name, inst.ID, inst.CloudProvider)
+        fmt.Printf("- %s: %s (%s)
+", inst.Name, inst.ID, inst.CloudProvider)
     }
 
     if tenantID != "" {
-        fmt.Println("\n=== Tenant Configuration ===")
+        fmt.Println("
+=== Tenant Configuration ===")
         tenant, err := client.Tenants.Get(ctx, tenantID)
         if err != nil {
             log.Printf("Warning: Could not get tenant: %v", err)
         } else {
-            fmt.Printf("Tenant: %s\n", tenant.Data.Name)
-            fmt.Printf("Available configurations: %d\n", len(tenant.Data.InstanceConfigurations))
+            fmt.Printf("Tenant: %s
+", tenant.Data.Name)
+            fmt.Printf("Available configurations: %d
+", len(tenant.Data.InstanceConfigurations))
         }
     }
 
-    fmt.Println("\n✓ Client is working correctly!")
+    fmt.Println("
+✓ Client is working correctly!")
 }
 ```
 
